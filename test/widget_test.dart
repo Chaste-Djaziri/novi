@@ -19,6 +19,8 @@ class TestPaths extends PathProviderPlatform {
 }
 
 void main() {
+  setUpAll(() => EditableText.debugDeterministicCursor = true);
+  tearDownAll(() => EditableText.debugDeterministicCursor = false);
   test('styles and document kinds survive storage and portable files; old documents still load', () {
     final old = Notebook.fromJson({
       'id': 'old',
