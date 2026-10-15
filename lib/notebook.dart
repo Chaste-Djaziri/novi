@@ -17,8 +17,12 @@ class Notebook {
     this.cover = 0xff303030,
     this.landscape = false,
     this.favorite = false,
+    List<Map<String, dynamic>>? inkStyles,
+    this.fontSize = 16,
+    this.boldText = false,
     List<List<List<double>>>? strokes,
-  }) : strokes = strokes ?? [];
+  }) : strokes = strokes ?? [],
+       inkStyles = inkStyles ?? [];
   String id;
   String title;
   String text;
@@ -28,6 +32,9 @@ class Notebook {
   int cover;
   bool landscape;
   bool favorite;
+  List<Map<String, dynamic>> inkStyles;
+  double fontSize;
+  bool boldText;
   List<List<List<double>>> strokes;
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -39,6 +46,9 @@ class Notebook {
     'cover': cover,
     'landscape': landscape,
     'favorite': favorite,
+    'inkStyles': inkStyles,
+    'fontSize': fontSize,
+    'boldText': boldText,
     'strokes': strokes,
   };
   factory Notebook.fromJson(Map<String, dynamic> json) {
@@ -65,6 +75,11 @@ class Notebook {
       cover: json['cover'] as int? ?? 0xff303030,
       landscape: json['landscape'] as bool? ?? false,
       favorite: json['favorite'] as bool? ?? false,
+      inkStyles: (json['inkStyles'] as List? ?? [])
+          .map((s) => Map<String, dynamic>.from(s as Map))
+          .toList(),
+      fontSize: (json['fontSize'] as num?)?.toDouble() ?? 16,
+      boldText: json['boldText'] as bool? ?? false,
       strokes: strokes,
     );
   }
