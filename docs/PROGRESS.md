@@ -120,6 +120,7 @@ The first technical alpha is implemented. A reported native crash on New noteboo
 - [x] Aligned navigation buttons (`< > [|]`), tabs, and window controls on the exact vertical center axis (y = 16px) with native macOS traffic lights.
 - [x] Implemented curved panel transitions (`BorderRadius.circular(12)`) on the sidebar, library documents gallery, and editor canvas panels where they meet the top header matching the ChatGPT desktop layout.
 - [x] Configured the sidebar to collapse into a 52px icon-only rail (Documents, Favorites, Back up library, Restore backup) when toggled collapsed.
+- [x] Implemented active item highlighting in the collapsed sidebar rail matching the ChatGPT desktop interface (36×36 rounded container, `Color(0xff2e2e2e)`, subtle white border, bright white icon vs muted inactive icons).
 - [x] `flutter analyze`: clean (0 issues).
 - [x] Unit and widget test suite: all 6 tests pass (`test/library_ui_test.dart` and `test/workspace_test.dart`).
 - [x] Native macOS integration test suite: all 5 tests pass in a live macOS process (`flutter test -d macos integration_test/notebook_test.dart`).
