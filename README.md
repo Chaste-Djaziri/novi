@@ -34,9 +34,10 @@ Restore and import add copies without overwriting existing notebooks. Backups cu
 ```sh
 flutter analyze
 flutter test
+flutter test integration_test/notebook_test.dart -d macos
 flutter run -d macos --no-resident
 ```
 
-Automated checks cover editing, undo/redo, drawing, reopening SQLite, and document/backup archive round trips. Actual tablet hardware, native file dialogs, and Windows/Linux builds still need hands-on verification.
+Automated checks cover editing, undo/redo, drawing, reopening SQLite, and document/backup archive round trips. The integration command runs those scenarios inside the native Mac application using temporary test libraries. macOS uses the system SQLite library; Windows and Linux retain bundled SQLite. After changing native dependencies, stop the running app before rebuilding. Actual tablet hardware, native file dialogs, and Windows/Linux builds still need hands-on verification.
 
 Follow [the progress checklist](docs/PROGRESS.md) for current work and [the product roadmap](docs/PRODUCT_ROADMAP.md) for the longer-term direction.
