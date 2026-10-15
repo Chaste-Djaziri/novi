@@ -24,6 +24,7 @@ IconData kindIcon(String kind) => switch (kind) {
 Color paperColor(String tone) => switch (tone) {
   'Dark' => const Color(0xff222222),
   'Gray' => const Color(0xffdddddd),
+  'Yellow' => const Color(0xfff5f0db),
   _ => const Color(0xfffafafa),
 };
 
@@ -629,6 +630,9 @@ class CreateDocumentDialog extends StatefulWidget {
 class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
   late final TextEditingController name;
   late Notebook draft;
+  String selectedTab = 'paper';
+  bool hasCover = true;
+
   @override
   void initState() {
     super.initState();
@@ -638,8 +642,9 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
           id: newId(),
           title: '',
           kind: chosenKind,
-          paper: chosenKind == 'Whiteboard' ? 'Dotted' : 'Lines',
+          paper: chosenKind == 'Whiteboard' ? 'Squared' : 'Lines',
           landscape: chosenKind == 'Whiteboard',
+          tone: 'White',
         );
     name = TextEditingController(text: draft.title);
   }
@@ -650,251 +655,905 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
     super.dispose();
   }
 
+  void _submit() {
+    draft.title = name.text.trim().isEmpty
+        ? 'Untitled ${draft.kind.toLowerCase()}'
+        : name.text.trim();
+    Navigator.pop(context, draft);
+  }
+
+  String _paperDisplayName(String pattern) => switch (pattern) {
+    'Squared' => 'Squared Paper',
+    'Dotted' => 'Dotted Paper',
+    'Ruled' => 'Ruled Narrow',
+    'Wide ruled' => 'Ruled Wide',
+    _ => 'Blank',
+  };
+
+  String _coverName(int color) => switch (color) {
+    0xff303030 => 'Charcoal',
+    0xff484848 => 'Graphite',
+    0xff656565 => 'Slate',
+    0xff909090 => 'Silver',
+    0xffbcbcbc => 'Bright',
+    0xffe0e0e0 => 'Alabaster',
+    _ => 'Custom',
+  };
+
   @override
-  Widget build(BuildContext context) => DesktopDialog(
-    child: SizedBox(
-      width: 700,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    widget.existing == null
-                        ? 'Make room for an idea'
-                        : 'Document style',
-                    style: const TextStyle(
-                      fontSize: 23,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                DesktopIconButton(
-                  tooltip: 'Cancel',
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(CupertinoIcons.xmark),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Choose a format. Make it yours.',
-              style: TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 24),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: documentKinds
-                  .map(
-                    (kind) => DesktopToolButton(
-                      avatar: Icon(kindIcon(kind), size: 17),
-                      label: Text(kind),
-                      selected: draft.kind == kind,
-                      onSelected: (_) => setState(() {
-                        draft.kind = kind;
-                        if (kind == 'Whiteboard') {
-                          draft.landscape = true;
-                          draft.paper = 'Dotted';
-                        }
-                      }),
-                    ),
-                  )
-                  .toList(),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 135,
-                  height: 174,
-                  child: DocumentCover(
-                    Notebook(
-                      id: 'preview',
-                      title: name.text.trim().isEmpty
-                          ? 'Your next idea'
-                          : name.text,
-                      cover: draft.cover,
-                      kind: draft.kind,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 28),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      DesktopTextField(
-                        key: const Key('document-name'),
-                        controller: name,
-                        onChanged: (_) => setState(() {}),
-                        placeholder: 'Name — Untitled document',
-                      ),
-                      const SizedBox(height: 18),
-                      const Text(
-                        'COVER',
-                        style: TextStyle(
-                          fontSize: 10,
-                          letterSpacing: 1.6,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8,
-                        children: coverColors
-                            .map(
-                              (color) => Tooltip(
-                                message:
-                                    'Cover ${coverColors.indexOf(color) + 1}',
-                                child: InkWell(
-                                  onTap: () =>
-                                      setState(() => draft.cover = color),
-                                  borderRadius: BorderRadius.circular(20),
-                                  child: Container(
-                                    width: 30,
-                                    height: 30,
-                                    decoration: BoxDecoration(
-                                      color: Color(color),
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: draft.cover == color
-                                            ? Colors.white
-                                            : Colors.transparent,
-                                        width: 2,
-                                      ),
-                                    ),
-                                    child: draft.cover == color
-                                        ? Icon(
-                                            CupertinoIcons.check_mark,
-                                            size: 16,
-                                            color:
-                                                Color(color)
-                                                        .computeLuminance() >
-                                                    0.45
-                                                ? Colors.black
-                                                : Colors.white,
-                                          )
-                                        : null,
-                                  ),
-                                ),
-                              ),
-                            )
-                            .toList(),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 28),
-            const Divider(),
-            const SizedBox(height: 16),
-            const Text(
-              'Paper templates',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: papers
-                  .map(
-                    (pattern) => InkWell(
-                      onTap: () => setState(() => draft.paper = pattern),
-                      child: SizedBox(
-                        width: 104,
-                        child: Column(
-                          children: [
-                            Container(
-                              width: 104,
-                              height: 115,
-                              padding: const EdgeInsets.all(3),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: draft.paper == pattern
-                                      ? Colors.white
-                                      : const Color(0xff444444),
-                                  width: 2,
-                                ),
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: CustomPaint(
-                                  painter: PaperPainter(pattern, draft.tone),
-                                  child: const SizedBox.expand(),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(pattern, style: const TextStyle(fontSize: 12)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-            const SizedBox(height: 22),
-            Wrap(
-              spacing: 24,
-              runSpacing: 12,
-              children: [
-                DesktopPopupButton<String>(
-                  value: draft.tone,
-                  items: ['White', 'Gray', 'Dark']
-                      .map(
-                        (v) =>
-                            DesktopMenuItem(value: v, child: Text('$v paper')),
-                      )
-                      .toList(),
-                  onChanged: (v) => setState(() => draft.tone = v!),
-                ),
-                DesktopPopupButton<bool>(
-                  value: draft.landscape,
-                  items: const [
-                    DesktopMenuItem(value: false, child: Text('Portrait')),
-                    DesktopMenuItem(value: true, child: Text('Landscape')),
-                  ],
-                  onChanged: (v) => setState(() => draft.landscape = v!),
-                ),
-              ],
-            ),
-            const SizedBox(height: 22),
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Local by default. No account needed.',
-                    style: TextStyle(color: Colors.grey, fontSize: 11),
-                  ),
-                ),
-                DesktopButton.icon(
-                  primary: true,
-                  onPressed: () {
-                    draft.title = name.text.trim().isEmpty
-                        ? 'Untitled ${draft.kind.toLowerCase()}'
-                        : name.text.trim();
-                    Navigator.pop(context, draft);
-                  },
-                  icon: const Icon(CupertinoIcons.check_mark, size: 18),
-                  label: Text(
-                    widget.existing == null ? 'Create' : 'Save style',
-                  ),
-                ),
-              ],
+  Widget build(BuildContext context) {
+    final titleLabel =
+        widget.existing == null ? 'New Notebook' : 'Document Style';
+    final actionLabel = widget.existing == null ? 'Create' : 'Save style';
+
+    return DesktopDialog(
+      child: Container(
+        width: 760,
+        decoration: BoxDecoration(
+          color: const Color(0xff18181a),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.1),
+            width: 0.8,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.6),
+              blurRadius: 36,
+              spreadRadius: 6,
+              offset: const Offset(0, 14),
             ),
           ],
         ),
+        clipBehavior: Clip.antiAlias,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  DesktopIconButton(
+                    tooltip: 'Cancel',
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(CupertinoIcons.xmark, size: 16),
+                  ),
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        titleLabel,
+                        style: const TextStyle(
+                          fontSize: 16.5,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: _submit,
+                    child: Container(
+                      height: 32,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xff007aff),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(
+                              0xff007aff,
+                            ).withValues(alpha: 0.4),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            CupertinoIcons.checkmark,
+                            size: 15,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            actionLabel,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      _buildPreviewCard(
+                        label: 'COVER',
+                        isSelected: selectedTab == 'cover',
+                        onTap: () => setState(() => selectedTab = 'cover'),
+                        bottomLabel: _coverName(draft.cover),
+                        child: Container(
+                          width: 108,
+                          height: 136,
+                          decoration: BoxDecoration(
+                            color: Color(draft.cover),
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.35),
+                                blurRadius: 10,
+                                offset: const Offset(2, 4),
+                              ),
+                            ],
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: Stack(
+                            children: [
+                              Positioned(
+                                left: 0,
+                                top: 0,
+                                bottom: 0,
+                                child: Container(
+                                  width: 8,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Colors.black.withValues(alpha: 0.4),
+                                        Colors.transparent,
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                right: 10,
+                                top: 0,
+                                bottom: 0,
+                                child: Container(
+                                  width: 9,
+                                  color: Colors.black.withValues(alpha: 0.2),
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  16,
+                                  24,
+                                  16,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Icon(
+                                      kindIcon(draft.kind),
+                                      size: 18,
+                                      color:
+                                          Color(
+                                                draft.cover,
+                                              ).computeLuminance() >
+                                              0.45
+                                          ? Colors.black87
+                                          : Colors.white,
+                                    ),
+                                    const Spacer(),
+                                    Text(
+                                      name.text.trim().isEmpty
+                                          ? 'Untitled'
+                                          : name.text,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color:
+                                            Color(
+                                                  draft.cover,
+                                                ).computeLuminance() >
+                                                0.45
+                                            ? Colors.black87
+                                            : Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      _buildPreviewCard(
+                        label: 'PAPER',
+                        isSelected: selectedTab == 'paper',
+                        onTap: () => setState(() => selectedTab = 'paper'),
+                        bottomLabel: _paperDisplayName(draft.paper),
+                        child: Container(
+                          width: 108,
+                          height: 136,
+                          decoration: BoxDecoration(
+                            color: paperColor(draft.tone),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              width: 0.8,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.35),
+                                blurRadius: 10,
+                                offset: const Offset(2, 4),
+                              ),
+                            ],
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: CustomPaint(
+                            painter: PaperPainter(draft.paper, draft.tone),
+                            child: const SizedBox.expand(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 22),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xff222226),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.06),
+                              width: 0.8,
+                            ),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Row(
+                                children: [
+                                  const SizedBox(
+                                    width: 70,
+                                    child: Text(
+                                      'Name',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 13.5,
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: DesktopTextField(
+                                      key: const Key('document-name'),
+                                      controller: name,
+                                      onChanged: (_) => setState(() {}),
+                                      placeholder: 'Untitled Notebook',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const Divider(
+                                color: Color(0xff2f2f33),
+                                height: 14,
+                              ),
+                              Row(
+                                children: [
+                                  const SizedBox(
+                                    width: 70,
+                                    child: Text(
+                                      'Format',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 13.5,
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Align(
+                                      alignment: Alignment.centerRight,
+                                      child: DesktopPopupButton<String>(
+                                        value: draft.kind,
+                                        items: documentKinds
+                                            .map(
+                                              (v) => DesktopMenuItem(
+                                                value: v,
+                                                child: Text(
+                                                  v,
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ),
+                                            )
+                                            .toList(),
+                                        onChanged: (v) => setState(() {
+                                          draft.kind = v!;
+                                          if (v == 'Whiteboard') {
+                                            draft.landscape = true;
+                                            draft.paper = 'Squared';
+                                          }
+                                        }),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const Divider(
+                                color: Color(0xff2f2f33),
+                                height: 14,
+                              ),
+                              Row(
+                                children: [
+                                  const SizedBox(
+                                    width: 70,
+                                    child: Text(
+                                      'Cover',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 13.5,
+                                      ),
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Switch.adaptive(
+                                    value: hasCover,
+                                    activeTrackColor: const Color(0xff007aff),
+                                    onChanged: (v) =>
+                                        setState(() => hasCover = v),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'PAPER TEMPLATES',
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xff222226),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.06),
+                              width: 0.8,
+                            ),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Row(
+                                children: [
+                                  const SizedBox(
+                                    width: 70,
+                                    child: Text(
+                                      'Size',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 13.5,
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Align(
+                                      alignment: Alignment.centerRight,
+                                      child: DesktopPopupButton<bool>(
+                                        value: draft.landscape,
+                                        items: const [
+                                          DesktopMenuItem(
+                                            value: false,
+                                            child: Text(
+                                              'Standard, Portrait',
+                                              style: TextStyle(fontSize: 12),
+                                            ),
+                                          ),
+                                          DesktopMenuItem(
+                                            value: true,
+                                            child: Text(
+                                              'Standard, Landscape',
+                                              style: TextStyle(fontSize: 12),
+                                            ),
+                                          ),
+                                        ],
+                                        onChanged: (v) => setState(
+                                          () => draft.landscape = v!,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const Divider(
+                                color: Color(0xff2f2f33),
+                                height: 14,
+                              ),
+                              Row(
+                                children: [
+                                  const SizedBox(
+                                    width: 70,
+                                    child: Text(
+                                      'Color',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 13.5,
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Align(
+                                      alignment: Alignment.centerRight,
+                                      child: DesktopPopupButton<String>(
+                                        value: draft.tone,
+                                        items: const [
+                                          DesktopMenuItem(
+                                            value: 'Yellow',
+                                            child: Text(
+                                              'Yellow paper',
+                                              style: TextStyle(fontSize: 12),
+                                            ),
+                                          ),
+                                          DesktopMenuItem(
+                                            value: 'White',
+                                            child: Text(
+                                              'White paper',
+                                              style: TextStyle(fontSize: 12),
+                                            ),
+                                          ),
+                                          DesktopMenuItem(
+                                            value: 'Dark',
+                                            child: Text(
+                                              'Dark paper',
+                                              style: TextStyle(fontSize: 12),
+                                            ),
+                                          ),
+                                        ],
+                                        onChanged: (v) =>
+                                            setState(() => draft.tone = v!),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              const Divider(color: Color(0xff28282c), height: 1),
+              const SizedBox(height: 18),
+              const Row(
+                children: [
+                  Text(
+                    'Paper Templates',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Spacer(),
+                  Text(
+                    'Edit',
+                    style: TextStyle(
+                      color: Color(0xff007aff),
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Essentials',
+                style: TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 14),
+              _buildPaperTemplatesRow(),
+              const SizedBox(height: 24),
+              const Divider(color: Color(0xff28282c), height: 1),
+              const SizedBox(height: 18),
+              const Row(
+                children: [
+                  Text(
+                    'Cover Styles',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Spacer(),
+                  Text(
+                    'Edit',
+                    style: TextStyle(
+                      color: Color(0xff007aff),
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Essentials',
+                style: TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 14),
+              _buildCoverStylesRow(),
+              const SizedBox(height: 16),
+              const Text(
+                'More templates',
+                style: TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-    ),
-  );
+    );
+  }
+
+  Widget _buildPreviewCard({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required Widget child,
+    required String bottomLabel,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.8,
+              color: Colors.grey,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isSelected ? const Color(0xff242426) : Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isSelected
+                    ? Colors.white.withValues(alpha: 0.12)
+                    : Colors.transparent,
+                width: 0.8,
+              ),
+            ),
+            child: Column(
+              children: [
+                child,
+                const SizedBox(height: 8),
+                Text(
+                  bottomLabel,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  height: 2.5,
+                  width: 48,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xff007aff)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaperTemplatesRow() {
+    final templates = ['Blank', 'Dotted', 'Squared', 'Ruled', 'Wide ruled'];
+    return Row(
+      children: templates.map((pattern) {
+        final isSelected = draft.paper == pattern;
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: GestureDetector(
+              onTap: () => setState(() => draft.paper = pattern),
+              child: Column(
+                children: [
+                  Container(
+                    height: 125,
+                    decoration: BoxDecoration(
+                      color: paperColor(draft.tone),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isSelected
+                            ? const Color(0xff007aff)
+                            : Colors.white.withValues(alpha: 0.12),
+                        width: isSelected ? 2 : 0.8,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.25),
+                          blurRadius: 8,
+                          offset: const Offset(1, 3),
+                        ),
+                      ],
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: CustomPaint(
+                            painter: PaperPainter(pattern, draft.tone),
+                          ),
+                        ),
+                        if (isSelected)
+                          Positioned(
+                            bottom: 8,
+                            left: 0,
+                            right: 0,
+                            child: Center(
+                              child: Container(
+                                width: 22,
+                                height: 22,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xff007aff),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  CupertinoIcons.checkmark,
+                                  size: 13,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildTemplateName(pattern),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildToneDot('Yellow', const Color(0xfff5f0db)),
+                      const SizedBox(width: 5),
+                      _buildToneDot(
+                        'White',
+                        Colors.white,
+                        tooltip: 'White paper',
+                      ),
+                      const SizedBox(width: 5),
+                      _buildToneDot(
+                        'Dark',
+                        const Color(0xff222222),
+                        tooltip: 'Dark paper',
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildTemplateName(String pattern) {
+    if (pattern == 'Blank') {
+      return const Text(
+        'Blank',
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: Colors.white,
+        ),
+      );
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          pattern,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: Colors.white,
+          ),
+        ),
+        Text(
+          pattern.contains('ruled') || pattern == 'Ruled' ? 'Paper' : 'Paper',
+          style: const TextStyle(fontSize: 10, color: Colors.grey),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildToneDot(String tone, Color color, {String? tooltip}) {
+    final isSelected = draft.tone == tone;
+    Widget dot = GestureDetector(
+      onTap: () => setState(() => draft.tone = tone),
+      child: Container(
+        width: 12,
+        height: 12,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: isSelected ? const Color(0xff007aff) : Colors.white24,
+            width: isSelected ? 1.5 : 0.8,
+          ),
+        ),
+      ),
+    );
+    if (tooltip != null) {
+      return Tooltip(message: tooltip, child: dot);
+    }
+    return dot;
+  }
+
+  Widget _buildCoverStylesRow() {
+    return Row(
+      children: coverColors.asMap().entries.map((entry) {
+        final index = entry.key;
+        final color = entry.value;
+        final isSelected = draft.cover == color;
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Tooltip(
+              message: 'Cover ${index + 1}',
+              child: GestureDetector(
+                onTap: () => setState(() => draft.cover = color),
+                child: Column(
+                  children: [
+                    Container(
+                      height: 125,
+                      decoration: BoxDecoration(
+                        color: Color(color),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isSelected
+                              ? const Color(0xff007aff)
+                              : Colors.white.withValues(alpha: 0.12),
+                          width: isSelected ? 2 : 0.8,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(1, 3),
+                          ),
+                        ],
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Stack(
+                        children: [
+                          Positioned(
+                            left: 0,
+                            top: 0,
+                            bottom: 0,
+                            child: Container(
+                              width: 6,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.black.withValues(alpha: 0.4),
+                                    Colors.transparent,
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            right: 8,
+                            top: 0,
+                            bottom: 0,
+                            child: Container(
+                              width: 8,
+                              color: Colors.black.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          if (isSelected)
+                            Positioned(
+                              bottom: 8,
+                              left: 0,
+                              right: 0,
+                              child: Center(
+                                child: Container(
+                                  width: 22,
+                                  height: 22,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xff007aff),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    CupertinoIcons.checkmark,
+                                    size: 13,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _coverName(color),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
 }
 
 /// Pill button styled with macOS active blue matching the ChatGPT reference.
