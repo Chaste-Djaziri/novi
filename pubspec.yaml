@@ -39,6 +39,7 @@ dependencies:
   sqlite3: ^3.7.1
   archive: ^4.5.2
   macos_ui: ^2.2.2
+  forui: ^0.27.6
 
 dev_dependencies:
   integration_test:
