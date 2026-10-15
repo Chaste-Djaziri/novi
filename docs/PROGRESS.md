@@ -40,6 +40,19 @@ The first technical alpha is implemented. A reported native crash on New noteboo
 - [ ] Confirm opening size and drag-resize limits visually after fully reopening the app.
 - Windows/Linux native builds and behavior remain unverified on this Mac.
 
+## Grayscale library and document styling — 2026-10-15
+- [x] Black and grayscale interface, white novi. wordmark, and dark native window decoration settings.
+- [x] Documents library with grayscale covers, search, document-type filtering, grid/list views, and saved favorites.
+- [x] New document dialog: Notebook, Whiteboard, Text document, Quick note; name, six grayscale cover shades, five paper patterns, three paper tones, portrait/landscape, and live previews.
+- [x] Existing-document styling through the editor toolbar; style choices persist in SQLite, undo snapshots, document export, and library backups.
+- [x] Backward-compatible defaults for existing documents; no user database migration required.
+- [x] `flutter analyze`: clean. Widget/model suite: all 5 tests pass. Native macOS suite: all 4 tests pass.
+- [x] Rendered and visually inspected library, creation dialog, dark-paper editor, and minimum-size dialog previews in `build/ui-preview/`. Layout assertions pass at 960 × 640; the dialog scrolls when shorter than its content.
+- [x] Native test cursor animation made deterministic after the initial integration run stalled; rerun passes.
+- [ ] Hands-on visual and interaction check in the normal rebuilt Mac app.
+- Whiteboards currently use a fixed landscape page with dotted paper by default, not an infinite canvas. All four types use the same text/ink engine. Recording, photos, folders, and study sets remain future features.
+- Native Windows/Linux decoration changes are implemented but unverified on their hosts.
+
 ## Hands-on acceptance — next actions in order
 - [ ] In the Mac app, create a notebook, draw, and type; confirm the page looks right and the status says Saved locally.
 - [ ] Close the app, reopen it, and confirm the same content appears in the native window.
@@ -57,4 +70,4 @@ The first technical alpha is implemented. A reported native crash on New noteboo
 - ZIP manifests are versioned and unencrypted. The initial reader limits archive/manifest size to 50 MB.
 
 ## Next
-Finish the native Mac acceptance journey above, recording results here. Then address findings before advancing to Pen Studio. Keep each edit committed individually and update this checklist after verified progress.
+Review the grayscale library and creation/styling flow in the rebuilt Mac app, then finish the native Mac acceptance journey above, recording results here. Then address findings before advancing to Pen Studio. Keep each edit committed individually and update this checklist after verified progress.
