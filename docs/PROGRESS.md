@@ -15,7 +15,7 @@
 - [ ] Step 11: Complete hands-on desktop acceptance checks listed below.
 
 ## Current
-The first technical alpha is implemented. Automated checks and the macOS build/launch pass. Hands-on acceptance is the current step; this is not yet a release-quality v0.1.
+The first technical alpha is implemented. A reported native crash on New notebook has been addressed by switching macOS to system SQLite. Native integration checks pass, but the original crash was not reproduced in a fresh test process. Hands-on acceptance remains current; this is not yet a release-quality v0.1.
 
 ## Verification — 2026-10-15
 - `flutter analyze`: no issues.
@@ -23,6 +23,15 @@ The first technical alpha is implemented. Automated checks and the macOS build/l
 - `flutter run -d macos --no-resident`: exit 0; built and launched the native macOS application using Metal rendering.
 - Original ink points and pressure are stored. Pressure-based rendering is implemented; physical tablet behavior is not verified.
 - macOS sandbox allows user-selected read/write files. Native file-dialog interactions have not been exercised.
+
+## Notebook creation crash follow-up — 2026-10-15
+- User report: native EXC_BAD_ACCESS in SQLite `vdbeUnbind` / `bindText` when creating a notebook. The crash report lists two loaded images of the bundled SQLite framework. Replacing bundled native assets while an older app process remains running is the suspected trigger, not a confirmed reproduction.
+- Changed macOS SQLite build hooks to load `/usr/lib/libsqlite3.dylib`; other platforms retain bundled SQLite. No notebook schema or user data changes.
+- Added `integration_test/notebook_test.dart` to run the editing, persistence, and portable-file scenarios inside a native desktop process with temporary libraries.
+- Native macOS integration: all 3 tests pass, including New notebook, typing, ink, undo/redo, and reopening.
+- `flutter analyze`: no issues. `flutter test`: all 3 tests pass.
+- Cleaned build artifacts, rebuilt and launched the normal macOS app successfully. The clean app bundle has no SQLite framework. Flutter reported that automatic foreground activation failed, so visual inspection is still pending.
+- Next: confirm New notebook in the rebuilt normal app, then continue the acceptance checklist below.
 
 ## Hands-on acceptance — next actions in order
 - [ ] In the Mac app, create a notebook, draw, and type; confirm the page looks right and the status says Saved locally.
