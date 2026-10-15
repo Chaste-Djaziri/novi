@@ -179,6 +179,18 @@ Win32Window::MessageHandler(HWND hwnd,
                             WPARAM const wparam,
                             LPARAM const lparam) noexcept {
   switch (message) {
+    case WM_GETMINMAXINFO: {
+      // Match Flutter logical dimensions at the current monitor's DPI.
+      const double scale = GetDpiForWindow(hwnd) / 96.0;
+      auto limits = reinterpret_cast<MINMAXINFO*>(lparam);
+      RECT minimum = {0, 0, Scale(960, scale), Scale(640, scale)};
+      AdjustWindowRectExForDpi(&minimum, GetWindowLong(hwnd, GWL_STYLE),
+                              FALSE, GetWindowLong(hwnd, GWL_EXSTYLE),
+                              GetDpiForWindow(hwnd));
+      limits->ptMinTrackSize.x = minimum.right - minimum.left;
+      limits->ptMinTrackSize.y = minimum.bottom - minimum.top;
+      return 0;
+    }
     case WM_DESTROY:
       window_handle_ = nullptr;
       Destroy();
