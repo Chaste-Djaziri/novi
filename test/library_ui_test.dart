@@ -109,7 +109,9 @@ void main() {
       await capture('library');
       await tester.tap(find.text('New'));
       await tester.pumpAndSettle();
+      await capture('new-popup');
       await tester.tap(find.text('Whiteboard'));
+      await tester.pumpAndSettle();
       await tester.enterText(
         find.byKey(const Key('document-name')),
         'Design ideas',

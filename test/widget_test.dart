@@ -144,6 +144,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('New'));
     await tester.pumpAndSettle();
+    if (find.text('Notebook').evaluate().isNotEmpty) {
+      await tester.tap(find.text('Notebook'));
+      await tester.pumpAndSettle();
+    }
     await tester.enterText(
       find.byKey(const Key('document-name')),
       'Notebook test',
