@@ -1,3 +1,5 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
+
 import 'desktop_ui.dart';
 
 import 'package:flutter/material.dart';
@@ -70,12 +72,12 @@ class WorkspaceToolbar extends StatelessWidget {
                 DesktopIconButton(
                   tooltip: 'Undo',
                   onPressed: onUndo,
-                  icon: const Icon(Icons.undo, size: 20),
+                  icon: const Icon(CupertinoIcons.arrow_uturn_left, size: 20),
                 ),
                 DesktopIconButton(
                   tooltip: 'Redo',
                   onPressed: onRedo,
-                  icon: const Icon(Icons.redo, size: 20),
+                  icon: const Icon(CupertinoIcons.arrow_uturn_right, size: 20),
                 ),
                 const SizedBox(width: 16),
                 ...EditorTool.values.map(
@@ -92,12 +94,13 @@ class WorkspaceToolbar extends StatelessWidget {
                       },
                       child: DesktopToolButton(
                         avatar: Icon(switch (tool) {
-                          EditorTool.pen => Icons.draw_outlined,
-                          EditorTool.highlighter => Icons.highlight_outlined,
-                          EditorTool.eraser => Icons.auto_fix_normal,
-                          EditorTool.select => Icons.select_all,
-                          EditorTool.text => Icons.text_fields,
-                          EditorTool.hand => Icons.pan_tool_outlined,
+                          EditorTool.pen => CupertinoIcons.pencil,
+                          EditorTool.highlighter =>
+                            CupertinoIcons.pencil_outline,
+                          EditorTool.eraser => CupertinoIcons.pencil_slash,
+                          EditorTool.select => CupertinoIcons.crop,
+                          EditorTool.text => CupertinoIcons.textformat,
+                          EditorTool.hand => CupertinoIcons.hand_raised,
                         }, size: 18),
                         label: Text(switch (tool) {
                           EditorTool.pen => 'Draw',
@@ -117,12 +120,15 @@ class WorkspaceToolbar extends StatelessWidget {
                 DesktopIconButton(
                   tooltip: 'Delete selected ink',
                   onPressed: onDelete,
-                  icon: const Icon(Icons.delete_outline, size: 20),
+                  icon: const Icon(CupertinoIcons.trash, size: 20),
                 ),
                 DesktopIconButton(
                   tooltip: 'Document style',
                   onPressed: onStyle,
-                  icon: const Icon(Icons.tune, size: 20),
+                  icon: const Icon(
+                    CupertinoIcons.slider_horizontal_3,
+                    size: 20,
+                  ),
                 ),
               ],
             ),
@@ -161,7 +167,7 @@ class WorkspaceToolbar extends StatelessWidget {
                     tooltip: 'Bold text',
                     isSelected: note.boldText,
                     onPressed: onBold,
-                    icon: const Icon(Icons.format_bold, size: 18),
+                    icon: const Icon(CupertinoIcons.bold, size: 18),
                   ),
                 ] else if (session.tool == EditorTool.pen ||
                     session.tool == EditorTool.highlighter ||
@@ -237,7 +243,7 @@ class WorkspaceToolbar extends StatelessWidget {
                 DesktopIconButton(
                   tooltip: 'Zoom out',
                   onPressed: () => onZoom(0.8),
-                  icon: const Icon(Icons.remove, size: 18),
+                  icon: const Icon(CupertinoIcons.minus, size: 18),
                 ),
                 Text(
                   '${(session.view.value.getMaxScaleOnAxis() * 100).round()}%',
@@ -246,7 +252,7 @@ class WorkspaceToolbar extends StatelessWidget {
                 DesktopIconButton(
                   tooltip: 'Zoom in',
                   onPressed: () => onZoom(1.25),
-                  icon: const Icon(Icons.add, size: 18),
+                  icon: const Icon(CupertinoIcons.plus, size: 18),
                 ),
                 DesktopButton(
                   onPressed: () => onZoom(0),
