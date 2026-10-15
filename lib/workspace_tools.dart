@@ -34,6 +34,8 @@ class WorkspaceToolbar extends StatelessWidget {
     required this.onDelete,
     required this.onZoom,
     required this.onStyle,
+    required this.onFontSize,
+    required this.onBold,
   });
   final EditorSession session;
   final Notebook note;
@@ -44,6 +46,8 @@ class WorkspaceToolbar extends StatelessWidget {
   final VoidCallback? onDelete;
   final ValueChanged<double> onZoom;
   final VoidCallback onStyle;
+  final ValueChanged<double> onFontSize;
+  final VoidCallback onBold;
   @override
   Widget build(BuildContext context) => Material(
     color: const Color(0xff191919),
@@ -142,14 +146,14 @@ class WorkspaceToolbar extends StatelessWidget {
                         .toList(),
                     onChanged: (v) {
                       if (v != null) {
-                        onZoom(-v);
+                        onFontSize(v);
                       }
                     },
                   ),
                   IconButton(
                     tooltip: 'Bold text',
                     isSelected: note.boldText,
-                    onPressed: () => onZoom(-1000),
+                    onPressed: onBold,
                     icon: const Icon(Icons.format_bold, size: 18),
                   ),
                 ] else if (session.tool == EditorTool.pen ||
