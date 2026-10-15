@@ -40,6 +40,7 @@ class _WorkspaceState extends State<Workspace> {
   final undo = <Notebook>[];
   final redo = <Notebook>[];
   List<List<double>>? activeStroke;
+  int? activePointer;
   bool drawing = true;
   String status = 'Opening local library…';
   @override
@@ -57,8 +58,13 @@ class _WorkspaceState extends State<Workspace> {
         opened.close();
         return;
       }
+      try {
+        notes = opened.load();
+      } catch (_) {
+        opened.close();
+        rethrow;
+      }
       store = opened;
-      notes = opened.load();
       if (notes.isNotEmpty) {
         select(notes.first);
       }
@@ -77,6 +83,7 @@ class _WorkspaceState extends State<Workspace> {
       undo.clear();
       redo.clear();
       activeStroke = null;
+      activePointer = null;
     });
   }
 
@@ -357,6 +364,7 @@ class _WorkspaceState extends State<Workspace> {
                                               }
                                               setState(() {
                                                 snapshot();
+                                                activePointer = e.pointer;
                                                 activeStroke = [
                                                   [
                                                     e.localPosition.dx,
@@ -367,7 +375,8 @@ class _WorkspaceState extends State<Workspace> {
                                               });
                                             },
                                             onPointerMove: (e) {
-                                              if (activeStroke == null) {
+                                              if (activeStroke == null ||
+                                                  activePointer != e.pointer) {
                                                 return;
                                               }
                                               setState(
@@ -378,9 +387,16 @@ class _WorkspaceState extends State<Workspace> {
                                                 ]),
                                               );
                                             },
-                                            onPointerUp: (_) => finishStroke(),
-                                            onPointerCancel: (_) =>
-                                                finishStroke(),
+                                            onPointerUp: (e) {
+                                              if (e.pointer == activePointer) {
+                                                finishStroke();
+                                              }
+                                            },
+                                            onPointerCancel: (e) {
+                                              if (e.pointer == activePointer) {
+                                                finishStroke();
+                                              }
+                                            },
                                             child: CustomPaint(
                                               painter: InkPainter([
                                                 ...current!.strokes,
@@ -417,6 +433,7 @@ class _WorkspaceState extends State<Workspace> {
     setState(() {
       current!.strokes.add(activeStroke!);
       activeStroke = null;
+      activePointer = null;
       save();
     });
   }
