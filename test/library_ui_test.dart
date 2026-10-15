@@ -95,6 +95,18 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Design ideas'), findsOneWidget);
       expect(find.text('Whiteboard / Squared'), findsOneWidget);
+      await tester.tap(find.byTooltip('Document style'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('White paper'));
+      await tester.tap(find.text('White paper'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Dark paper').last);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byTooltip('Cover 6'));
+      await tester.tap(find.byTooltip('Cover 6'));
+      await tester.ensureVisible(find.text('Save style'));
+      await tester.tap(find.text('Save style'));
+      await tester.pumpAndSettle();
       await capture('editor');
       tester.view.physicalSize = const Size(960, 640);
       await tester.pumpAndSettle();
@@ -125,6 +137,8 @@ void main() {
       expect(created.paper, 'Squared');
       expect(created.landscape, isTrue);
       expect(created.favorite, isTrue);
+      expect(created.tone, 'Dark');
+      expect(created.cover, 0xffe0e0e0);
       reopened.close();
     },
   );
