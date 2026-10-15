@@ -22,6 +22,8 @@ static void first_frame_cb(MyApplication* self, FlView* view) {
 // Implements GApplication::activate.
 static void my_application_activate(GApplication* application) {
   MyApplication* self = MY_APPLICATION(application);
+  g_object_set(gtk_settings_get_default(),
+               "gtk-application-prefer-dark-theme", TRUE, nullptr);
   GtkWindow* window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));
 
