@@ -82,7 +82,7 @@ class LibraryStore {
     }
   }
 
-  void close() => db.dispose();
+  void close() => db.close();
 }
 
 Uint8List encodePortable(List<Notebook> notes, {required bool backup}) {
