@@ -1,3 +1,5 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
+
 import 'desktop_ui.dart';
 
 import 'package:flutter/material.dart';
@@ -15,10 +17,10 @@ const coverColors = [
   0xffe0e0e0,
 ];
 IconData kindIcon(String kind) => switch (kind) {
-  'Whiteboard' => Icons.dashboard_outlined,
-  'Text document' => Icons.article_outlined,
-  'Quick note' => Icons.edit_note,
-  _ => Icons.book_outlined,
+  'Whiteboard' => CupertinoIcons.rectangle_grid_2x2,
+  'Text document' => CupertinoIcons.doc_text,
+  'Quick note' => CupertinoIcons.pencil,
+  _ => CupertinoIcons.book,
 };
 Color paperColor(String tone) => switch (tone) {
   'Dark' => const Color(0xff222222),
@@ -202,21 +204,21 @@ class _LibraryViewState extends State<LibraryView> {
                 ),
                 DesktopListTile(
                   selected: !favorites,
-                  leading: const Icon(Icons.folder_outlined, size: 20),
+                  leading: const Icon(CupertinoIcons.folder, size: 20),
                   title: const Text('Documents'),
                   onTap: () => setState(() => favorites = false),
                 ),
                 const SizedBox(height: 6),
                 DesktopListTile(
                   selected: favorites,
-                  leading: const Icon(Icons.star_border, size: 20),
+                  leading: const Icon(CupertinoIcons.star, size: 20),
                   title: const Text('Favorites'),
                   onTap: () => setState(() => favorites = true),
                 ),
                 const Spacer(),
                 const Divider(),
                 DesktopListTile(
-                  leading: const Icon(Icons.archive_outlined, size: 20),
+                  leading: const Icon(CupertinoIcons.archivebox, size: 20),
                   title: const Text(
                     'Back up library',
                     style: TextStyle(fontSize: 12),
@@ -226,7 +228,10 @@ class _LibraryViewState extends State<LibraryView> {
                       : null,
                 ),
                 DesktopListTile(
-                  leading: const Icon(Icons.restore, size: 20),
+                  leading: const Icon(
+                    CupertinoIcons.arrow_counterclockwise,
+                    size: 20,
+                  ),
                   title: const Text(
                     'Restore backup',
                     style: TextStyle(fontSize: 12),
@@ -297,14 +302,17 @@ class _LibraryViewState extends State<LibraryView> {
                       onPressed: widget.enabled
                           ? () => widget.onTransfer('import')
                           : null,
-                      icon: const Icon(Icons.file_download_outlined, size: 16),
+                      icon: const Icon(
+                        CupertinoIcons.arrow_down_to_line,
+                        size: 16,
+                      ),
                       label: const Text('Import'),
                     ),
                     const Spacer(),
                     DesktopButton.icon(
                       primary: true,
                       onPressed: widget.enabled ? widget.onCreate : null,
-                      icon: const Icon(Icons.add, size: 19),
+                      icon: const Icon(CupertinoIcons.plus, size: 19),
                       label: const Text('New'),
                     ),
                   ],
@@ -333,7 +341,9 @@ class _LibraryViewState extends State<LibraryView> {
                       tooltip: grid ? 'List view' : 'Grid view',
                       onPressed: () => setState(() => grid = !grid),
                       icon: Icon(
-                        grid ? Icons.view_list_outlined : Icons.grid_view,
+                        grid
+                            ? CupertinoIcons.list_bullet
+                            : CupertinoIcons.square_grid_2x2,
                         size: 19,
                       ),
                     ),
@@ -348,7 +358,7 @@ class _LibraryViewState extends State<LibraryView> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               const Icon(
-                                Icons.auto_stories_outlined,
+                                CupertinoIcons.book,
                                 size: 48,
                                 color: Colors.grey,
                               ),
@@ -406,8 +416,8 @@ class _LibraryViewState extends State<LibraryView> {
                                           onPressed: () => widget.onFavorite(n),
                                           icon: Icon(
                                             n.favorite
-                                                ? Icons.star
-                                                : Icons.star_border,
+                                                ? CupertinoIcons.star_fill
+                                                : CupertinoIcons.star,
                                             size: 18,
                                             color:
                                                 Color(n.cover)
@@ -453,8 +463,8 @@ class _LibraryViewState extends State<LibraryView> {
                                     tooltip: 'Favorite ${n.title}',
                                     icon: Icon(
                                       n.favorite
-                                          ? Icons.star
-                                          : Icons.star_border,
+                                          ? CupertinoIcons.star_fill
+                                          : CupertinoIcons.star,
                                     ),
                                     onPressed: () => widget.onFavorite(n),
                                   ),
@@ -522,7 +532,7 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
                 DesktopIconButton(
                   tooltip: 'Cancel',
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
+                  icon: const Icon(CupertinoIcons.xmark),
                 ),
               ],
             ),
@@ -617,7 +627,7 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
                                     ),
                                     child: draft.cover == color
                                         ? Icon(
-                                            Icons.check,
+                                            CupertinoIcons.check_mark,
                                             size: 16,
                                             color:
                                                 Color(color)
@@ -729,7 +739,7 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
                         : name.text.trim();
                     Navigator.pop(context, draft);
                   },
-                  icon: const Icon(Icons.check, size: 18),
+                  icon: const Icon(CupertinoIcons.check_mark, size: 18),
                   label: Text(
                     widget.existing == null ? 'Create' : 'Save style',
                   ),
