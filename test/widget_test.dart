@@ -61,6 +61,9 @@ void main() {
       directory.deleteSync(recursive: true);
     });
     await tester.pumpWidget(const NoviApp());
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 150)),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('New notebook'));
     await tester.pumpAndSettle();
@@ -86,6 +89,9 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pumpAndSettle();
     await tester.pumpWidget(const NoviApp());
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 150)),
+    );
     await tester.pumpAndSettle();
     expect(find.text('Hello Novi'), findsOneWidget);
     final restored = tester
