@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 
 import 'desktop_ui.dart';
