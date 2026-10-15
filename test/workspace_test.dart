@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:novi/main.dart';
+import 'package:novi/desktop_ui.dart';
 import 'package:novi/notebook.dart';
 import 'package:novi/workspace_tools.dart';
 
@@ -63,7 +64,7 @@ void main() {
       await tester.tap(
         find.ancestor(
           of: find.text('Highlight'),
-          matching: find.byType(ChoiceChip),
+          matching: find.byType(DesktopToolButton),
         ),
       );
       await tester.pumpAndSettle();
@@ -74,7 +75,7 @@ void main() {
       await tester.tap(
         find.ancestor(
           of: find.text('Erase'),
-          matching: find.byType(ChoiceChip),
+          matching: find.byType(DesktopToolButton),
         ),
       );
       await tester.pumpAndSettle();
@@ -87,7 +88,7 @@ void main() {
       await tester.tap(
         find.ancestor(
           of: find.text('Select'),
-          matching: find.byType(ChoiceChip),
+          matching: find.byType(DesktopToolButton),
         ),
       );
       await tester.pumpAndSettle();
@@ -105,10 +106,13 @@ void main() {
       await tester.pumpAndSettle();
       expect(ink().strokes, hasLength(2));
       await tester.tap(
-        find.ancestor(of: find.text('Type'), matching: find.byType(ChoiceChip)),
+        find.ancestor(
+          of: find.text('Type'),
+          matching: find.byType(DesktopToolButton),
+        ),
       );
       await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField), 'Alpha text');
+      await tester.enterText(find.byType(DesktopTextField), 'Alpha text');
       await tester.pumpAndSettle();
       await tester.tap(find.text('16'));
       await tester.pumpAndSettle();
@@ -123,7 +127,10 @@ void main() {
           .transformationController!;
       expect(firstView.value.getMaxScaleOnAxis(), 1.25);
       await tester.tap(
-        find.ancestor(of: find.text('Hand'), matching: find.byType(ChoiceChip)),
+        find.ancestor(
+          of: find.text('Hand'),
+          matching: find.byType(DesktopToolButton),
+        ),
       );
       await tester.pumpAndSettle();
       final priorMatrix = firstView.value.clone();
@@ -131,7 +138,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(firstView.value, isNot(priorMatrix));
       await tester.tap(
-        find.ancestor(of: find.text('Type'), matching: find.byType(ChoiceChip)),
+        find.ancestor(
+          of: find.text('Type'),
+          matching: find.byType(DesktopToolButton),
+        ),
       );
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Open document'));
