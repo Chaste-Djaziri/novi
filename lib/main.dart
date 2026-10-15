@@ -126,7 +126,11 @@ class _WorkspaceState extends State<Workspace> {
       gestureStart = null;
       selectionBox = null;
     });
-    workspaceFocus.requestFocus();
+    if (session.tool == EditorTool.text) {
+      session.textFocus.requestFocus();
+    } else {
+      workspaceFocus.requestFocus();
+    }
   }
 
   void chooseTool(EditorTool tool) {
@@ -137,7 +141,9 @@ class _WorkspaceState extends State<Workspace> {
       session.selection.clear();
       selectionBox = null;
     });
-    if (tool != EditorTool.text) {
+    if (tool == EditorTool.text) {
+      session.textFocus.requestFocus();
+    } else {
       workspaceFocus.requestFocus();
     }
   }
@@ -572,6 +578,7 @@ class _WorkspaceState extends State<Workspace> {
                                       child: TextField(
                                         key: ValueKey('text-${note.id}'),
                                         controller: text,
+                                        focusNode: session.textFocus,
                                         maxLines: null,
                                         expands: true,
                                         textAlignVertical:
