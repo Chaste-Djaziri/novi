@@ -90,7 +90,17 @@ The first technical alpha is implemented. A reported native crash on New noteboo
 - [x] Verified regenerated visual previews in `build/ui-preview/` (`library.png`, `creation.png`, `editor.png`, `minimum-editor.png`, `minimum-dialog.png`).
 - [ ] Hands-on visual and interaction check in the rebuilt Mac app.
 
+## macOS hidden title bar with custom window controls — 2026-10-15
+- [x] Added `window_manager` (0.5.2) dependency and registered in macOS `MainFlutterWindow.swift`.
+- [x] Initialized `windowManager` in `lib/main.dart` with `TitleBarStyle.hidden`, transparent background, 1200×800 initial window size, and 960×640 minimum content size.
+- [x] Added `DragToMoveArea` window drag zones and ~78px traffic light leading offset in editor top bar.
+- [x] Added `DragToMoveArea` and top breathing room in library sidebar and library documents header.
+- [x] `flutter analyze`: clean.
+- [x] Unit/widget test suite: all 5 tests pass (`test/library_ui_test.dart` and `test/workspace_test.dart`).
+- [x] Native macOS integration test suite: all 5 tests pass in a live macOS process (`flutter test -d macos integration_test/notebook_test.dart`).
+- [ ] Hands-on visual and drag verification in the rebuilt Mac app.
+
 ## Next
-Review the Forui desktop-styled UI in the rebuilt Mac app, then finish the native Mac acceptance journey above, recording results here. Then address findings before advancing to Pen Studio. Keep each edit committed individually and update this checklist after verified progress.
+Confirm the hidden title bar, native traffic light positioning, window drag zones, and Forui desktop controls visually in the rebuilt Mac app. Complete the hands-on desktop acceptance checks in order, recording verification notes here.
 
 
