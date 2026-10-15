@@ -288,7 +288,7 @@ class _LibraryViewState extends State<LibraryView> {
                       ),
                     ),
                     SizedBox(
-                      width: 180,
+                      width: 220,
                       child: TextField(
                         onChanged: (v) => setState(() => query = v),
                         decoration: const InputDecoration(
@@ -547,6 +547,7 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
               children: documentKinds
                   .map(
                     (kind) => ChoiceChip(
+                      showCheckmark: false,
                       avatar: Icon(kindIcon(kind), size: 17),
                       label: Text(kind),
                       selected: draft.kind == kind,
