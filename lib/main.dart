@@ -59,6 +59,7 @@ class _WorkspaceState extends State<Workspace> {
   Notebook? current;
   final sessions = <String, EditorSession>{};
   final openIds = <String>[];
+  final workspaceFocus = FocusNode();
   EditorSession get session => sessions[current!.id]!;
   TextEditingController get text => session.text;
   List<Notebook> get undo => session.undo;
@@ -125,6 +126,7 @@ class _WorkspaceState extends State<Workspace> {
       gestureStart = null;
       selectionBox = null;
     });
+    workspaceFocus.requestFocus();
   }
 
   void chooseTool(EditorTool tool) {
@@ -135,6 +137,9 @@ class _WorkspaceState extends State<Workspace> {
       session.selection.clear();
       selectionBox = null;
     });
+    if (tool != EditorTool.text) {
+      workspaceFocus.requestFocus();
+    }
   }
 
   void closeTab(String id) {
@@ -333,6 +338,7 @@ class _WorkspaceState extends State<Workspace> {
     for (final editor in sessions.values) {
       editor.dispose();
     }
+    workspaceFocus.dispose();
     store?.close();
     super.dispose();
   }
@@ -371,6 +377,20 @@ class _WorkspaceState extends State<Workspace> {
     final pageHeight = note.landscape ? 760.0 : 980.0;
     return CallbackShortcuts(
       bindings: {
+        if (tool != EditorTool.text) ...{
+          const SingleActivator(LogicalKeyboardKey.keyP): () =>
+              chooseTool(EditorTool.pen),
+          const SingleActivator(LogicalKeyboardKey.keyB): () =>
+              chooseTool(EditorTool.highlighter),
+          const SingleActivator(LogicalKeyboardKey.keyE): () =>
+              chooseTool(EditorTool.eraser),
+          const SingleActivator(LogicalKeyboardKey.keyV): () =>
+              chooseTool(EditorTool.select),
+          const SingleActivator(LogicalKeyboardKey.keyT): () =>
+              chooseTool(EditorTool.text),
+          const SingleActivator(LogicalKeyboardKey.keyH): () =>
+              chooseTool(EditorTool.hand),
+        },
         const SingleActivator(LogicalKeyboardKey.keyZ, meta: true): () =>
             history(true),
         const SingleActivator(
@@ -393,6 +413,7 @@ class _WorkspaceState extends State<Workspace> {
           const SingleActivator(LogicalKeyboardKey.backspace): deleteSelection,
       },
       child: Focus(
+        focusNode: workspaceFocus,
         autofocus: true,
         child: Column(
           children: [
@@ -683,6 +704,7 @@ class _WorkspaceState extends State<Workspace> {
       return;
     }
     FocusManager.instance.primaryFocus?.unfocus();
+    workspaceFocus.requestFocus();
     activePointer = e.pointer;
     gestureStart = e.localPosition;
     lastPoint = e.localPosition;
