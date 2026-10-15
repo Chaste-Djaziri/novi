@@ -6,6 +6,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'notebook.dart';
+import 'library_ui.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,7 +20,24 @@ class NoviApp extends StatelessWidget {
     title: 'Novi',
     debugShowCheckedModeBanner: false,
     theme: ThemeData(
-      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff53654a)),
+      brightness: Brightness.dark,
+      scaffoldBackgroundColor: const Color(0xff090909),
+      colorScheme: const ColorScheme.dark(
+        primary: Colors.white,
+        onPrimary: Colors.black,
+        secondary: Color(0xffbbbbbb),
+        surface: Color(0xff1c1c1c),
+        onSurface: Color(0xffeeeeee),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xff242424),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide.none,
+        ),
+      ),
+      dividerColor: const Color(0xff333333),
       useMaterial3: true,
     ),
     home: const Workspace(),
@@ -42,6 +60,7 @@ class _WorkspaceState extends State<Workspace> {
   List<List<double>>? activeStroke;
   int? activePointer;
   bool drawing = true;
+  bool inLibrary = true;
   String status = 'Opening local library…';
   @override
   void initState() {
@@ -68,7 +87,10 @@ class _WorkspaceState extends State<Workspace> {
       if (notes.isNotEmpty) {
         select(notes.first);
       }
-      setState(() => status = 'Saved locally');
+      setState(() {
+        status = 'Saved locally';
+        inLibrary = true;
+      });
     } catch (e) {
       if (mounted) {
         setState(() => status = 'Could not open library: $e');
@@ -79,6 +101,8 @@ class _WorkspaceState extends State<Workspace> {
   void select(Notebook note) {
     setState(() {
       current = note;
+      inLibrary = false;
+      drawing = note.kind != 'Text document';
       text.text = note.text;
       undo.clear();
       redo.clear();
@@ -104,15 +128,52 @@ class _WorkspaceState extends State<Workspace> {
     }
   }
 
-  void create() {
-    final note = Notebook(id: newId(), title: 'Notebook ${notes.length + 1}');
+  Future<void> create() async {
+    final note = await showDialog<Notebook>(
+      context: context,
+      builder: (_) => const CreateDocumentDialog(),
+    );
+    if (note == null || !mounted) {
+      return;
+    }
     try {
       store!.save(note);
       notes.add(note);
       select(note);
       setState(() => status = 'Saved locally');
     } catch (e) {
-      setState(() => status = 'Could not create notebook: $e');
+      setState(() => status = 'Could not create document: $e');
+    }
+  }
+
+  Future<void> styleDocument() async {
+    final changed = await showDialog<Notebook>(
+      context: context,
+      builder: (_) => CreateDocumentDialog(existing: current),
+    );
+    if (changed == null || !mounted) {
+      return;
+    }
+    snapshot();
+    notes[notes.indexWhere((n) => n.id == changed.id)] = changed;
+    setState(() {
+      current = changed;
+      save();
+    });
+  }
+
+  void toggleFavorite(Notebook note) {
+    final changed = note.copy()..favorite = !note.favorite;
+    try {
+      store!.save(changed);
+      setState(() {
+        notes[notes.indexWhere((n) => n.id == note.id)] = changed;
+        if (current?.id == note.id) {
+          current = changed;
+        }
+      });
+    } catch (e) {
+      setState(() => status = 'Could not save favorite: $e');
     }
   }
 
@@ -205,227 +266,248 @@ class _WorkspaceState extends State<Workspace> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: const Text('novi.  /  Your local workspace'),
-      actions: [
-        PopupMenuButton<String>(
-          tooltip: 'Import, export and backup',
-          onSelected: transfer,
-          itemBuilder: (_) => [
-            const PopupMenuItem(value: 'import', child: Text('Import .novi')),
-            PopupMenuItem(
-              value: 'export',
-              enabled: current != null,
-              child: const Text('Export notebook'),
-            ),
-            const PopupMenuItem(
-              value: 'backup',
-              child: Text('Back up library'),
-            ),
-            const PopupMenuItem(
-              value: 'restore',
-              child: Text('Restore backup as copies'),
-            ),
-          ],
-          enabled: store != null,
-        ),
-        const SizedBox(width: 16),
-      ],
+    body: inLibrary || current == null
+        ? LibraryView(
+            notes: notes,
+            enabled: store != null,
+            onCreate: create,
+            onOpen: select,
+            onFavorite: toggleFavorite,
+            onTransfer: transfer,
+          )
+        : editor(),
+    bottomNavigationBar: Container(
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: Color(0xff262626))),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 9),
+      child: Text(
+        '$status  ·  Offline · No account required',
+        style: const TextStyle(color: Colors.grey, fontSize: 11),
+      ),
     ),
-    body: Row(
+  );
+
+  Widget editor() {
+    final note = current!;
+    final darkPaper = note.tone == 'Dark';
+    final foreground = darkPaper ? Colors.white : const Color(0xff222222);
+    return Column(
       children: [
-        SizedBox(
-          width: 220,
-          child: Column(
+        Container(
+          color: const Color(0xff151515),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
             children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: FilledButton.icon(
-                  onPressed: store == null ? null : create,
-                  icon: const Icon(Icons.add),
-                  label: const Text('New notebook'),
+              IconButton(
+                tooltip: 'Back to documents',
+                onPressed: () => setState(() => inLibrary = true),
+                icon: const Icon(Icons.arrow_back),
+              ),
+              const SizedBox(width: 12),
+              const Wordmark(),
+              const SizedBox(width: 24),
+              Expanded(
+                child: Text(
+                  note.title,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-              Expanded(
-                child: ListView(
-                  children: notes
-                      .map(
-                        (n) => ListTile(
-                          selected: current?.id == n.id,
-                          leading: const Icon(Icons.book_outlined),
-                          title: Text(n.title),
-                          subtitle: const Text('1 page · local'),
-                          onTap: () => select(n),
-                        ),
-                      )
-                      .toList(),
-                ),
+              IconButton(
+                tooltip: 'Document style',
+                onPressed: styleDocument,
+                icon: const Icon(Icons.tune),
+              ),
+              PopupMenuButton<String>(
+                tooltip: 'Import, export and backup',
+                onSelected: transfer,
+                itemBuilder: (_) => const [
+                  PopupMenuItem(
+                    value: 'export',
+                    child: Text('Export notebook'),
+                  ),
+                  PopupMenuItem(
+                    value: 'backup',
+                    child: Text('Back up library'),
+                  ),
+                ],
               ),
             ],
           ),
         ),
-        const VerticalDivider(width: 1),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          child: Row(
+            children: [
+              Text(
+                '${note.kind} / ${note.paper}',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              const Spacer(),
+              SegmentedButton<bool>(
+                segments: const [
+                  ButtonSegment(
+                    value: true,
+                    icon: Icon(Icons.draw_outlined),
+                    label: Text('Draw'),
+                  ),
+                  ButtonSegment(
+                    value: false,
+                    icon: Icon(Icons.text_fields),
+                    label: Text('Type'),
+                  ),
+                ],
+                selected: {drawing},
+                onSelectionChanged: (s) => setState(() => drawing = s.first),
+              ),
+              const SizedBox(width: 12),
+              IconButton(
+                tooltip: 'Undo',
+                onPressed: undo.isEmpty ? null : () => history(true),
+                icon: const Icon(Icons.undo),
+              ),
+              IconButton(
+                tooltip: 'Redo',
+                onPressed: redo.isEmpty ? null : () => history(false),
+                icon: const Icon(Icons.redo),
+              ),
+            ],
+          ),
+        ),
         Expanded(
-          child: current == null
-              ? const Center(
-                  child: Text('Create your first notebook to start writing.'),
-                )
-              : Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              current!.title,
-                              style: Theme.of(context).textTheme.titleLarge,
-                            ),
-                          ),
-                          SegmentedButton<bool>(
-                            segments: const [
-                              ButtonSegment(
-                                value: true,
-                                icon: Icon(Icons.draw_outlined),
-                                label: Text('Draw'),
-                              ),
-                              ButtonSegment(
-                                value: false,
-                                icon: Icon(Icons.text_fields),
-                                label: Text('Type'),
-                              ),
-                            ],
-                            selected: {drawing},
-                            onSelectionChanged: (s) =>
-                                setState(() => drawing = s.first),
-                          ),
-                          IconButton(
-                            tooltip: 'Undo',
-                            onPressed: undo.isEmpty
-                                ? null
-                                : () => history(true),
-                            icon: const Icon(Icons.undo),
-                          ),
-                          IconButton(
-                            tooltip: 'Redo',
-                            onPressed: redo.isEmpty
-                                ? null
-                                : () => history(false),
-                            icon: const Icon(Icons.redo),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: ColoredBox(
-                        color: const Color(0xffeeeee8),
-                        child: SingleChildScrollView(
-                          child: Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(24),
-                              child: SizedBox(
-                                width: 760,
-                                height: 980,
-                                child: Material(
-                                  color: Colors.white,
-                                  elevation: 2,
-                                  child: Stack(
-                                    children: [
-                                      Positioned(
-                                        left: 28,
-                                        top: 28,
-                                        right: 28,
-                                        child: IgnorePointer(
-                                          ignoring: drawing,
-                                          child: TextField(
-                                            controller: text,
-                                            maxLines: null,
-                                            decoration: const InputDecoration(
-                                              border: InputBorder.none,
-                                              hintText: 'Write your thoughts…',
-                                            ),
-                                            onChanged: (value) {
-                                              setState(() {
-                                                snapshot();
-                                                current!.text = value;
-                                                save();
-                                              });
-                                            },
+          child: LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: math.max(
+                    constraints.maxWidth,
+                    (note.landscape ? 980 : 760) + 48,
+                  ),
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: SizedBox(
+                        width: note.landscape ? 980 : 760,
+                        height: note.landscape ? 760 : 980,
+                        child: ClipRect(
+                          child: CustomPaint(
+                            painter: PaperPainter(note.paper, note.tone),
+                            child: Stack(
+                              children: [
+                                Positioned(
+                                  left: 28,
+                                  top: 28,
+                                  right: 28,
+                                  bottom: 28,
+                                  child: IgnorePointer(
+                                    ignoring: drawing,
+                                    child: TextField(
+                                      controller: text,
+                                      maxLines: null,
+                                      expands: true,
+                                      textAlignVertical: TextAlignVertical.top,
+                                      style: TextStyle(
+                                        color: foreground,
+                                        height: 1.6,
+                                        fontSize: 16,
+                                      ),
+                                      cursorColor: foreground,
+                                      decoration: InputDecoration(
+                                        filled: false,
+                                        border: InputBorder.none,
+                                        enabledBorder: InputBorder.none,
+                                        focusedBorder: InputBorder.none,
+                                        hintText: 'Write your thoughts…',
+                                        hintStyle: TextStyle(
+                                          color: foreground.withValues(
+                                            alpha: 0.4,
                                           ),
                                         ),
                                       ),
-                                      Positioned.fill(
-                                        child: IgnorePointer(
-                                          ignoring: !drawing,
-                                          child: Listener(
-                                            onPointerDown: (e) {
-                                              if (activeStroke != null) {
-                                                return;
-                                              }
-                                              setState(() {
-                                                snapshot();
-                                                activePointer = e.pointer;
-                                                activeStroke = [
-                                                  [
-                                                    e.localPosition.dx,
-                                                    e.localPosition.dy,
-                                                    e.pressure,
-                                                  ],
-                                                ];
-                                              });
-                                            },
-                                            onPointerMove: (e) {
-                                              if (activeStroke == null ||
-                                                  activePointer != e.pointer) {
-                                                return;
-                                              }
-                                              setState(
-                                                () => activeStroke!.add([
-                                                  e.localPosition.dx,
-                                                  e.localPosition.dy,
-                                                  e.pressure,
-                                                ]),
-                                              );
-                                            },
-                                            onPointerUp: (e) {
-                                              if (e.pointer == activePointer) {
-                                                finishStroke();
-                                              }
-                                            },
-                                            onPointerCancel: (e) {
-                                              if (e.pointer == activePointer) {
-                                                finishStroke();
-                                              }
-                                            },
-                                            child: CustomPaint(
-                                              painter: InkPainter([
-                                                ...current!.strokes,
-                                                ?activeStroke,
-                                              ]),
-                                              size: Size.infinite,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                                      onChanged: (value) {
+                                        setState(() {
+                                          snapshot();
+                                          current!.text = value;
+                                          save();
+                                        });
+                                      },
+                                    ),
                                   ),
                                 ),
-                              ),
+                                Positioned.fill(
+                                  child: IgnorePointer(
+                                    ignoring: !drawing,
+                                    child: Listener(
+                                      onPointerDown: (e) {
+                                        if (activeStroke != null) {
+                                          return;
+                                        }
+                                        setState(() {
+                                          snapshot();
+                                          activePointer = e.pointer;
+                                          activeStroke = [
+                                            [
+                                              e.localPosition.dx,
+                                              e.localPosition.dy,
+                                              e.pressure,
+                                            ],
+                                          ];
+                                        });
+                                      },
+                                      onPointerMove: (e) {
+                                        if (activeStroke == null ||
+                                            activePointer != e.pointer) {
+                                          return;
+                                        }
+                                        setState(
+                                          () => activeStroke!.add([
+                                            e.localPosition.dx,
+                                            e.localPosition.dy,
+                                            e.pressure,
+                                          ]),
+                                        );
+                                      },
+                                      onPointerUp: (e) {
+                                        if (activePointer == e.pointer) {
+                                          finishStroke();
+                                        }
+                                      },
+                                      onPointerCancel: (e) {
+                                        if (activePointer == e.pointer) {
+                                          finishStroke();
+                                        }
+                                      },
+                                      child: CustomPaint(
+                                        painter: InkPainter([
+                                          ...note.strokes,
+                                          ?activeStroke,
+                                        ], color: foreground),
+                                        size: Size.infinite,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ],
+                  ),
                 ),
+              ),
+            ),
+          ),
         ),
       ],
-    ),
-    bottomNavigationBar: Padding(
-      padding: const EdgeInsets.all(10),
-      child: Text('$status  ·  Offline · No account required'),
-    ),
-  );
+    );
+  }
+
   void finishStroke() {
     if (activeStroke == null) {
       return;
@@ -440,14 +522,15 @@ class _WorkspaceState extends State<Workspace> {
 }
 
 class InkPainter extends CustomPainter {
-  InkPainter(this.strokes);
+  InkPainter(this.strokes, {this.color = const Color(0xff222222)});
+  final Color color;
   final List<List<List<double>>> strokes;
   @override
   void paint(Canvas canvas, Size size) {
     canvas.clipRect(Offset.zero & size);
     for (final stroke in strokes) {
       final paint = Paint()
-        ..color = const Color(0xff26362d)
+        ..color = color
         ..strokeCap = StrokeCap.round;
       for (var i = 0; i < stroke.length; i++) {
         final p = stroke[i];
