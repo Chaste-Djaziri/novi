@@ -151,14 +151,16 @@ class LibraryView extends StatefulWidget {
     required this.onFavorite,
     required this.onTransfer,
     this.showSidebar = true,
+    this.onStatus,
   });
   final List<Notebook> notes;
   final bool enabled;
-  final VoidCallback onCreate;
+  final void Function([String? kind]) onCreate;
   final ValueChanged<Notebook> onOpen;
   final ValueChanged<Notebook> onFavorite;
   final ValueChanged<String> onTransfer;
   final bool showSidebar;
+  final ValueChanged<String>? onStatus;
   @override
   State<LibraryView> createState() => _LibraryViewState();
 }
@@ -168,6 +170,24 @@ class _LibraryViewState extends State<LibraryView> {
   bool grid = true;
   String query = '';
   String filter = 'All';
+
+  void _openNewMenu(BuildContext btnContext) {
+    final box = btnContext.findRenderObject() as RenderBox?;
+    if (box == null) {
+      widget.onCreate();
+      return;
+    }
+    final offset = box.localToGlobal(Offset.zero);
+    final size = box.size;
+    showNewDocumentMenu(
+      context,
+      targetRect: offset & size,
+      onCreateKind: (kind) => widget.onCreate(kind),
+      onImport: () => widget.onTransfer('import'),
+      onFeatureNotice: (notice) => widget.onStatus?.call(notice),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final notes = widget.notes
@@ -378,11 +398,13 @@ class _LibraryViewState extends State<LibraryView> {
                       label: const Text('Import'),
                     ),
                     const Spacer(),
-                    DesktopButton.icon(
-                      primary: true,
-                      onPressed: widget.enabled ? widget.onCreate : null,
-                      icon: const Icon(CupertinoIcons.plus, size: 19),
-                      label: const Text('New'),
+                    Builder(
+                      builder: (btnContext) => NewPillButton(
+                        enabled: widget.enabled,
+                        onPressed: widget.enabled
+                            ? () => _openNewMenu(btnContext)
+                            : null,
+                      ),
                     ),
                   ],
                 ),
@@ -444,11 +466,14 @@ class _LibraryViewState extends State<LibraryView> {
                                 style: TextStyle(color: Colors.grey),
                               ),
                               const SizedBox(height: 24),
-                              DesktopButton(
-                                onPressed: widget.enabled
-                                    ? widget.onCreate
-                                    : null,
-                                child: const Text('Create a document'),
+                              Builder(
+                                builder: (btnContext) => DesktopButton(
+                                  onPressed: widget.enabled
+                                      ? () => _openNewMenu(btnContext)
+                                      : null,
+                                  primary: true,
+                                  child: const Text('Create a document'),
+                                ),
                               ),
                             ],
                           ),
@@ -594,8 +619,9 @@ class _LibraryViewState extends State<LibraryView> {
 }
 
 class CreateDocumentDialog extends StatefulWidget {
-  const CreateDocumentDialog({super.key, this.existing});
+  const CreateDocumentDialog({super.key, this.existing, this.initialKind});
   final Notebook? existing;
+  final String? initialKind;
   @override
   State<CreateDocumentDialog> createState() => _CreateDocumentDialogState();
 }
@@ -606,7 +632,15 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
   @override
   void initState() {
     super.initState();
-    draft = widget.existing?.copy() ?? Notebook(id: newId(), title: '');
+    final chosenKind = widget.initialKind ?? 'Notebook';
+    draft = widget.existing?.copy() ??
+        Notebook(
+          id: newId(),
+          title: '',
+          kind: chosenKind,
+          paper: chosenKind == 'Whiteboard' ? 'Dotted' : 'Lines',
+          landscape: chosenKind == 'Whiteboard',
+        );
     name = TextEditingController(text: draft.title);
   }
 
@@ -862,3 +896,700 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
     ),
   );
 }
+
+/// Pill button styled with macOS active blue matching the ChatGPT reference.
+class NewPillButton extends StatelessWidget {
+  const NewPillButton({
+    super.key,
+    required this.onPressed,
+    this.enabled = true,
+  });
+
+  final VoidCallback? onPressed;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: enabled ? onPressed : null,
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 150),
+          opacity: enabled ? 1.0 : 0.45,
+          child: Container(
+            height: 30,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xff007aff),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xff007aff).withValues(alpha: 0.35),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  CupertinoIcons.plus,
+                  size: 14,
+                  color: Colors.white,
+                ),
+                SizedBox(width: 5),
+                Text(
+                  'New',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Displays the anchored popover menu with options:
+/// Notebook, Whiteboard (NEW), Text Doc (NEW), Import, Quick Record,
+/// QuickNote, Study Set, Image, Take Photo, Folder, and Import from Cloud Storage.
+Future<void> showNewDocumentMenu(
+  BuildContext context, {
+  required Rect targetRect,
+  required void Function(String kind) onCreateKind,
+  required VoidCallback onImport,
+  required void Function(String message) onFeatureNotice,
+}) {
+  return showGeneralDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'Cancel',
+    barrierColor: Colors.black26,
+    pageBuilder: (dialogContext, animation, secondaryAnimation) {
+      return _NewDocumentMenuDialog(
+        targetRect: targetRect,
+        onCreateKind: onCreateKind,
+        onImport: onImport,
+        onFeatureNotice: onFeatureNotice,
+      );
+    },
+    transitionDuration: const Duration(milliseconds: 140),
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(
+        opacity: CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutQuad,
+        ),
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.95, end: 1.0).animate(
+            CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+            ),
+          ),
+          alignment: Alignment.topCenter,
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
+class _NewDocumentMenuDialog extends StatelessWidget {
+  const _NewDocumentMenuDialog({
+    required this.targetRect,
+    required this.onCreateKind,
+    required this.onImport,
+    required this.onFeatureNotice,
+  });
+
+  final Rect targetRect;
+  final void Function(String kind) onCreateKind;
+  final VoidCallback onImport;
+  final void Function(String message) onFeatureNotice;
+
+  @override
+  Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    const cardWidth = 308.0;
+    const arrowWidth = 18.0;
+    const arrowHeight = 9.0;
+
+    final buttonCenterX = targetRect.left + (targetRect.width / 2);
+    final cardLeft = (buttonCenterX - (cardWidth / 2))
+        .clamp(12.0, screenSize.width - cardWidth - 12.0);
+    final arrowLeft = (buttonCenterX - cardLeft - (arrowWidth / 2))
+        .clamp(16.0, cardWidth - 16.0 - arrowWidth);
+
+    final cardTop = targetRect.bottom + 8.0;
+
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: Tooltip(
+            message: 'Cancel',
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => Navigator.of(context).pop(),
+            ),
+          ),
+        ),
+        Positioned(
+          left: cardLeft,
+          top: cardTop,
+          child: Material(
+            color: Colors.transparent,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(left: arrowLeft),
+                  child: CustomPaint(
+                    size: const Size(arrowWidth, arrowHeight),
+                    painter: _PopoverArrowPainter(
+                      color: const Color(0xff1c1c1e),
+                      borderColor: Colors.white.withValues(alpha: 0.12),
+                    ),
+                  ),
+                ),
+                Container(
+                  width: cardWidth,
+                  decoration: BoxDecoration(
+                    color: const Color(0xff1c1c1e),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.12),
+                      width: 0.8,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.6),
+                        blurRadius: 28,
+                        spreadRadius: 4,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _NewTopTile(
+                              title: 'Notebook',
+                              icon: CupertinoIcons.book,
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                onCreateKind('Notebook');
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _NewTopTile(
+                              title: 'Whiteboard',
+                              icon: CupertinoIcons.rectangle_grid_2x2,
+                              badge: 'NEW',
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                onCreateKind('Whiteboard');
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _NewTopTile(
+                              title: 'Text Doc',
+                              icon: CupertinoIcons.doc_text,
+                              badge: 'NEW',
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                onCreateKind('Text document');
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _NewMidTile(
+                              title: 'Import',
+                              icon: CupertinoIcons.arrow_down_to_line,
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                onImport();
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _NewMidTile(
+                              title: 'Quick Record',
+                              icon: CupertinoIcons.mic_fill,
+                              hasSparkle: true,
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                onFeatureNotice(
+                                  'Quick Record is coming in a future update',
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xff2c2c2e),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.06),
+                            width: 0.8,
+                          ),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _NewListTile(
+                              title: 'QuickNote',
+                              icon: CupertinoIcons.pencil,
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                onCreateKind('Quick note');
+                              },
+                            ),
+                            const Divider(
+                              height: 1,
+                              indent: 46,
+                              endIndent: 0,
+                              color: Color(0xff38383a),
+                            ),
+                            _NewListTile(
+                              title: 'Study Set',
+                              icon: CupertinoIcons.rectangle_stack,
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                onFeatureNotice(
+                                  'Study Set is coming in a future update',
+                                );
+                              },
+                            ),
+                            const Divider(
+                              height: 1,
+                              indent: 46,
+                              endIndent: 0,
+                              color: Color(0xff38383a),
+                            ),
+                            _NewListTile(
+                              title: 'Image',
+                              icon: CupertinoIcons.photo,
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                onFeatureNotice(
+                                  'Image import is coming in a future update',
+                                );
+                              },
+                            ),
+                            const Divider(
+                              height: 1,
+                              indent: 46,
+                              endIndent: 0,
+                              color: Color(0xff38383a),
+                            ),
+                            _NewListTile(
+                              title: 'Take Photo',
+                              icon: CupertinoIcons.camera,
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                onFeatureNotice(
+                                  'Take Photo is coming in a future update',
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      _NewStandaloneButton(
+                        title: 'Folder',
+                        icon: CupertinoIcons.folder,
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          onFeatureNotice(
+                            'Folder organization is coming in a future update',
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      _NewStandaloneButton(
+                        title: 'Import from Cloud Storage',
+                        icon: CupertinoIcons.plus_circle,
+                        trailing: Container(
+                          width: 22,
+                          height: 22,
+                          decoration: const BoxDecoration(
+                            color: Color(0xff3f4015),
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: const Icon(
+                            CupertinoIcons.lock_fill,
+                            size: 11,
+                            color: Color(0xffdcd66b),
+                          ),
+                        ),
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          onFeatureNotice(
+                            'Cloud storage is locked · Novi is 100% offline & local-first',
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PopoverArrowPainter extends CustomPainter {
+  const _PopoverArrowPainter({
+    required this.color,
+    required this.borderColor,
+  });
+
+  final Color color;
+  final Color borderColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final fillPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final path = Path()
+      ..moveTo(0, size.height + 1)
+      ..lineTo(size.width / 2, 0)
+      ..lineTo(size.width, size.height + 1)
+      ..close();
+    canvas.drawPath(path, fillPaint);
+
+    final strokePaint = Paint()
+      ..color = borderColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+
+    final strokePath = Path()
+      ..moveTo(0, size.height)
+      ..lineTo(size.width / 2, 0)
+      ..lineTo(size.width, size.height);
+    canvas.drawPath(strokePath, strokePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _NewTopTile extends StatefulWidget {
+  const _NewTopTile({
+    required this.title,
+    required this.icon,
+    this.badge,
+    required this.onTap,
+  });
+
+  final String title;
+  final IconData icon;
+  final String? badge;
+  final VoidCallback onTap;
+
+  @override
+  State<_NewTopTile> createState() => _NewTopTileState();
+}
+
+class _NewTopTileState extends State<_NewTopTile> {
+  bool hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => hovering = true),
+      onExit: (_) => setState(() => hovering = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          height: 82,
+          decoration: BoxDecoration(
+            color: hovering
+                ? const Color(0xff36363a)
+                : const Color(0xff2c2c2e),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: hovering ? 0.12 : 0.06),
+              width: 0.8,
+            ),
+          ),
+          child: Stack(
+            children: [
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(widget.icon, size: 24, color: Colors.white),
+                    const SizedBox(height: 7),
+                    Text(
+                      widget.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (widget.badge != null)
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 1.5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xff3f4015),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      widget.badge!,
+                      style: const TextStyle(
+                        color: Color(0xffdcd66b),
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NewMidTile extends StatefulWidget {
+  const _NewMidTile({
+    required this.title,
+    required this.icon,
+    this.hasSparkle = false,
+    required this.onTap,
+  });
+
+  final String title;
+  final IconData icon;
+  final bool hasSparkle;
+  final VoidCallback onTap;
+
+  @override
+  State<_NewMidTile> createState() => _NewMidTileState();
+}
+
+class _NewMidTileState extends State<_NewMidTile> {
+  bool hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => hovering = true),
+      onExit: (_) => setState(() => hovering = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          height: 72,
+          decoration: BoxDecoration(
+            color: hovering
+                ? const Color(0xff36363a)
+                : const Color(0xff2c2c2e),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: hovering ? 0.12 : 0.06),
+              width: 0.8,
+            ),
+          ),
+          alignment: Alignment.center,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.hasSparkle)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(widget.icon, size: 21, color: Colors.white),
+                    const SizedBox(width: 3),
+                    const Icon(
+                      CupertinoIcons.sparkles,
+                      size: 11,
+                      color: Color(0xffe8e878),
+                    ),
+                  ],
+                )
+              else
+                Icon(widget.icon, size: 21, color: Colors.white),
+              const SizedBox(height: 6),
+              Text(
+                widget.title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NewListTile extends StatefulWidget {
+  const _NewListTile({
+    required this.title,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String title;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  State<_NewListTile> createState() => _NewListTileState();
+}
+
+class _NewListTileState extends State<_NewListTile> {
+  bool hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => hovering = true),
+      onExit: (_) => setState(() => hovering = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        child: Container(
+          height: 44,
+          color: hovering ? const Color(0xff36363a) : Colors.transparent,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Row(
+            children: [
+              Icon(widget.icon, size: 19, color: Colors.white),
+              const SizedBox(width: 13),
+              Text(
+                widget.title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NewStandaloneButton extends StatefulWidget {
+  const _NewStandaloneButton({
+    required this.title,
+    required this.icon,
+    this.trailing,
+    required this.onTap,
+  });
+
+  final String title;
+  final IconData icon;
+  final Widget? trailing;
+  final VoidCallback onTap;
+
+  @override
+  State<_NewStandaloneButton> createState() => _NewStandaloneButtonState();
+}
+
+class _NewStandaloneButtonState extends State<_NewStandaloneButton> {
+  bool hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => hovering = true),
+      onExit: (_) => setState(() => hovering = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          height: 46,
+          decoration: BoxDecoration(
+            color: hovering
+                ? const Color(0xff36363a)
+                : const Color(0xff2c2c2e),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: hovering ? 0.12 : 0.06),
+              width: 0.8,
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Row(
+            children: [
+              Icon(widget.icon, size: 19, color: Colors.white),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Text(
+                  widget.title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              if (widget.trailing != null) widget.trailing!,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
