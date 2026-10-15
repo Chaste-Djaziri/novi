@@ -157,7 +157,14 @@ void main() {
     expect(find.text('Hello Novi'), findsOneWidget);
     await tester.tap(find.text('Draw'));
     await tester.pumpAndSettle();
-    await tester.dragFrom(const Offset(400, 250), const Offset(80, 60));
+    final inkCanvas = find.byWidgetPredicate(
+      (w) => w is CustomPaint && w.painter is InkPainter,
+    );
+    final canvasTop = tester.getTopLeft(inkCanvas);
+    await tester.dragFrom(
+      canvasTop + const Offset(120, 160),
+      const Offset(80, 60),
+    );
     await tester.pumpAndSettle();
     final ink = tester
         .widgetList<CustomPaint>(find.byType(CustomPaint))
