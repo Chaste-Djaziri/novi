@@ -26,6 +26,9 @@ class NoviApp extends StatelessWidget {
     debugShowCheckedModeBanner: false,
     theme: ThemeData(
       brightness: Brightness.dark,
+      fontFamily: defaultTargetPlatform == TargetPlatform.macOS
+          ? '.AppleSystemUIFont'
+          : null,
       scaffoldBackgroundColor: const Color(0xff090909),
       colorScheme: const ColorScheme.dark(
         primary: Colors.white,
@@ -432,7 +435,7 @@ class _WorkspaceState extends State<Workspace> {
             Material(
               color: const Color(0xff141414),
               child: SizedBox(
-                height: 54,
+                height: 42,
                 child: Row(
                   children: [
                     DesktopIconButton(
