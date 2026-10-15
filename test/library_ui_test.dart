@@ -18,11 +18,22 @@ void main() {
   testWidgets(
     'grayscale library, creation preview, favorites and minimum-size layout',
     (tester) async {
+      final originalErrorHandler = FlutterError.onError;
+      FlutterError.onError = (details) {
+        debugPrint(details.toString());
+        originalErrorHandler?.call(details);
+      };
+      addTearDown(() => FlutterError.onError = originalErrorHandler);
       // Use an available desktop font for readable local preview artifacts.
       // Other platforms still run all layout and behavior assertions.
       await tester.runAsync(() async {
         final font = File('/System/Library/Fonts/SFNS.ttf');
         if (await font.exists()) {
+          final bodyFont = FontLoader('Roboto')
+            ..addFont(
+              font.readAsBytes().then((bytes) => ByteData.sublistView(bytes)),
+            );
+          await bodyFont.load();
           final loader = FontLoader('.AppleSystemUIFont')
             ..addFont(
               font.readAsBytes().then((bytes) => ByteData.sublistView(bytes)),
