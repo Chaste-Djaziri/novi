@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:macos_ui/macos_ui.dart' as mac;
 
 /// Desktop control layer. macos_ui paints macOS-style controls in Flutter;
@@ -313,7 +314,7 @@ class DesktopDialog extends StatelessWidget {
   );
 }
 
-class DesktopListTile extends StatelessWidget {
+class DesktopListTile extends StatefulWidget {
   const DesktopListTile({
     super.key,
     this.leading,
@@ -330,30 +331,69 @@ class DesktopListTile extends StatelessWidget {
   final VoidCallback? onTap;
   final bool selected;
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 2),
-    child: mac.MacosIconButton(
-      onPressed: onTap,
-      backgroundColor: selected ? const Color(0xff383838) : Colors.transparent,
-      hoverColor: const Color(0xff303030),
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
-      borderRadius: BorderRadius.circular(5),
-      boxConstraints: const BoxConstraints(minHeight: 30),
-      icon: Row(
-        children: [
-          if (leading != null) ...[leading!, const SizedBox(width: 10)],
-          Expanded(
-            child: DefaultTextStyle.merge(
-              style: const TextStyle(fontSize: 12, color: Color(0xffdddddd)),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [title, ?subtitle],
-              ),
-            ),
+  State<DesktopListTile> createState() => _DesktopListTileState();
+}
+
+class _DesktopListTileState extends State<DesktopListTile> {
+  bool hover = false;
+  bool focus = false;
+  @override
+  Widget build(BuildContext context) => FocusableActionDetector(
+    enabled: widget.onTap != null,
+    onShowFocusHighlight: (v) => setState(() => focus = v),
+    onShowHoverHighlight: (v) => setState(() => hover = v),
+    shortcuts: const {
+      SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
+      SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
+    },
+    actions: {
+      ActivateIntent: CallbackAction<ActivateIntent>(
+        onInvoke: (_) {
+          widget.onTap?.call();
+          return null;
+        },
+      ),
+    },
+    child: Semantics(
+      button: true,
+      selected: widget.selected,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+          decoration: BoxDecoration(
+            color: widget.selected
+                ? const Color(0xff383838)
+                : hover || focus
+                ? const Color(0xff303030)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(5),
           ),
-          ?trailing,
-        ],
+          child: Row(
+            children: [
+              if (widget.leading != null) ...[
+                widget.leading!,
+                const SizedBox(width: 10),
+              ],
+              Expanded(
+                child: DefaultTextStyle.merge(
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xffdddddd),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [widget.title, ?widget.subtitle],
+                  ),
+                ),
+              ),
+              ?widget.trailing,
+            ],
+          ),
+        ),
       ),
     ),
   );
