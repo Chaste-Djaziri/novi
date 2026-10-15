@@ -1,3 +1,5 @@
+import 'desktop_ui.dart';
+
 import 'package:flutter/material.dart';
 
 import 'notebook.dart';
@@ -51,22 +53,26 @@ class WorkspaceToolbar extends StatelessWidget {
   final ValueChanged<double> onFontSize;
   final VoidCallback onBold;
   @override
-  Widget build(BuildContext context) => Material(
-    color: const Color(0xff191919),
+  Widget build(BuildContext context) => Container(
+    decoration: const BoxDecoration(
+      color: Color(0xff202020),
+      border: Border(bottom: BorderSide(color: Color(0xff383838))),
+    ),
     child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                IconButton(
+                DesktopIconButton(
                   tooltip: 'Undo',
                   onPressed: onUndo,
                   icon: const Icon(Icons.undo, size: 20),
                 ),
-                IconButton(
+                DesktopIconButton(
                   tooltip: 'Redo',
                   onPressed: onRedo,
                   icon: const Icon(Icons.redo, size: 20),
@@ -84,8 +90,7 @@ class WorkspaceToolbar extends StatelessWidget {
                         EditorTool.text => 'Type',
                         EditorTool.hand => 'Hand / pan',
                       },
-                      child: ChoiceChip(
-                        showCheckmark: false,
+                      child: DesktopToolButton(
                         avatar: Icon(switch (tool) {
                           EditorTool.pen => Icons.draw_outlined,
                           EditorTool.highlighter => Icons.highlight_outlined,
@@ -109,12 +114,12 @@ class WorkspaceToolbar extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 16),
-                IconButton(
+                DesktopIconButton(
                   tooltip: 'Delete selected ink',
                   onPressed: onDelete,
                   icon: const Icon(Icons.delete_outline, size: 20),
                 ),
-                IconButton(
+                DesktopIconButton(
                   tooltip: 'Document style',
                   onPressed: onStyle,
                   icon: const Icon(Icons.tune, size: 20),
@@ -133,11 +138,11 @@ class WorkspaceToolbar extends StatelessWidget {
                     style: TextStyle(color: Colors.grey, fontSize: 11),
                   ),
                   const SizedBox(width: 8),
-                  DropdownButton<double>(
+                  DesktopPopupButton<double>(
                     value: note.fontSize,
                     items: {12.0, 16.0, 20.0, 24.0, 32.0, note.fontSize}
                         .map(
-                          (s) => DropdownMenuItem(
+                          (s) => DesktopMenuItem(
                             value: s,
                             child: Text(
                               '${s.round()}',
@@ -152,7 +157,7 @@ class WorkspaceToolbar extends StatelessWidget {
                       }
                     },
                   ),
-                  IconButton(
+                  DesktopIconButton(
                     tooltip: 'Bold text',
                     isSelected: note.boldText,
                     onPressed: onBold,
@@ -169,11 +174,11 @@ class WorkspaceToolbar extends StatelessWidget {
                   ),
                   SizedBox(
                     width: 140,
-                    child: Slider(
+                    child: DesktopSlider(
                       value: session.width,
                       min: 1,
                       max: 12,
-                      divisions: 22,
+
                       onChanged: (v) {
                         session.width = v;
                         onSettings();
@@ -188,8 +193,8 @@ class WorkspaceToolbar extends StatelessWidget {
                   if (session.tool != EditorTool.eraser) ...[
                     Tooltip(
                       message: 'Automatic ink contrast',
-                      child: ActionChip(
-                        label: Text(session.color == null ? 'Auto ✓' : 'Auto'),
+                      child: DesktopButton(
+                        child: Text(session.color == null ? 'Auto ✓' : 'Auto'),
                         onPressed: () {
                           session.color = null;
                           onSettings();
@@ -197,7 +202,7 @@ class WorkspaceToolbar extends StatelessWidget {
                       ),
                     ),
                     ...[0xff151515, 0xff666666, 0xffaaaaaa, 0xfffafafa].map(
-                      (color) => IconButton(
+                      (color) => DesktopIconButton(
                         tooltip:
                             'Ink shade ${[0xff151515, 0xff666666, 0xffaaaaaa, 0xfffafafa].indexOf(color) + 1}',
                         onPressed: () {
@@ -229,7 +234,7 @@ class WorkspaceToolbar extends StatelessWidget {
                     style: const TextStyle(fontSize: 11, color: Colors.grey),
                   ),
                 const SizedBox(width: 24),
-                IconButton(
+                DesktopIconButton(
                   tooltip: 'Zoom out',
                   onPressed: () => onZoom(0.8),
                   icon: const Icon(Icons.remove, size: 18),
@@ -238,12 +243,12 @@ class WorkspaceToolbar extends StatelessWidget {
                   '${(session.view.value.getMaxScaleOnAxis() * 100).round()}%',
                   style: const TextStyle(fontSize: 11),
                 ),
-                IconButton(
+                DesktopIconButton(
                   tooltip: 'Zoom in',
                   onPressed: () => onZoom(1.25),
                   icon: const Icon(Icons.add, size: 18),
                 ),
-                TextButton(
+                DesktopButton(
                   onPressed: () => onZoom(0),
                   child: const Text(
                     'Reset view',
