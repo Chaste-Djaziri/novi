@@ -33,6 +33,13 @@ The first technical alpha is implemented. A reported native crash on New noteboo
 - Cleaned build artifacts, rebuilt and launched the normal macOS app successfully. The clean app bundle has no SQLite framework. Flutter reported that automatic foreground activation failed, so visual inspection is still pending.
 - Next: confirm New notebook in the rebuilt normal app, then continue the acceptance checklist below.
 
+## Desktop window sizing — 2026-10-15
+- [x] Set opening dimensions to 1200 × 800 logical units on all desktop runners.
+- [x] Set minimum content dimensions to 960 × 640, with independent width/height resizing. Windows minimum accounts for display DPI and window borders.
+- [x] macOS debug build passes after the native window change.
+- [ ] Confirm opening size and drag-resize limits visually after fully reopening the app.
+- Windows/Linux native builds and behavior remain unverified on this Mac.
+
 ## Hands-on acceptance — next actions in order
 - [ ] In the Mac app, create a notebook, draw, and type; confirm the page looks right and the status says Saved locally.
 - [ ] Close the app, reopen it, and confirm the same content appears in the native window.
