@@ -1,3 +1,5 @@
+import 'desktop_test_support.dart';
+
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -12,6 +14,7 @@ import 'package:novi/workspace_tools.dart';
 import 'widget_test.dart' show TestPaths;
 
 void main() {
+  initializeDesktopWidgetTests();
   setUpAll(() => EditableText.debugDeterministicCursor = true);
   tearDownAll(() => EditableText.debugDeterministicCursor = false);
   testWidgets(
