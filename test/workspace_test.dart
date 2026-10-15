@@ -158,6 +158,7 @@ void main() {
         find.byType(WorkspaceToolbar),
       );
       expect(toolbar.session.tool, EditorTool.text);
+      expect(toolbar.session.textFocus.hasFocus, isTrue);
       expect(toolbar.session.undo, isNotEmpty);
       expect(toolbar.session.view.value.getMaxScaleOnAxis(), 1.25);
       expect(find.text('Alpha text'), findsOneWidget);
