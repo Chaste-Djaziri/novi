@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:novi/main.dart';
+import 'package:novi/desktop_ui.dart';
 import 'package:novi/notebook.dart';
 
 import 'widget_test.dart' show TestPaths;
@@ -20,7 +21,7 @@ void main() {
       await tester.runAsync(() async {
         final font = File('/System/Library/Fonts/SFNS.ttf');
         if (await font.exists()) {
-          final loader = FontLoader('Roboto')
+          final loader = FontLoader('.AppleSystemUIFont')
             ..addFont(
               font.readAsBytes().then((bytes) => ByteData.sublistView(bytes)),
             );
