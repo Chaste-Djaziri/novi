@@ -174,14 +174,21 @@ class DesktopPopupButton<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) => mac.MacosPopupButton<T>(
     value: value,
-    style: const TextStyle(fontSize: 12, color: Color(0xffeeeeee)),
+    style: const TextStyle(
+      fontFamily: '.AppleSystemUIFont',
+      fontSize: 12,
+      color: Color(0xffeeeeee),
+    ),
     onChanged: onChanged,
     items: items
         .map(
           (item) => mac.MacosPopupMenuItem<T>(
             value: item.value,
             child: DefaultTextStyle.merge(
-              style: const TextStyle(fontSize: 12),
+              style: const TextStyle(
+                fontFamily: '.AppleSystemUIFont',
+                fontSize: 12,
+              ),
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
