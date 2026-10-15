@@ -113,6 +113,7 @@ void main() {
       await capture('editor');
       tester.view.physicalSize = const Size(960, 640);
       await tester.pumpAndSettle();
+      await capture('minimum-editor');
       expect(tester.takeException(), isNull);
       await tester.tap(find.byTooltip('Back to documents'));
       await tester.pumpAndSettle();
