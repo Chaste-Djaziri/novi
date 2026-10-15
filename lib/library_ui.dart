@@ -1,3 +1,5 @@
+import 'desktop_ui.dart';
+
 import 'package:flutter/material.dart';
 
 import 'notebook.dart';
@@ -198,22 +200,14 @@ class _LibraryViewState extends State<LibraryView> {
                     ),
                   ),
                 ),
-                ListTile(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  selectedTileColor: const Color(0xff303030),
+                DesktopListTile(
                   selected: !favorites,
                   leading: const Icon(Icons.folder_outlined, size: 20),
                   title: const Text('Documents'),
                   onTap: () => setState(() => favorites = false),
                 ),
                 const SizedBox(height: 6),
-                ListTile(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  selectedTileColor: const Color(0xff303030),
+                DesktopListTile(
                   selected: favorites,
                   leading: const Icon(Icons.star_border, size: 20),
                   title: const Text('Favorites'),
@@ -221,7 +215,7 @@ class _LibraryViewState extends State<LibraryView> {
                 ),
                 const Spacer(),
                 const Divider(),
-                ListTile(
+                DesktopListTile(
                   leading: const Icon(Icons.archive_outlined, size: 20),
                   title: const Text(
                     'Back up library',
@@ -231,7 +225,7 @@ class _LibraryViewState extends State<LibraryView> {
                       ? () => widget.onTransfer('backup')
                       : null,
                 ),
-                ListTile(
+                DesktopListTile(
                   leading: const Icon(Icons.restore, size: 20),
                   title: const Text(
                     'Restore backup',
@@ -289,13 +283,9 @@ class _LibraryViewState extends State<LibraryView> {
                     ),
                     SizedBox(
                       width: 220,
-                      child: TextField(
+                      child: DesktopTextField(
                         onChanged: (v) => setState(() => query = v),
-                        decoration: const InputDecoration(
-                          hintText: 'Search documents',
-                          prefixIcon: Icon(Icons.search, size: 18),
-                          isDense: true,
-                        ),
+                        placeholder: 'Search documents',
                       ),
                     ),
                   ],
@@ -303,7 +293,7 @@ class _LibraryViewState extends State<LibraryView> {
                 const SizedBox(height: 28),
                 Row(
                   children: [
-                    OutlinedButton.icon(
+                    DesktopButton.icon(
                       onPressed: widget.enabled
                           ? () => widget.onTransfer('import')
                           : null,
@@ -311,7 +301,8 @@ class _LibraryViewState extends State<LibraryView> {
                       label: const Text('Import'),
                     ),
                     const Spacer(),
-                    FilledButton.icon(
+                    DesktopButton.icon(
+                      primary: true,
                       onPressed: widget.enabled ? widget.onCreate : null,
                       icon: const Icon(Icons.add, size: 19),
                       label: const Text('New'),
@@ -321,12 +312,12 @@ class _LibraryViewState extends State<LibraryView> {
                 const SizedBox(height: 20),
                 Row(
                   children: [
-                    DropdownButton<String>(
+                    DesktopPopupButton<String>(
                       value: filter,
-                      underline: const SizedBox(),
+
                       items: ['All', ...documentKinds]
                           .map(
-                            (v) => DropdownMenuItem(
+                            (v) => DesktopMenuItem(
                               value: v,
                               child: Text(
                                 v,
@@ -338,7 +329,7 @@ class _LibraryViewState extends State<LibraryView> {
                       onChanged: (v) => setState(() => filter = v!),
                     ),
                     const Spacer(),
-                    IconButton(
+                    DesktopIconButton(
                       tooltip: grid ? 'List view' : 'Grid view',
                       onPressed: () => setState(() => grid = !grid),
                       icon: Icon(
@@ -374,7 +365,7 @@ class _LibraryViewState extends State<LibraryView> {
                                 style: TextStyle(color: Colors.grey),
                               ),
                               const SizedBox(height: 24),
-                              TextButton(
+                              DesktopButton(
                                 onPressed: widget.enabled
                                     ? widget.onCreate
                                     : null,
@@ -410,7 +401,7 @@ class _LibraryViewState extends State<LibraryView> {
                                       Positioned(
                                         right: 3,
                                         top: 3,
-                                        child: IconButton(
+                                        child: DesktopIconButton(
                                           tooltip: 'Favorite ${n.title}',
                                           onPressed: () => widget.onFavorite(n),
                                           icon: Icon(
@@ -454,11 +445,11 @@ class _LibraryViewState extends State<LibraryView> {
                       : ListView(
                           children: notes
                               .map(
-                                (n) => ListTile(
+                                (n) => DesktopListTile(
                                   leading: Icon(kindIcon(n.kind)),
                                   title: Text(n.title),
                                   subtitle: Text('${n.kind} · ${n.paper}'),
-                                  trailing: IconButton(
+                                  trailing: DesktopIconButton(
                                     tooltip: 'Favorite ${n.title}',
                                     icon: Icon(
                                       n.favorite
@@ -506,7 +497,7 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => Dialog(
+  Widget build(BuildContext context) => DesktopDialog(
     child: SizedBox(
       width: 700,
       child: SingleChildScrollView(
@@ -528,7 +519,7 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
                     ),
                   ),
                 ),
-                IconButton(
+                DesktopIconButton(
                   tooltip: 'Cancel',
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(Icons.close),
@@ -546,8 +537,7 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
               runSpacing: 8,
               children: documentKinds
                   .map(
-                    (kind) => ChoiceChip(
-                      showCheckmark: false,
+                    (kind) => DesktopToolButton(
                       avatar: Icon(kindIcon(kind), size: 17),
                       label: Text(kind),
                       selected: draft.kind == kind,
@@ -585,14 +575,11 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      TextField(
+                      DesktopTextField(
                         key: const Key('document-name'),
                         controller: name,
                         onChanged: (_) => setState(() {}),
-                        decoration: const InputDecoration(
-                          labelText: 'Name',
-                          hintText: 'Untitled document',
-                        ),
+                        placeholder: 'Name — Untitled document',
                       ),
                       const SizedBox(height: 18),
                       const Text(
@@ -705,21 +692,21 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
               spacing: 24,
               runSpacing: 12,
               children: [
-                DropdownButton<String>(
+                DesktopPopupButton<String>(
                   value: draft.tone,
                   items: ['White', 'Gray', 'Dark']
                       .map(
                         (v) =>
-                            DropdownMenuItem(value: v, child: Text('$v paper')),
+                            DesktopMenuItem(value: v, child: Text('$v paper')),
                       )
                       .toList(),
                   onChanged: (v) => setState(() => draft.tone = v!),
                 ),
-                DropdownButton<bool>(
+                DesktopPopupButton<bool>(
                   value: draft.landscape,
                   items: const [
-                    DropdownMenuItem(value: false, child: Text('Portrait')),
-                    DropdownMenuItem(value: true, child: Text('Landscape')),
+                    DesktopMenuItem(value: false, child: Text('Portrait')),
+                    DesktopMenuItem(value: true, child: Text('Landscape')),
                   ],
                   onChanged: (v) => setState(() => draft.landscape = v!),
                 ),
@@ -734,7 +721,8 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
                     style: TextStyle(color: Colors.grey, fontSize: 11),
                   ),
                 ),
-                FilledButton.icon(
+                DesktopButton.icon(
+                  primary: true,
                   onPressed: () {
                     draft.title = name.text.trim().isEmpty
                         ? 'Untitled ${draft.kind.toLowerCase()}'
