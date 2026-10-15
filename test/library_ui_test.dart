@@ -101,6 +101,8 @@ void main() {
       expect(tester.takeException(), isNull);
       await tester.tap(find.byTooltip('Back to documents'));
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byTooltip('Favorite Design ideas'));
+      await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Favorite Design ideas'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Favorites'));
