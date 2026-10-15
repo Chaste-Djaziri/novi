@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:novi/main.dart';
@@ -45,6 +46,17 @@ void main() {
           tester.widget<CustomPaint>(inkFinder).painter! as InkPainter;
       Offset point(double x, double y) =>
           tester.getTopLeft(inkFinder) + Offset(x, y);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyE);
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<WorkspaceToolbar>(find.byType(WorkspaceToolbar))
+            .session
+            .tool,
+        EditorTool.eraser,
+      );
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyP);
+      await tester.pumpAndSettle();
       await tester.dragFrom(point(100, 100), const Offset(100, 30));
       await tester.pumpAndSettle();
       expect(ink().strokes, hasLength(1));
@@ -86,7 +98,7 @@ void main() {
       await tester.dragFrom(point(150, 115), const Offset(30, 40));
       await tester.pumpAndSettle();
       expect(ink().strokes.first.first.first, closeTo(originalX + 30, 0.01));
-      await tester.tap(find.byTooltip('Delete selected ink'));
+      await tester.sendKeyEvent(LogicalKeyboardKey.delete);
       await tester.pumpAndSettle();
       expect(ink().strokes, hasLength(1));
       await tester.tap(find.byTooltip('Undo'));
@@ -97,6 +109,10 @@ void main() {
       );
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'Alpha text');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('16'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('24').last);
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Bold text'));
       await tester.pumpAndSettle();
@@ -158,6 +174,7 @@ void main() {
       final beta = reopened.load().firstWhere((n) => n.id == 'b');
       expect(alpha.text, 'Alpha text');
       expect(alpha.boldText, isTrue);
+      expect(alpha.fontSize, 24);
       expect(alpha.strokes, hasLength(2));
       expect(alpha.inkStyles, hasLength(2));
       expect(beta.text, isEmpty);
