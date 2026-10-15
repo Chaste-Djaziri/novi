@@ -127,6 +127,21 @@ The first technical alpha is implemented. A reported native crash on New noteboo
 - [x] Verified regenerated visual previews in `build/ui-preview/` (`library.png`, `creation.png`, `editor.png`, `minimum-editor.png`, `minimum-dialog.png`).
 - [ ] Hands-on interaction check in the running Mac app.
 
+## Anchored New document popover menu — 2026-10-15
+- [x] Replaced generic New buttons with macOS active-blue capsule pill button (`NewPillButton`, `Color(0xff007aff)`, rounded corners `20px`, plus icon, white text).
+- [x] Implemented anchored popover (`showNewDocumentMenu`) positioned beneath the button with an upward-pointing caret triangle aligned to the trigger button center.
+- [x] Implemented top 3 creation cards: Notebook (`CupertinoIcons.book`), Whiteboard (`CupertinoIcons.rectangle_grid_2x2`, with olive/gold "NEW" badge), and Text Doc (`CupertinoIcons.doc_text`, with "NEW" badge).
+- [x] Implemented second row of cards: Import (`CupertinoIcons.arrow_down_to_line`) and Quick Record (`CupertinoIcons.mic_fill` with sparkle).
+- [x] Implemented grouped rounded card list: QuickNote (`CupertinoIcons.pencil`), Study Set (`CupertinoIcons.rectangle_stack`), Image (`CupertinoIcons.photo`), and Take Photo (`CupertinoIcons.camera`) separated by subtle 1px dividers.
+- [x] Implemented standalone Folder card and Import from Cloud Storage card with gold lock badge (emphasizing Novi's 100% local-first and offline privacy guarantee).
+- [x] Wired popup to both library header `+ New` button and unified window header `+` create button.
+- [x] Updated `CreateDocumentDialog` to support `initialKind` for direct preset selection upon clicking a document kind.
+- [x] `flutter analyze`: clean (0 issues).
+- [x] Unit and widget test suite: all 6 tests pass (`test/library_ui_test.dart` and `test/workspace_test.dart`) and all 4 tests in `test/widget_test.dart` pass.
+- [x] Native macOS integration test suite: all 5 tests pass in a live macOS process (`flutter test -d macos integration_test/notebook_test.dart`).
+- [x] Captured and visually inspected visual preview artifact `build/ui-preview/new-popup.png`.
+- [ ] Hands-on interaction check in the running Mac app.
+
 ## Next
 Perform hands-on visual and drag verification in the rebuilt Mac app. Continue the desktop acceptance checks listed in the checklist above, recording results here.
 
