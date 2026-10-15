@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:novi/main.dart';
 import 'package:novi/notebook.dart';
+import 'package:novi/library_ui.dart';
 
 class TestPaths extends PathProviderPlatform {
   TestPaths(this.path);
@@ -18,6 +19,34 @@ class TestPaths extends PathProviderPlatform {
 }
 
 void main() {
+  test('styles and document kinds survive storage and portable files; old documents still load', () {
+    final old = Notebook.fromJson({
+      'id': 'old',
+      'title': 'Original',
+      'text': 'Keep',
+      'strokes': [],
+    });
+    expect(old.kind, 'Notebook');
+    expect(old.paper, 'Blank');
+    for (final kind in documentKinds) {
+      final note = Notebook(
+        id: kind,
+        title: 'Styled',
+        kind: kind,
+        paper: 'Squared',
+        tone: 'Dark',
+        cover: 0xff909090,
+        landscape: true,
+        favorite: true,
+      );
+      final decoded = decodePortable(
+        encodePortable([note], backup: false),
+        backup: false,
+      ).single;
+      expect(decoded.toJson(), note.toJson());
+      expect(note.copy().toJson(), note.toJson());
+    }
+  });
   test(
     'restore multiple notebooks into a fresh library and reject future formats',
     () {
@@ -91,6 +120,10 @@ void main() {
     },
   );
   testWidgets('create, type, draw, undo, redo, and reopen', (tester) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final directory = Directory.systemTemp.createTempSync('novi-widget');
     final original = PathProviderPlatform.instance;
     PathProviderPlatform.instance = TestPaths(directory.path);
@@ -103,7 +136,14 @@ void main() {
       () => Future<void>.delayed(const Duration(milliseconds: 150)),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('New notebook'));
+    await tester.tap(find.text('New'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('document-name')),
+      'Notebook test',
+    );
+    await tester.ensureVisible(find.text('Create'));
+    await tester.tap(find.text('Create'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Type'));
     await tester.pumpAndSettle();
@@ -130,6 +170,8 @@ void main() {
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 150)),
     );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Notebook test').first);
     await tester.pumpAndSettle();
     expect(find.text('Hello Novi'), findsOneWidget);
     final restored = tester
