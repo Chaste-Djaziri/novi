@@ -48,13 +48,23 @@ void main() {
       await tester.dragFrom(point(100, 100), const Offset(100, 30));
       await tester.pumpAndSettle();
       expect(ink().strokes, hasLength(1));
-      await tester.tap(find.text('Highlight'));
+      await tester.tap(
+        find.ancestor(
+          of: find.text('Highlight'),
+          matching: find.byType(ChoiceChip),
+        ),
+      );
       await tester.pumpAndSettle();
       await tester.dragFrom(point(100, 200), const Offset(100, 0));
       await tester.pumpAndSettle();
       expect(ink().strokes, hasLength(2));
       expect(ink().styles[1]['opacity'], 0.3);
-      await tester.tap(find.text('Erase'));
+      await tester.tap(
+        find.ancestor(
+          of: find.text('Erase'),
+          matching: find.byType(ChoiceChip),
+        ),
+      );
       await tester.pumpAndSettle();
       await tester.tapAt(point(150, 115));
       await tester.pumpAndSettle();
@@ -62,7 +72,12 @@ void main() {
       await tester.tap(find.byTooltip('Undo'));
       await tester.pumpAndSettle();
       expect(ink().strokes, hasLength(2));
-      await tester.tap(find.text('Select'));
+      await tester.tap(
+        find.ancestor(
+          of: find.text('Select'),
+          matching: find.byType(ChoiceChip),
+        ),
+      );
       await tester.pumpAndSettle();
       await tester.dragFrom(point(70, 70), const Offset(160, 90));
       await tester.pumpAndSettle();
@@ -77,7 +92,9 @@ void main() {
       await tester.tap(find.byTooltip('Undo'));
       await tester.pumpAndSettle();
       expect(ink().strokes, hasLength(2));
-      await tester.tap(find.text('Type'));
+      await tester.tap(
+        find.ancestor(of: find.text('Type'), matching: find.byType(ChoiceChip)),
+      );
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'Alpha text');
       await tester.pumpAndSettle();
@@ -89,13 +106,17 @@ void main() {
           .widget<InteractiveViewer>(find.byType(InteractiveViewer))
           .transformationController!;
       expect(firstView.value.getMaxScaleOnAxis(), 1.25);
-      await tester.tap(find.text('Hand'));
+      await tester.tap(
+        find.ancestor(of: find.text('Hand'), matching: find.byType(ChoiceChip)),
+      );
       await tester.pumpAndSettle();
       final priorMatrix = firstView.value.clone();
       await tester.dragFrom(point(250, 250), const Offset(35, 25));
       await tester.pumpAndSettle();
       expect(firstView.value, isNot(priorMatrix));
-      await tester.tap(find.text('Type'));
+      await tester.tap(
+        find.ancestor(of: find.text('Type'), matching: find.byType(ChoiceChip)),
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Open document'));
       await tester.pumpAndSettle();
