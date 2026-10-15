@@ -460,6 +460,7 @@ class _WorkspaceState extends State<Workspace> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
+    backgroundColor: const Color(0xff121212),
     body: Column(
       children: [
         DesktopWindowHeader(
@@ -482,6 +483,7 @@ class _WorkspaceState extends State<Workspace> {
           },
           onTransfer: transfer,
         ),
+        const SizedBox(height: 4),
         Expanded(
           child: inLibrary || current == null
               ? LibraryView(
@@ -557,9 +559,20 @@ class _WorkspaceState extends State<Workspace> {
       child: Focus(
         focusNode: workspaceFocus,
         autofocus: true,
-        child: Column(
-          children: [
-            WorkspaceToolbar(
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+          decoration: BoxDecoration(
+            color: const Color(0xff161616),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.08),
+              width: 0.8,
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              WorkspaceToolbar(
               session: session,
               note: note,
               onTool: chooseTool,
@@ -705,8 +718,9 @@ class _WorkspaceState extends State<Workspace> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   void normalizeStyles() {
     while (current!.inkStyles.length < current!.strokes.length) {
@@ -1010,19 +1024,15 @@ class DesktopWindowHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xff161616),
+      color: const Color(0xff121212),
       child: Container(
-        height: 42,
-        decoration: const BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: Color(0xff252525), width: 0.8),
-          ),
-        ),
+        height: 34,
+        padding: const EdgeInsets.only(top: 1, bottom: 3),
         child: Row(
           children: [
             if (defaultTargetPlatform == TargetPlatform.macOS)
               const DragToMoveArea(
-                child: SizedBox(width: 78, height: 42),
+                child: SizedBox(width: 78, height: 34),
               ),
             DesktopHeaderButton(
               tooltip: 'Back to documents',
@@ -1068,7 +1078,7 @@ class DesktopWindowHeader extends StatelessWidget {
             const Expanded(
               child: DragToMoveArea(
                 child: SizedBox(
-                  height: 42,
+                  height: 34,
                   width: double.infinity,
                 ),
               ),
@@ -1120,7 +1130,7 @@ class DesktopWindowHeader extends StatelessWidget {
         borderRadius: BorderRadius.circular(7),
         onTap: () => onSelectTab(tab),
         child: Container(
-          height: 28,
+          height: 26,
           constraints: const BoxConstraints(minWidth: 90, maxWidth: 175),
           padding: const EdgeInsets.only(left: 8, right: 3),
           decoration: BoxDecoration(
@@ -1180,8 +1190,8 @@ class DesktopWindowHeader extends StatelessWidget {
           borderRadius: BorderRadius.circular(6),
           onTap: onCreate,
           child: Container(
-            width: 26,
-            height: 26,
+            width: 24,
+            height: 24,
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(6),
@@ -1227,12 +1237,12 @@ class DesktopHeaderButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(6),
           onTap: onPressed,
           child: Container(
-            width: 28,
-            height: 28,
+            width: 26,
+            height: 26,
             alignment: Alignment.center,
             child: Icon(
               icon,
-              size: 15,
+              size: 14,
               color: enabled
                   ? Colors.white70
                   : Colors.white.withValues(alpha: 0.22),
