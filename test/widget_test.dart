@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:novi/main.dart';
+import 'package:novi/desktop_ui.dart';
 import 'package:novi/notebook.dart';
 import 'package:novi/library_ui.dart';
 
@@ -148,10 +149,13 @@ void main() {
     await tester.tap(find.text('Create'));
     await tester.pumpAndSettle();
     await tester.tap(
-      find.ancestor(of: find.text('Type'), matching: find.byType(ChoiceChip)),
+      find.ancestor(
+        of: find.text('Type'),
+        matching: find.byType(DesktopToolButton),
+      ),
     );
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'Hello Novi');
+    await tester.enterText(find.byType(DesktopTextField), 'Hello Novi');
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Undo'));
     await tester.pumpAndSettle();
@@ -160,7 +164,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Hello Novi'), findsOneWidget);
     await tester.tap(
-      find.ancestor(of: find.text('Draw'), matching: find.byType(ChoiceChip)),
+      find.ancestor(
+        of: find.text('Draw'),
+        matching: find.byType(DesktopToolButton),
+      ),
     );
     await tester.pumpAndSettle();
     final inkCanvas = find.byWidgetPredicate(
