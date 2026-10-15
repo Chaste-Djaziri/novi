@@ -7,6 +7,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -24,36 +25,44 @@ void main() {
 class NoviApp extends StatelessWidget {
   const NoviApp({super.key});
   @override
-  Widget build(BuildContext context) => MaterialApp(
-    title: 'Novi',
-    debugShowCheckedModeBanner: false,
-    theme: ThemeData(
-      brightness: Brightness.dark,
-      fontFamily: defaultTargetPlatform == TargetPlatform.macOS
-          ? '.AppleSystemUIFont'
-          : null,
-      scaffoldBackgroundColor: const Color(0xff090909),
-      colorScheme: const ColorScheme.dark(
-        primary: Colors.white,
-        onPrimary: Colors.black,
-        secondary: Color(0xffbbbbbb),
-        surface: Color(0xff1c1c1c),
-        onSurface: Color(0xffeeeeee),
+  Widget build(BuildContext context) {
+    final darkTheme = defaultTargetPlatform == TargetPlatform.macOS ||
+            defaultTargetPlatform == TargetPlatform.windows ||
+            defaultTargetPlatform == TargetPlatform.linux
+        ? FTheme.neutral.dark.desktop
+        : FTheme.neutral.dark.touch;
+
+    return MaterialApp(
+      title: 'Novi',
+      debugShowCheckedModeBanner: false,
+      supportedLocales: FLocalizations.supportedLocales,
+      localizationsDelegates: const [...FLocalizations.localizationsDelegates],
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        fontFamily: defaultTargetPlatform == TargetPlatform.macOS
+            ? '.AppleSystemUIFont'
+            : null,
+        scaffoldBackgroundColor: const Color(0xff090909),
+        colorScheme: const ColorScheme.dark(
+          primary: Colors.white,
+          onPrimary: Colors.black,
+          secondary: Color(0xffbbbbbb),
+          surface: Color(0xff1c1c1c),
+          onSurface: Color(0xffeeeeee),
+        ),
+        dividerColor: const Color(0xff333333),
       ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: const Color(0xff242424),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide.none,
+      builder: (context, child) => FTheme(
+        data: darkTheme,
+        child: FToaster(
+          child: FTooltipGroup(
+            child: DesktopTheme(child: child!),
+          ),
         ),
       ),
-      dividerColor: const Color(0xff333333),
-      useMaterial3: true,
-    ),
-    builder: (context, child) => DesktopTheme(child: child!),
-    home: const Workspace(),
-  );
+      home: const Workspace(),
+    );
+  }
 }
 
 class Workspace extends StatefulWidget {
