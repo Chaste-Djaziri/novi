@@ -9,6 +9,7 @@ class EditorSession {
     : text = TextEditingController(text: note.text),
       tool = note.kind == 'Text document' ? EditorTool.text : EditorTool.pen;
   final TextEditingController text;
+  final FocusNode textFocus = FocusNode();
   final TransformationController view = TransformationController();
   final List<Notebook> undo = [];
   final List<Notebook> redo = [];
@@ -18,6 +19,7 @@ class EditorSession {
   int? color;
   void dispose() {
     text.dispose();
+    textFocus.dispose();
     view.dispose();
   }
 }
