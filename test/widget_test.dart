@@ -147,7 +147,9 @@ void main() {
     await tester.ensureVisible(find.text('Create'));
     await tester.tap(find.text('Create'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Type'));
+    await tester.tap(
+      find.ancestor(of: find.text('Type'), matching: find.byType(ChoiceChip)),
+    );
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), 'Hello Novi');
     await tester.pumpAndSettle();
@@ -157,7 +159,9 @@ void main() {
     await tester.tap(find.byTooltip('Redo'));
     await tester.pumpAndSettle();
     expect(find.text('Hello Novi'), findsOneWidget);
-    await tester.tap(find.text('Draw'));
+    await tester.tap(
+      find.ancestor(of: find.text('Draw'), matching: find.byType(ChoiceChip)),
+    );
     await tester.pumpAndSettle();
     final inkCanvas = find.byWidgetPredicate(
       (w) => w is CustomPaint && w.painter is InkPainter,
