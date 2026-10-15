@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
