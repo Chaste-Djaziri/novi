@@ -1,5 +1,8 @@
 import 'dart:io';
 import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:archive/archive.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,6 +18,41 @@ class TestPaths extends PathProviderPlatform {
 }
 
 void main() {
+  test(
+    'restore multiple notebooks into a fresh library and reject future formats',
+    () {
+      final directory = Directory.systemTemp.createTempSync('novi-restore');
+      addTearDown(() => directory.deleteSync(recursive: true));
+      final originals = [
+        Notebook(id: 'a', title: 'Art'),
+        Notebook(id: 'b', title: 'Science', text: 'F = ma'),
+      ];
+      final bytes = encodePortable(originals, backup: true);
+      final destination = LibraryStore('${directory.path}/restored.sqlite');
+      addTearDown(destination.close);
+      destination.save(Notebook(id: 'existing', title: 'Keep me'));
+      destination.merge(decodePortable(bytes, backup: true));
+      expect(destination.load().map((n) => n.title), [
+        'Keep me',
+        'Art',
+        'Science',
+      ]);
+      final manifest = utf8.encode(
+        jsonEncode({'format': 'novi', 'version': 999, 'notebooks': []}),
+      );
+      final future = Uint8List.fromList(
+        ZipEncoder().encode(
+          Archive()
+            ..addFile(ArchiveFile('manifest.json', manifest.length, manifest)),
+        ),
+      );
+      expect(
+        () => decodePortable(future, backup: false),
+        throwsFormatException,
+      );
+      expect(destination.load(), hasLength(3));
+    },
+  );
   test(
     'SQLite restart and both archive formats preserve text and original ink',
     () {
