@@ -116,6 +116,16 @@ The first technical alpha is implemented. A reported native crash on New noteboo
 - [x] Regenerated visual previews in `build/ui-preview/` (`library.png`, `creation.png`, `editor.png`, `minimum-editor.png`, `minimum-dialog.png`); verified top header buttons, tabs, and layout across library and editor.
 - [ ] Hands-on interaction check in the running Mac app.
 
+## Header controls alignment, curved panel frames, and collapsed icon rail — 2026-10-15
+- [x] Aligned navigation buttons (`< > [|]`), tabs, and window controls on the exact vertical center axis (y = 16px) with native macOS traffic lights.
+- [x] Implemented curved panel transitions (`BorderRadius.circular(12)`) on the sidebar, library documents gallery, and editor canvas panels where they meet the top header matching the ChatGPT desktop layout.
+- [x] Configured the sidebar to collapse into a 52px icon-only rail (Documents, Favorites, Back up library, Restore backup) when toggled collapsed.
+- [x] `flutter analyze`: clean (0 issues).
+- [x] Unit and widget test suite: all 6 tests pass (`test/library_ui_test.dart` and `test/workspace_test.dart`).
+- [x] Native macOS integration test suite: all 5 tests pass in a live macOS process (`flutter test -d macos integration_test/notebook_test.dart`).
+- [x] Verified regenerated visual previews in `build/ui-preview/` (`library.png`, `creation.png`, `editor.png`, `minimum-editor.png`, `minimum-dialog.png`).
+- [ ] Hands-on interaction check in the running Mac app.
+
 ## Next
 Perform hands-on visual and drag verification in the rebuilt Mac app. Continue the desktop acceptance checks listed in the checklist above, recording results here.
 
