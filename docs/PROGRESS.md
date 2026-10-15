@@ -79,6 +79,18 @@ The first technical alpha is implemented. A reported native crash on New noteboo
 - [x] Regenerated visual preview images in `build/ui-preview/` (`library.png`, `creation.png`, `editor.png`, `minimum-editor.png`, `minimum-dialog.png`); verified desktop layout and typography.
 - [ ] Hands-on visual and interaction check in the normal rebuilt Mac app.
 
+## Forui desktop UI integration — 2026-10-15
+- [x] Added `forui` (0.27.6) and `forui_lucide` (0.27.0) dependencies.
+- [x] Configured Forui application root in `lib/main.dart` with `FTheme.neutral.dark.desktop` (adaptive desktop/touch), `FToaster`, `FTooltipGroup`, and `FLocalizations`.
+- [x] Migrated desktop buttons in `lib/desktop_ui.dart` to Forui `FButton` and `FButton.icon` (primary, secondary, and ghost variants).
+- [x] Loaded Forui Inter font and ForuiLucide icon font in preview tests.
+- [x] `flutter analyze`: clean.
+- [x] Unit/widget test suite: all 5 tests pass (`test/library_ui_test.dart` and `test/workspace_test.dart`).
+- [x] Native macOS integration test suite: all 5 tests pass in a live macOS process (`flutter test -d macos integration_test/notebook_test.dart`).
+- [x] Verified regenerated visual previews in `build/ui-preview/` (`library.png`, `creation.png`, `editor.png`, `minimum-editor.png`, `minimum-dialog.png`).
+- [ ] Hands-on visual and interaction check in the rebuilt Mac app.
+
 ## Next
-Review the desktop-styled UI in the rebuilt Mac app, then finish the native Mac acceptance journey above, recording results here. Then address findings before advancing to Pen Studio. Keep each edit committed individually and update this checklist after verified progress.
+Review the Forui desktop-styled UI in the rebuilt Mac app, then finish the native Mac acceptance journey above, recording results here. Then address findings before advancing to Pen Studio. Keep each edit committed individually and update this checklist after verified progress.
+
 
