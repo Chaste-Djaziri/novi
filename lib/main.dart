@@ -315,11 +315,11 @@ class _WorkspaceState extends State<Workspace> {
     }
   }
 
-  Future<void> create() async {
+  Future<void> create([String? kind]) async {
     finishStroke();
     final note = await showDialog<Notebook>(
       context: context,
-      builder: (_) => const CreateDocumentDialog(),
+      builder: (_) => CreateDocumentDialog(initialKind: kind),
     );
     if (note == null || !mounted) {
       return;
@@ -482,6 +482,7 @@ class _WorkspaceState extends State<Workspace> {
             _pushNav(null);
           },
           onTransfer: transfer,
+          onStatus: (msg) => setState(() => status = msg),
         ),
         const SizedBox(height: 4),
         Expanded(
@@ -494,6 +495,7 @@ class _WorkspaceState extends State<Workspace> {
                   onFavorite: toggleFavorite,
                   onTransfer: transfer,
                   showSidebar: showSidebar,
+                  onStatus: (msg) => setState(() => status = msg),
                 )
               : editor(),
         ),
@@ -1004,6 +1006,7 @@ class DesktopWindowHeader extends StatelessWidget {
     required this.onCreate,
     required this.onOpenDocument,
     required this.onTransfer,
+    this.onStatus,
   });
 
   final bool canGoBack;
@@ -1017,9 +1020,10 @@ class DesktopWindowHeader extends StatelessWidget {
   final bool showTabs;
   final ValueChanged<Notebook> onSelectTab;
   final ValueChanged<String> onCloseTab;
-  final VoidCallback onCreate;
+  final void Function([String? kind]) onCreate;
   final VoidCallback onOpenDocument;
   final ValueChanged<String> onTransfer;
+  final ValueChanged<String>? onStatus;
 
   @override
   Widget build(BuildContext context) {
@@ -1181,34 +1185,53 @@ class DesktopWindowHeader extends StatelessWidget {
   }
 
   Widget _buildCreateButton() {
-    return Tooltip(
-      message: 'New document',
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(6),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(6),
-          onTap: onCreate,
-          child: Container(
-            width: 24,
-            height: 24,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
+    return Builder(
+      builder: (btnContext) {
+        return Tooltip(
+          message: 'New document',
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+            child: InkWell(
               borderRadius: BorderRadius.circular(6),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.12),
-                width: 0.8,
+              onTap: () {
+                final box = btnContext.findRenderObject() as RenderBox?;
+                if (box != null) {
+                  final offset = box.localToGlobal(Offset.zero);
+                  final size = box.size;
+                  showNewDocumentMenu(
+                    btnContext,
+                    targetRect: offset & size,
+                    onCreateKind: (kind) => onCreate(kind),
+                    onImport: () => onTransfer('import'),
+                    onFeatureNotice: (notice) => onStatus?.call(notice),
+                  );
+                } else {
+                  onCreate();
+                }
+              },
+              child: Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.12),
+                    width: 0.8,
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: const Icon(
+                  CupertinoIcons.plus,
+                  size: 13,
+                  color: Colors.white70,
+                ),
               ),
             ),
-            alignment: Alignment.center,
-            child: const Icon(
-              CupertinoIcons.plus,
-              size: 13,
-              color: Colors.white70,
-            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
