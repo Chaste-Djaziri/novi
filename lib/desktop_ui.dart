@@ -11,6 +11,7 @@ class DesktopTheme extends StatelessWidget {
   Widget build(BuildContext context) => mac.MacosTheme(
     data: mac.MacosThemeData(
       brightness: Brightness.dark,
+      accentColor: mac.AccentColor.graphite,
       primaryColor: const Color(0xffc4c4c4),
       canvasColor: const Color(0xff1e1e1e),
       dividerColor: const Color(0xff353535),
