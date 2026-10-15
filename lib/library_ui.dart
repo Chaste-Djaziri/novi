@@ -1,9 +1,9 @@
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
+import 'package:flutter/material.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'desktop_ui.dart';
-
-import 'package:flutter/material.dart';
-
 import 'notebook.dart';
 
 const documentKinds = ['Notebook', 'Whiteboard', 'Text document', 'Quick note'];
@@ -183,10 +183,19 @@ class _LibraryViewState extends State<LibraryView> {
           color: const Color(0xff151515),
           child: Container(
             width: 212,
-            padding: const EdgeInsets.fromLTRB(16, 30, 16, 20),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              defaultTargetPlatform == TargetPlatform.macOS ? 40 : 26,
+              16,
+              20,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (defaultTargetPlatform == TargetPlatform.macOS)
+                  const DragToMoveArea(
+                    child: SizedBox(width: double.infinity, height: 16),
+                  ),
                 const Padding(
                   padding: EdgeInsets.only(left: 12),
                   child: Wordmark(),
@@ -265,25 +274,27 @@ class _LibraryViewState extends State<LibraryView> {
                 Row(
                   children: [
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            favorites ? 'Favorites' : 'Documents',
-                            style: const TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w700,
+                      child: DragToMoveArea(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              favorites ? 'Favorites' : 'Documents',
+                              style: const TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            '${widget.notes.length} documents · A little room for every idea',
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 12,
+                            const SizedBox(height: 5),
+                            Text(
+                              '${widget.notes.length} documents · A little room for every idea',
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                     SizedBox(
