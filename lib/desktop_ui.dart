@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:macos_ui/macos_ui.dart' as mac;
@@ -198,7 +199,7 @@ class DesktopPopupMenuButton<T> extends StatelessWidget {
   Widget build(BuildContext context) => Tooltip(
     message: tooltip,
     child: mac.MacosPulldownButton(
-      icon: Icons.more_horiz,
+      icon: CupertinoIcons.ellipsis,
       items: itemBuilder(context)
           .map(
             (item) => mac.MacosPulldownMenuItem(
