@@ -178,8 +178,17 @@ class DesktopPopupButton<T> extends StatelessWidget {
     onChanged: onChanged,
     items: items
         .map(
-          (item) =>
-              mac.MacosPopupMenuItem<T>(value: item.value, child: item.child),
+          (item) => mac.MacosPopupMenuItem<T>(
+            value: item.value,
+            child: DefaultTextStyle.merge(
+              style: const TextStyle(fontSize: 12),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: item.child,
+              ),
+            ),
+          ),
         )
         .toList(),
   );
