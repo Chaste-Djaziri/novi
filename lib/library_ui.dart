@@ -151,6 +151,7 @@ class LibraryView extends StatefulWidget {
     required this.onOpen,
     required this.onFavorite,
     required this.onTransfer,
+    this.showSidebar = true,
   });
   final List<Notebook> notes;
   final bool enabled;
@@ -158,6 +159,7 @@ class LibraryView extends StatefulWidget {
   final ValueChanged<Notebook> onOpen;
   final ValueChanged<Notebook> onFavorite;
   final ValueChanged<String> onTransfer;
+  final bool showSidebar;
   @override
   State<LibraryView> createState() => _LibraryViewState();
 }
@@ -179,27 +181,19 @@ class _LibraryViewState extends State<LibraryView> {
         .toList();
     return Row(
       children: [
-        Material(
-          color: const Color(0xff151515),
-          child: Container(
-            width: 212,
-            padding: EdgeInsets.fromLTRB(
-              16,
-              defaultTargetPlatform == TargetPlatform.macOS ? 40 : 26,
-              16,
-              20,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (defaultTargetPlatform == TargetPlatform.macOS)
-                  const DragToMoveArea(
-                    child: SizedBox(width: double.infinity, height: 16),
+        if (widget.showSidebar)
+          Material(
+            color: const Color(0xff151515),
+            child: Container(
+              width: 212,
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(left: 12),
+                    child: Wordmark(),
                   ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 12),
-                  child: Wordmark(),
-                ),
                 const Padding(
                   padding: EdgeInsets.fromLTRB(12, 8, 0, 36),
                   child: Text(
