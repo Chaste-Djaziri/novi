@@ -591,7 +591,7 @@ class _WorkspaceState extends State<Workspace> {
                                       child: MouseRegion(
                                         cursor: tool == EditorTool.select
                                             ? SystemMouseCursors.precise
-                                            : SystemMouseCursors.crosshair,
+                                            : SystemMouseCursors.precise,
                                         child: Listener(
                                           behavior: HitTestBehavior.opaque,
                                           onPointerDown: pointerDown,
@@ -612,8 +612,7 @@ class _WorkspaceState extends State<Workspace> {
                                               color: foreground,
                                               styles: [
                                                 ...note.inkStyles,
-                                                if (activeStyle != null)
-                                                  activeStyle!,
+                                                ?activeStyle,
                                               ],
                                               selected: session.selection,
                                               selectionBox: selectionBox,
