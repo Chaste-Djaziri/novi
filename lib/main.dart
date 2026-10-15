@@ -862,8 +862,15 @@ class InkPainter extends CustomPainter {
           : color;
       final opacity = (style['opacity'] as num?)?.toDouble() ?? 1.0;
       final width = (style['width'] as num?)?.toDouble() ?? 3.0;
+      // Composite a marker stroke once so overlapping segments do not darken joins.
+      if (opacity < 1) {
+        canvas.saveLayer(
+          null,
+          Paint()..color = Colors.white.withValues(alpha: opacity),
+        );
+      }
       final paint = Paint()
-        ..color = strokeColor.withValues(alpha: opacity)
+        ..color = strokeColor
         ..strokeCap = StrokeCap.round;
       for (var i = 0; i < stroke.length; i++) {
         final p = stroke[i];
@@ -875,6 +882,9 @@ class InkPainter extends CustomPainter {
           final previous = stroke[math.max(0, i - 1)];
           canvas.drawLine(Offset(previous[0], previous[1]), a, paint);
         }
+      }
+      if (opacity < 1) {
+        canvas.restore();
       }
       if (selected.contains(index) && stroke.isNotEmpty) {
         final rect = Rect.fromLTRB(
