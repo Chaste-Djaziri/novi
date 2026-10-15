@@ -1,3 +1,5 @@
+import 'desktop_ui.dart';
+
 import 'dart:io';
 import 'dart:math' as math;
 
@@ -43,6 +45,7 @@ class NoviApp extends StatelessWidget {
       dividerColor: const Color(0xff333333),
       useMaterial3: true,
     ),
+    builder: (context, child) => DesktopTheme(child: child!),
     home: const Workspace(),
   );
 }
@@ -432,7 +435,7 @@ class _WorkspaceState extends State<Workspace> {
                 height: 54,
                 child: Row(
                   children: [
-                    IconButton(
+                    DesktopIconButton(
                       tooltip: 'Back to documents',
                       onPressed: () {
                         finishStroke();
@@ -483,7 +486,7 @@ class _WorkspaceState extends State<Workspace> {
                                           style: const TextStyle(fontSize: 12),
                                         ),
                                       ),
-                                      IconButton(
+                                      DesktopIconButton(
                                         tooltip: 'Close tab ${tab.title}',
                                         onPressed: () => closeTab(id),
                                         icon: const Icon(Icons.close, size: 14),
@@ -497,7 +500,7 @@ class _WorkspaceState extends State<Workspace> {
                         }).toList(),
                       ),
                     ),
-                    IconButton(
+                    DesktopIconButton(
                       tooltip: 'Open document',
                       onPressed: () {
                         finishStroke();
@@ -505,20 +508,20 @@ class _WorkspaceState extends State<Workspace> {
                       },
                       icon: const Icon(Icons.folder_open_outlined, size: 19),
                     ),
-                    IconButton(
+                    DesktopIconButton(
                       tooltip: 'New document',
                       onPressed: create,
                       icon: const Icon(Icons.add, size: 19),
                     ),
-                    PopupMenuButton<String>(
+                    DesktopPopupMenuButton<String>(
                       tooltip: 'Import, export and backup',
                       onSelected: transfer,
                       itemBuilder: (_) => const [
-                        PopupMenuItem(
+                        DesktopMenuItem(
                           value: 'export',
                           child: Text('Export notebook'),
                         ),
-                        PopupMenuItem(
+                        DesktopMenuItem(
                           value: 'backup',
                           child: Text('Back up library'),
                         ),
@@ -575,7 +578,7 @@ class _WorkspaceState extends State<Workspace> {
                                     bottom: 28,
                                     child: IgnorePointer(
                                       ignoring: tool != EditorTool.text,
-                                      child: TextField(
+                                      child: DesktopTextField(
                                         key: ValueKey('text-${note.id}'),
                                         controller: text,
                                         focusNode: session.textFocus,
@@ -592,18 +595,8 @@ class _WorkspaceState extends State<Workspace> {
                                           height: 1.6,
                                         ),
                                         cursorColor: foreground,
-                                        decoration: InputDecoration(
-                                          filled: false,
-                                          border: InputBorder.none,
-                                          enabledBorder: InputBorder.none,
-                                          focusedBorder: InputBorder.none,
-                                          hintText: 'Write your thoughts…',
-                                          hintStyle: TextStyle(
-                                            color: foreground.withValues(
-                                              alpha: 0.4,
-                                            ),
-                                          ),
-                                        ),
+                                        borderless: true,
+                                        placeholder: 'Write your thoughts…',
                                         onChanged: (value) {
                                           setState(() {
                                             snapshot();
