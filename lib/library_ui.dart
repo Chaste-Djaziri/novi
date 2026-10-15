@@ -110,7 +110,7 @@ class DocumentCover extends StatelessWidget {
                 const Spacer(),
                 Text(
                   note.title,
-                  maxLines: 3,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
@@ -121,6 +121,8 @@ class DocumentCover extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   note.kind.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: foreground.withValues(alpha: 0.65),
                     fontSize: 9,
@@ -173,84 +175,86 @@ class _LibraryViewState extends State<LibraryView> {
         .toList();
     return Row(
       children: [
-        Container(
-          width: 212,
+        Material(
           color: const Color(0xff151515),
-          padding: const EdgeInsets.fromLTRB(16, 30, 16, 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Padding(
-                padding: EdgeInsets.only(left: 12),
-                child: Wordmark(),
-              ),
-              const Padding(
-                padding: EdgeInsets.fromLTRB(12, 8, 0, 36),
-                child: Text(
-                  'SPACE FOR YOUR MIND',
-                  style: TextStyle(
-                    fontSize: 9,
-                    color: Colors.grey,
-                    letterSpacing: 1.6,
+          child: Container(
+            width: 212,
+            padding: const EdgeInsets.fromLTRB(16, 30, 16, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(left: 12),
+                  child: Wordmark(),
+                ),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(12, 8, 0, 36),
+                  child: Text(
+                    'SPACE FOR YOUR MIND',
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: Colors.grey,
+                      letterSpacing: 1.6,
+                    ),
                   ),
                 ),
-              ),
-              ListTile(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                ListTile(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  selectedTileColor: const Color(0xff303030),
+                  selected: !favorites,
+                  leading: const Icon(Icons.folder_outlined, size: 20),
+                  title: const Text('Documents'),
+                  onTap: () => setState(() => favorites = false),
                 ),
-                selectedTileColor: const Color(0xff303030),
-                selected: !favorites,
-                leading: const Icon(Icons.folder_outlined, size: 20),
-                title: const Text('Documents'),
-                onTap: () => setState(() => favorites = false),
-              ),
-              const SizedBox(height: 6),
-              ListTile(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                const SizedBox(height: 6),
+                ListTile(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  selectedTileColor: const Color(0xff303030),
+                  selected: favorites,
+                  leading: const Icon(Icons.star_border, size: 20),
+                  title: const Text('Favorites'),
+                  onTap: () => setState(() => favorites = true),
                 ),
-                selectedTileColor: const Color(0xff303030),
-                selected: favorites,
-                leading: const Icon(Icons.star_border, size: 20),
-                title: const Text('Favorites'),
-                onTap: () => setState(() => favorites = true),
-              ),
-              const Spacer(),
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.archive_outlined, size: 20),
-                title: const Text(
-                  'Back up library',
-                  style: TextStyle(fontSize: 12),
+                const Spacer(),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.archive_outlined, size: 20),
+                  title: const Text(
+                    'Back up library',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                  onTap: widget.enabled
+                      ? () => widget.onTransfer('backup')
+                      : null,
                 ),
-                onTap: widget.enabled
-                    ? () => widget.onTransfer('backup')
-                    : null,
-              ),
-              ListTile(
-                leading: const Icon(Icons.restore, size: 20),
-                title: const Text(
-                  'Restore backup',
-                  style: TextStyle(fontSize: 12),
+                ListTile(
+                  leading: const Icon(Icons.restore, size: 20),
+                  title: const Text(
+                    'Restore backup',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                  onTap: widget.enabled
+                      ? () => widget.onTransfer('restore')
+                      : null,
                 ),
-                onTap: widget.enabled
-                    ? () => widget.onTransfer('restore')
-                    : null,
-              ),
-              const SizedBox(height: 20),
-              const Padding(
-                padding: EdgeInsets.only(left: 12),
-                child: Text(
-                  'On your device.\nAlways yours.',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
-                    height: 1.8,
+                const SizedBox(height: 20),
+                const Padding(
+                  padding: EdgeInsets.only(left: 12),
+                  child: Text(
+                    'On your device.\nAlways yours.',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 12,
+                      height: 1.8,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         Expanded(
