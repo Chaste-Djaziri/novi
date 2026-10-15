@@ -204,6 +204,7 @@ class _WorkspaceState extends State<Workspace> {
   }
 
   Future<void> create() async {
+    finishStroke();
     final note = await showDialog<Notebook>(
       context: context,
       builder: (_) => const CreateDocumentDialog(),
@@ -222,6 +223,7 @@ class _WorkspaceState extends State<Workspace> {
   }
 
   Future<void> styleDocument() async {
+    finishStroke();
     final changed = await showDialog<Notebook>(
       context: context,
       builder: (_) => CreateDocumentDialog(existing: current),
@@ -253,6 +255,7 @@ class _WorkspaceState extends State<Workspace> {
   }
 
   void history(bool backwards) {
+    finishStroke();
     final source = backwards ? undo : redo;
     final target = backwards ? redo : undo;
     if (source.isEmpty) {
