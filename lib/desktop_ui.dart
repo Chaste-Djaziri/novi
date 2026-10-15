@@ -1,10 +1,10 @@
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forui/forui.dart';
 import 'package:macos_ui/macos_ui.dart' as mac;
 
-/// Desktop control layer. macos_ui paints macOS-style controls in Flutter;
-/// native window chrome and file panels remain provided by the operating system.
+/// Desktop control layer powered by Forui and macOS-adapted desktop controls.
 class DesktopTheme extends StatelessWidget {
   const DesktopTheme({super.key, required this.child});
   final Widget child;
@@ -39,25 +39,13 @@ class DesktopIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Tooltip(
     message: tooltip ?? '',
-    child: mac.MacosIconButton(
-      semanticLabel: tooltip,
-      onPressed: onPressed,
-      icon: IconTheme.merge(
-        data: IconThemeData(
-          size: 18,
-          color: onPressed == null
-              ? const Color(0xff666666)
-              : const Color(0xffdddddd),
-        ),
-        child: icon,
-      ),
-      backgroundColor: isSelected
-          ? const Color(0xff505050)
-          : Colors.transparent,
-      hoverColor: const Color(0xff404040),
-      borderRadius: BorderRadius.circular(5),
-      boxConstraints: const BoxConstraints.tightFor(width: 30, height: 28),
-      padding: const EdgeInsets.all(5),
+    child: FButton.icon(
+      semanticsTooltip: tooltip,
+      onPress: onPressed,
+      selected: isSelected,
+      variant: isSelected ? FButtonVariant.secondary : FButtonVariant.ghost,
+      size: FButtonSizeVariant.sm,
+      child: icon,
     ),
   );
 }
@@ -82,31 +70,13 @@ class DesktopButton extends StatelessWidget {
   final Widget? icon;
   final bool primary;
   @override
-  Widget build(BuildContext context) => mac.PushButton(
-    controlSize: mac.ControlSize.regular,
-    onPressed: onPressed,
-    secondary: !primary,
-    color: primary ? const Color(0xffbdbdbd) : null,
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-    child: DefaultTextStyle.merge(
-      style: TextStyle(
-        fontSize: 12,
-        color: primary ? Colors.black : const Color(0xffeeeeee),
-      ),
-      child: IconTheme.merge(
-        data: IconThemeData(
-          size: 15,
-          color: primary ? Colors.black : const Color(0xffdddddd),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[icon!, const SizedBox(width: 6)],
-            child,
-          ],
-        ),
-      ),
-    ),
+  Widget build(BuildContext context) => FButton(
+    onPress: onPressed,
+    variant: primary ? FButtonVariant.primary : FButtonVariant.secondary,
+    size: FButtonSizeVariant.sm,
+    mainAxisSize: MainAxisSize.min,
+    prefix: icon,
+    child: child,
   );
 }
 
@@ -123,27 +93,14 @@ class DesktopToolButton extends StatelessWidget {
   final bool selected;
   final ValueChanged<bool> onSelected;
   @override
-  Widget build(BuildContext context) => Semantics(
+  Widget build(BuildContext context) => FButton(
+    onPress: () => onSelected(!selected),
     selected: selected,
-    button: true,
-    child: mac.MacosIconButton(
-      onPressed: () => onSelected(!selected),
-      backgroundColor: selected ? const Color(0xff4c4c4c) : Colors.transparent,
-      hoverColor: const Color(0xff363636),
-      borderRadius: BorderRadius.circular(5),
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-      boxConstraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-      icon: DefaultTextStyle.merge(
-        style: const TextStyle(fontSize: 12, color: Color(0xffeeeeee)),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (avatar != null) ...[avatar!, const SizedBox(width: 6)],
-            label,
-          ],
-        ),
-      ),
-    ),
+    variant: selected ? FButtonVariant.secondary : FButtonVariant.ghost,
+    size: FButtonSizeVariant.sm,
+    mainAxisSize: MainAxisSize.min,
+    prefix: avatar,
+    child: label,
   );
 }
 
