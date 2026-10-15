@@ -1,3 +1,5 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
+
 import 'desktop_ui.dart';
 
 import 'dart:io';
@@ -445,7 +447,7 @@ class _WorkspaceState extends State<Workspace> {
                         FocusManager.instance.primaryFocus?.unfocus();
                         setState(() => inLibrary = true);
                       },
-                      icon: const Icon(Icons.home_outlined),
+                      icon: const Icon(CupertinoIcons.house),
                     ),
                     const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 12),
@@ -492,7 +494,10 @@ class _WorkspaceState extends State<Workspace> {
                                       DesktopIconButton(
                                         tooltip: 'Close tab ${tab.title}',
                                         onPressed: () => closeTab(id),
-                                        icon: const Icon(Icons.close, size: 14),
+                                        icon: const Icon(
+                                          CupertinoIcons.xmark,
+                                          size: 14,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -509,12 +514,12 @@ class _WorkspaceState extends State<Workspace> {
                         finishStroke();
                         setState(() => inLibrary = true);
                       },
-                      icon: const Icon(Icons.folder_open_outlined, size: 19),
+                      icon: const Icon(CupertinoIcons.folder_open, size: 19),
                     ),
                     DesktopIconButton(
                       tooltip: 'New document',
                       onPressed: create,
-                      icon: const Icon(Icons.add, size: 19),
+                      icon: const Icon(CupertinoIcons.plus, size: 19),
                     ),
                     DesktopPopupMenuButton<String>(
                       tooltip: 'Import, export and backup',
