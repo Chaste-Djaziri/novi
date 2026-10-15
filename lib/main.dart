@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart' show defaultTargetPlatform;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 
 import 'desktop_ui.dart';
@@ -10,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'notebook.dart';
 import 'library_ui.dart';
@@ -17,8 +19,30 @@ import 'workspace_tools.dart';
 
 import 'package:flutter/services.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (!kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.macOS ||
+          defaultTargetPlatform == TargetPlatform.windows ||
+          defaultTargetPlatform == TargetPlatform.linux)) {
+    try {
+      await windowManager.ensureInitialized();
+      const windowOptions = WindowOptions(
+        size: Size(1200, 800),
+        minimumSize: Size(960, 640),
+        center: true,
+        backgroundColor: Colors.transparent,
+        skipTaskbar: false,
+        titleBarStyle: TitleBarStyle.hidden,
+      );
+      windowManager.waitUntilReadyToShow(windowOptions, () async {
+        await windowManager.show();
+        await windowManager.focus();
+      });
+    } catch (_) {
+      // In tests or headless environments where platform channels are not hooked up.
+    }
+  }
   runApp(const NoviApp());
 }
 
@@ -450,6 +474,10 @@ class _WorkspaceState extends State<Workspace> {
                 height: 42,
                 child: Row(
                   children: [
+                    if (defaultTargetPlatform == TargetPlatform.macOS)
+                      const DragToMoveArea(
+                        child: SizedBox(width: 78, height: 42),
+                      ),
                     DesktopIconButton(
                       tooltip: 'Back to documents',
                       onPressed: () {
