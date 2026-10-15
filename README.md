@@ -17,13 +17,16 @@ Windows and Linux runners are scaffolded but have not been tested. Build them on
 
 ## Your first notebook
 
-1. Choose **New notebook**.
+1. Choose **New**, select Notebook, Whiteboard, Text document, or Quick note, then name it and select **Create**.
 2. Use **Draw** to write with a mouse or stylus, or **Type** to edit text.
 3. Undo and redo using the toolbar buttons.
 4. Wait for **Saved locally**, then close and reopen Novi.
-5. Use the top-right menu to export or import a notebook, back up the library, or restore a backup.
+5. Use **Document style** to change the cover, paper pattern, paper tone, or orientation.
+6. Return to **Documents** to search, filter by type, switch grid/list views, or star favorites. Import and library backups are available here; export is in the editor menu.
 
-Each notebook currently has one fixed-size page with an editable text area and original ink strokes. Pressure affects stroke width when provided by the device. Pen calibration, advanced input handling, multiple pages, rich text, and attachments are later work.
+The interface uses a black and grayscale theme with a white novi. wordmark. Documents have grayscale covers and Blank, Dotted, Squared, Ruled, or Wide ruled paper, with White, Gray, or Dark tones. Style choices and favorites are saved locally and included in portable files. Existing documents load with default styles.
+
+Each document currently has one fixed-size page with an editable text area and original ink strokes. Pressure affects stroke width when provided by the device. Whiteboards start in landscape with dotted paper; they are fixed pages rather than infinite canvases. Text documents open in typing mode. Quick notes use the same text-and-ink editor. Pen calibration, advanced input handling, multiple pages, rich text, recording, photos, and attachments are later work.
 
 Edits save to SQLite in the operating system's application-support directory. No account, cloud service, telemetry, or runtime network access is used by the application. Undo history is limited to the current session and notebook selection.
 
