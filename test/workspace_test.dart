@@ -89,6 +89,14 @@ void main() {
           .widget<InteractiveViewer>(find.byType(InteractiveViewer))
           .transformationController!;
       expect(firstView.value.getMaxScaleOnAxis(), 1.25);
+      await tester.tap(find.text('Hand'));
+      await tester.pumpAndSettle();
+      final priorMatrix = firstView.value.clone();
+      await tester.dragFrom(point(250, 250), const Offset(35, 25));
+      await tester.pumpAndSettle();
+      expect(firstView.value, isNot(priorMatrix));
+      await tester.tap(find.text('Type'));
+      await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Open document'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Beta').first);
