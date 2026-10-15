@@ -181,18 +181,25 @@ class _LibraryViewState extends State<LibraryView> {
     return Row(
       children: [
         if (widget.showSidebar)
-          Material(
-            color: const Color(0xff151515),
-            child: Container(
-              width: 212,
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.only(left: 12),
-                    child: Wordmark(),
-                  ),
+          Container(
+            width: 212,
+            margin: const EdgeInsets.fromLTRB(8, 0, 0, 8),
+            decoration: BoxDecoration(
+              color: const Color(0xff181818),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.08),
+                width: 0.8,
+              ),
+            ),
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(left: 12),
+                  child: Wordmark(),
+                ),
                 const Padding(
                   padding: EdgeInsets.fromLTRB(12, 8, 0, 36),
                   child: Text(
@@ -256,11 +263,76 @@ class _LibraryViewState extends State<LibraryView> {
                 ),
               ],
             ),
+          )
+        else
+          Container(
+            width: 52,
+            margin: const EdgeInsets.fromLTRB(8, 0, 0, 8),
+            decoration: BoxDecoration(
+              color: const Color(0xff181818),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.08),
+                width: 0.8,
+              ),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Column(
+              children: [
+                DesktopIconButton(
+                  tooltip: 'Documents',
+                  icon: Icon(
+                    CupertinoIcons.folder,
+                    size: 20,
+                    color: !favorites ? Colors.white : Colors.grey,
+                  ),
+                  onPressed: () => setState(() => favorites = false),
+                ),
+                const SizedBox(height: 10),
+                DesktopIconButton(
+                  tooltip: 'Favorites',
+                  icon: Icon(
+                    CupertinoIcons.star,
+                    size: 20,
+                    color: favorites ? Colors.white : Colors.grey,
+                  ),
+                  onPressed: () => setState(() => favorites = true),
+                ),
+                const Spacer(),
+                const Divider(indent: 8, endIndent: 8),
+                DesktopIconButton(
+                  tooltip: 'Back up library',
+                  icon: const Icon(CupertinoIcons.archivebox, size: 20),
+                  onPressed: widget.enabled
+                      ? () => widget.onTransfer('backup')
+                      : null,
+                ),
+                const SizedBox(height: 6),
+                DesktopIconButton(
+                  tooltip: 'Restore backup',
+                  icon: const Icon(
+                    CupertinoIcons.arrow_counterclockwise,
+                    size: 20,
+                  ),
+                  onPressed: widget.enabled
+                      ? () => widget.onTransfer('restore')
+                      : null,
+                ),
+              ],
+            ),
           ),
-        ),
         Expanded(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(32, 28, 32, 16),
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(6, 0, 8, 6),
+            decoration: BoxDecoration(
+              color: const Color(0xff161616),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.08),
+                width: 0.8,
+              ),
+            ),
+            padding: const EdgeInsets.fromLTRB(28, 20, 28, 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
