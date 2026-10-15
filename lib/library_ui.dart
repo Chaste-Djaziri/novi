@@ -279,41 +279,34 @@ class _LibraryViewState extends State<LibraryView> {
             padding: const EdgeInsets.symmetric(vertical: 14),
             child: Column(
               children: [
-                DesktopIconButton(
+                _buildRailItem(
                   tooltip: 'Documents',
-                  icon: Icon(
-                    CupertinoIcons.folder,
-                    size: 20,
-                    color: !favorites ? Colors.white : Colors.grey,
-                  ),
+                  icon: CupertinoIcons.folder,
+                  selected: !favorites,
                   onPressed: () => setState(() => favorites = false),
                 ),
                 const SizedBox(height: 10),
-                DesktopIconButton(
+                _buildRailItem(
                   tooltip: 'Favorites',
-                  icon: Icon(
-                    CupertinoIcons.star,
-                    size: 20,
-                    color: favorites ? Colors.white : Colors.grey,
-                  ),
+                  icon: CupertinoIcons.star,
+                  selected: favorites,
                   onPressed: () => setState(() => favorites = true),
                 ),
                 const Spacer(),
                 const Divider(indent: 8, endIndent: 8),
-                DesktopIconButton(
+                _buildRailItem(
                   tooltip: 'Back up library',
-                  icon: const Icon(CupertinoIcons.archivebox, size: 20),
+                  icon: CupertinoIcons.archivebox,
+                  selected: false,
                   onPressed: widget.enabled
                       ? () => widget.onTransfer('backup')
                       : null,
                 ),
                 const SizedBox(height: 6),
-                DesktopIconButton(
+                _buildRailItem(
                   tooltip: 'Restore backup',
-                  icon: const Icon(
-                    CupertinoIcons.arrow_counterclockwise,
-                    size: 20,
-                  ),
+                  icon: CupertinoIcons.arrow_counterclockwise,
+                  selected: false,
                   onPressed: widget.enabled
                       ? () => widget.onTransfer('restore')
                       : null,
@@ -555,6 +548,47 @@ class _LibraryViewState extends State<LibraryView> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildRailItem({
+    required String tooltip,
+    required IconData icon,
+    required bool selected,
+    required VoidCallback? onPressed,
+  }) {
+    final enabled = onPressed != null;
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: selected ? const Color(0xff2e2e2e) : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onPressed,
+          child: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: selected
+                  ? Border.all(
+                      color: Colors.white.withValues(alpha: 0.16),
+                      width: 0.8,
+                    )
+                  : null,
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              icon,
+              size: 19,
+              color: selected
+                  ? Colors.white
+                  : (enabled ? Colors.white60 : Colors.white24),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
