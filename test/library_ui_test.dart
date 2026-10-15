@@ -1,3 +1,5 @@
+import 'desktop_test_support.dart';
+
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -12,6 +14,7 @@ import 'package:novi/notebook.dart';
 import 'widget_test.dart' show TestPaths;
 
 void main() {
+  initializeDesktopWidgetTests();
   testWidgets(
     'grayscale library, creation preview, favorites and minimum-size layout',
     (tester) async {
