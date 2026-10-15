@@ -142,6 +142,27 @@ The first technical alpha is implemented. A reported native crash on New noteboo
 - [x] Captured and visually inspected visual preview artifact `build/ui-preview/new-popup.png`.
 - [ ] Hands-on interaction check in the running Mac app.
 
+## Goodnotes-style New Notebook creation dialog — 2026-10-15
+- [x] Implemented dedicated Goodnotes-style creation dialog in `CreateDocumentDialog`:
+  - Top header with circular dark close button (`X`), centered title ("New Notebook" / "Document Style"), and macOS active-blue pill button ("✓ Create" / "✓ Save style").
+  - Top section with side-by-side interactive preview cards:
+    - **COVER**: Miniature notebook cover with real shade, spine shadow, elastic band, and document title.
+    - **PAPER**: Miniature paper preview with live pattern and tone rendering, framed with active blue indicator line.
+  - Grouped settings cards on right:
+    - Name field with `document-name` key and real-time live preview synchronization.
+    - Format dropdown selector (Notebook, Whiteboard, Text document, Quick note).
+    - Cover switch toggle.
+    - Paper template size selector ("Standard, Portrait" / "Standard, Landscape").
+    - Paper template color selector (Yellow, White, Dark).
+  - Bottom sections:
+    - **Paper Templates**: Essentials row with Blank, Dotted Paper, Squared Paper (with active circular blue checkmark badge `(✓)`), Ruled Narrow, and Ruled Wide, plus individual 3-color tone dots under each template card.
+    - **Cover Styles**: Essentials row with 6 cover shades (Charcoal, Graphite, Slate, Silver, Bright, Alabaster) with `Cover 1`–`Cover 6` tooltips.
+- [x] `flutter analyze`: clean (0 issues).
+- [x] Unit and widget test suite: all 6 tests pass (`test/library_ui_test.dart` and `test/workspace_test.dart`) and all 4 tests in `test/widget_test.dart` pass.
+- [x] Native macOS integration test suite: all 5 tests pass in a live macOS process (`flutter test -d macos integration_test/notebook_test.dart`).
+- [x] Captured and visually verified visual preview artifact `build/ui-preview/creation.png`.
+- [ ] Hands-on interaction check in the running Mac app.
+
 ## Next
 Perform hands-on visual and drag verification in the rebuilt Mac app. Continue the desktop acceptance checks listed in the checklist above, recording results here.
 
