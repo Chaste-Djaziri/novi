@@ -1,17 +1,42 @@
-# novi
+# novi.
 
-A new Flutter project.
+One workspace. Every way of thinking.
 
-## Getting Started
+An early desktop notebook: local, offline, and account-free.
 
-This project is a starting point for a Flutter application.
+## Start
 
-A few resources to get you started if this is your first Flutter project:
+Install Flutter, then run:
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+```sh
+flutter pub get
+flutter run -d macos
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Windows and Linux runners are scaffolded but have not been tested. Build them on their respective operating systems.
+
+## Your first notebook
+
+1. Choose **New notebook**.
+2. Use **Draw** to write with a mouse or stylus, or **Type** to edit text.
+3. Undo and redo using the toolbar buttons.
+4. Wait for **Saved locally**, then close and reopen Novi.
+5. Use the top-right menu to export or import a notebook, back up the library, or restore a backup.
+
+Each notebook currently has one fixed-size page with an editable text area and original ink strokes. Pressure affects stroke width when provided by the device. Pen calibration, advanced input handling, multiple pages, rich text, and attachments are later work.
+
+Edits save to SQLite in the operating system's application-support directory. No account, cloud service, telemetry, or runtime network access is used by the application. Undo history is limited to the current session and notebook selection.
+
+Restore and import add copies without overwriting existing notebooks. Backups currently include all notebooks; there are no library preferences or attachments yet. Portable files are unencrypted ZIP archives with a version-1 JSON manifest. Keep them private as appropriate for their contents.
+
+## Verification
+
+```sh
+flutter analyze
+flutter test
+flutter run -d macos --no-resident
+```
+
+Automated checks cover editing, undo/redo, drawing, reopening SQLite, and document/backup archive round trips. Actual tablet hardware, native file dialogs, and Windows/Linux builds still need hands-on verification.
+
+Follow [the progress checklist](docs/PROGRESS.md) for current work and [the product roadmap](docs/PRODUCT_ROADMAP.md) for the longer-term direction.
