@@ -50,6 +50,12 @@ void main() {
         final icons = FontLoader('MaterialIcons')
           ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
         await icons.load();
+        final foruiInter = FontLoader('packages/forui/Inter')
+          ..addFont(rootBundle.load('packages/forui/assets/fonts/inter/Inter.ttf'));
+        await foruiInter.load();
+        final foruiLucide = FontLoader('packages/forui_lucide/ForuiLucideIcons')
+          ..addFont(rootBundle.load('packages/forui_lucide/assets/lucide.ttf'));
+        await foruiLucide.load();
       });
       tester.view.physicalSize = const Size(1200, 800);
       tester.view.devicePixelRatio = 1;
