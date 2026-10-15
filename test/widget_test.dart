@@ -1,3 +1,5 @@
+import 'desktop_test_support.dart';
+
 import 'dart:io';
 import 'dart:convert';
 import 'dart:typed_data';
@@ -20,6 +22,7 @@ class TestPaths extends PathProviderPlatform {
 }
 
 void main() {
+  initializeDesktopWidgetTests();
   setUpAll(() => EditableText.debugDeterministicCursor = true);
   tearDownAll(() => EditableText.debugDeterministicCursor = false);
   test('styles and document kinds survive storage and portable files; old documents still load', () {
