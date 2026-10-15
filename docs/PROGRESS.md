@@ -100,7 +100,23 @@ The first technical alpha is implemented. A reported native crash on New noteboo
 - [x] Native macOS integration test suite: all 5 tests pass in a live macOS process (`flutter test -d macos integration_test/notebook_test.dart`).
 - [ ] Hands-on visual and drag verification in the rebuilt Mac app.
 
+## Unified desktop top header bar (ChatGPT reference layout) — 2026-10-15
+- [x] Implemented continuous `DesktopWindowHeader` spanning the entire window width above both sidebar and workspace.
+- [x] Integrated macOS traffic light clearance (~78px `DragToMoveArea`) on the top-left edge.
+- [x] Added desktop navigation controls directly alongside traffic lights: Back (`←` / `CupertinoIcons.chevron_left`), Forward (`→` / `CupertinoIcons.chevron_right`), and Sidebar toggle (`[|]` / `CupertinoIcons.sidebar_left`).
+- [x] Implemented document tabs with kind icon, title, active elevated styling, and close buttons (`×`) right in the top header.
+- [x] Placed rounded square `[+]` New document button directly adjacent to the tabs/navigation controls matching ChatGPT UI.
+- [x] Configured middle empty space with `DragToMoveArea` for native window drag affordance.
+- [x] Kept trailing document actions (`Open document` folder button, `Import, export and backup` menu) on the top-right.
+- [x] Built bidirectional navigation history (`_navHistory`, `_navIndex`) for back/forward navigation between documents and library.
+- [x] Added `showSidebar` toggling in `LibraryView` and unified workspace.
+- [x] `flutter analyze`: clean (0 issues).
+- [x] Unit/widget test suite: all tests pass (`test/library_ui_test.dart` and `test/workspace_test.dart`).
+- [x] Native macOS integration test suite: all 5 tests pass in a live macOS process (`flutter test -d macos integration_test/notebook_test.dart`).
+- [x] Regenerated visual previews in `build/ui-preview/` (`library.png`, `creation.png`, `editor.png`, `minimum-editor.png`, `minimum-dialog.png`); verified top header buttons, tabs, and layout across library and editor.
+- [ ] Hands-on interaction check in the running Mac app.
+
 ## Next
-Confirm the hidden title bar, native traffic light positioning, window drag zones, and Forui desktop controls visually in the rebuilt Mac app. Complete the hands-on desktop acceptance checks in order, recording verification notes here.
+Perform hands-on visual and drag verification in the rebuilt Mac app. Continue the desktop acceptance checks listed in the checklist above, recording results here.
 
 
