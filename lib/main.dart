@@ -384,8 +384,7 @@ class _WorkspaceState extends State<Workspace> {
                                             child: CustomPaint(
                                               painter: InkPainter([
                                                 ...current!.strokes,
-                                                if (activeStroke != null)
-                                                  activeStroke!,
+                                                ?activeStroke,
                                               ]),
                                               size: Size.infinite,
                                             ),
