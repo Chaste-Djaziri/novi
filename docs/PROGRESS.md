@@ -69,5 +69,16 @@ The first technical alpha is implemented. A reported native crash on New noteboo
 - Restore/import add copies; no existing notebook is overwritten. Current library backups contain all notebook content; preferences and attachments do not exist yet.
 - ZIP manifests are versioned and unencrypted. The initial reader limits archive/manifest size to 50 MB.
 
+## Desktop system UI controls — 2026-10-15
+- [x] Replaced mobile/Material chips, pill buttons, and default controls with desktop macOS-styled components (`DesktopTheme`, `DesktopIconButton`, `DesktopButton`, `DesktopToolButton`, `DesktopPopupButton`, `DesktopPopupMenuButton`, `DesktopTextField`, `DesktopSlider`, `DesktopDialog`, `DesktopListTile`).
+- [x] Configured native macOS graphite palette, dark canvas, subtle borders, and macOS-style outline glyphs.
+- [x] Resolved popup menu route flex overflow by scaling items cleanly with `FittedBox` and applying `.AppleSystemUIFont` typography.
+- [x] `flutter analyze`: clean.
+- [x] Unit/widget test suite: all 5 tests pass (`test/library_ui_test.dart` and `test/workspace_test.dart`).
+- [x] Native macOS integration test suite: all 5 tests pass in a live macOS process (`flutter test -d macos integration_test/notebook_test.dart`).
+- [x] Regenerated visual preview images in `build/ui-preview/` (`library.png`, `creation.png`, `editor.png`, `minimum-editor.png`, `minimum-dialog.png`); verified desktop layout and typography.
+- [ ] Hands-on visual and interaction check in the normal rebuilt Mac app.
+
 ## Next
-Review the grayscale library and creation/styling flow in the rebuilt Mac app, then finish the native Mac acceptance journey above, recording results here. Then address findings before advancing to Pen Studio. Keep each edit committed individually and update this checklist after verified progress.
+Review the desktop-styled UI in the rebuilt Mac app, then finish the native Mac acceptance journey above, recording results here. Then address findings before advancing to Pen Studio. Keep each edit committed individually and update this checklist after verified progress.
+
