@@ -116,11 +116,70 @@ class _WorkspaceState extends State<Workspace> {
   int? activePointer;
   bool get drawing => session.tool != EditorTool.text;
   bool inLibrary = true;
+  bool showSidebar = true;
+  final List<String?> _navHistory = [];
+  int _navIndex = -1;
   String status = 'Opening local library…';
   @override
   void initState() {
     super.initState();
     initialize();
+  }
+
+  void _pushNav(String? id) {
+    if (_navIndex >= 0 &&
+        _navIndex < _navHistory.length &&
+        _navHistory[_navIndex] == id) {
+      return;
+    }
+    if (_navIndex + 1 < _navHistory.length) {
+      _navHistory.removeRange(_navIndex + 1, _navHistory.length);
+    }
+    _navHistory.add(id);
+    _navIndex = _navHistory.length - 1;
+  }
+
+  bool get canGoBack => _navIndex > 0 || !inLibrary;
+  bool get canGoForward =>
+      (_navIndex >= 0 && _navIndex < _navHistory.length - 1) ||
+      (inLibrary && current != null);
+
+  void navigateBack() {
+    finishStroke();
+    FocusManager.instance.primaryFocus?.unfocus();
+    if (_navIndex > 0) {
+      _navIndex--;
+      final target = _navHistory[_navIndex];
+      _applyNav(target);
+    } else {
+      _pushNav(null);
+      setState(() => inLibrary = true);
+    }
+  }
+
+  void navigateForward() {
+    finishStroke();
+    FocusManager.instance.primaryFocus?.unfocus();
+    if (_navIndex >= 0 && _navIndex < _navHistory.length - 1) {
+      _navIndex++;
+      final target = _navHistory[_navIndex];
+      _applyNav(target);
+    } else if (inLibrary && current != null) {
+      setState(() => inLibrary = false);
+      _pushNav(current!.id);
+    }
+  }
+
+  void _applyNav(String? id) {
+    if (id == null) {
+      setState(() => inLibrary = true);
+    } else {
+      final note = notes.firstWhere(
+        (n) => n.id == id,
+        orElse: () => notes.first,
+      );
+      select(note, pushHistory: false);
+    }
   }
 
   Future<void> initialize() async {
@@ -140,8 +199,9 @@ class _WorkspaceState extends State<Workspace> {
       }
       store = opened;
       if (notes.isNotEmpty) {
-        select(notes.first);
+        select(notes.first, pushHistory: false);
       }
+      _pushNav(null);
       setState(() {
         status = 'Saved locally';
         inLibrary = true;
@@ -153,7 +213,7 @@ class _WorkspaceState extends State<Workspace> {
     }
   }
 
-  void select(Notebook note) {
+  void select(Notebook note, {bool pushHistory = true}) {
     finishStroke();
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
@@ -168,6 +228,9 @@ class _WorkspaceState extends State<Workspace> {
       gestureStart = null;
       selectionBox = null;
     });
+    if (pushHistory) {
+      _pushNav(note.id);
+    }
     if (session.tool == EditorTool.text) {
       session.textFocus.requestFocus();
     } else {
@@ -198,6 +261,7 @@ class _WorkspaceState extends State<Workspace> {
     });
     if (current?.id == id) {
       if (openIds.isEmpty) {
+        _pushNav(null);
         setState(() => inLibrary = true);
       } else {
         select(
@@ -396,16 +460,43 @@ class _WorkspaceState extends State<Workspace> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    body: inLibrary || current == null
-        ? LibraryView(
-            notes: notes,
-            enabled: store != null,
-            onCreate: create,
-            onOpen: select,
-            onFavorite: toggleFavorite,
-            onTransfer: transfer,
-          )
-        : editor(),
+    body: Column(
+      children: [
+        DesktopWindowHeader(
+          canGoBack: canGoBack,
+          canGoForward: canGoForward,
+          onBack: navigateBack,
+          onForward: navigateForward,
+          onToggleSidebar: () => setState(() => showSidebar = !showSidebar),
+          notes: notes,
+          openIds: openIds,
+          currentId: inLibrary ? null : current?.id,
+          showTabs: !inLibrary,
+          onSelectTab: (tab) => select(tab),
+          onCloseTab: closeTab,
+          onCreate: create,
+          onOpenDocument: () {
+            finishStroke();
+            setState(() => inLibrary = true);
+            _pushNav(null);
+          },
+          onTransfer: transfer,
+        ),
+        Expanded(
+          child: inLibrary || current == null
+              ? LibraryView(
+                  notes: notes,
+                  enabled: store != null,
+                  onCreate: create,
+                  onOpen: select,
+                  onFavorite: toggleFavorite,
+                  onTransfer: transfer,
+                  showSidebar: showSidebar,
+                )
+              : editor(),
+        ),
+      ],
+    ),
     bottomNavigationBar: Container(
       decoration: const BoxDecoration(
         border: Border(top: BorderSide(color: Color(0xff262626))),
@@ -468,115 +559,6 @@ class _WorkspaceState extends State<Workspace> {
         autofocus: true,
         child: Column(
           children: [
-            Material(
-              color: const Color(0xff141414),
-              child: SizedBox(
-                height: 42,
-                child: Row(
-                  children: [
-                    if (defaultTargetPlatform == TargetPlatform.macOS)
-                      const DragToMoveArea(
-                        child: SizedBox(width: 78, height: 42),
-                      ),
-                    DesktopIconButton(
-                      tooltip: 'Back to documents',
-                      onPressed: () {
-                        finishStroke();
-                        FocusManager.instance.primaryFocus?.unfocus();
-                        setState(() => inLibrary = true);
-                      },
-                      icon: const Icon(CupertinoIcons.house),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      child: Text(
-                        'novi.',
-                        style: TextStyle(
-                          fontSize: 23,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -1,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        children: openIds.map((id) {
-                          final tab = notes.firstWhere((n) => n.id == id);
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 7, right: 4),
-                            child: Material(
-                              color: note.id == id
-                                  ? const Color(0xff303030)
-                                  : const Color(0xff191919),
-                              borderRadius: const BorderRadius.vertical(
-                                top: Radius.circular(9),
-                              ),
-                              child: InkWell(
-                                onTap: () => select(tab),
-                                child: SizedBox(
-                                  width: 190,
-                                  child: Row(
-                                    children: [
-                                      const SizedBox(width: 12),
-                                      Icon(kindIcon(tab.kind), size: 15),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          tab.title,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(fontSize: 12),
-                                        ),
-                                      ),
-                                      DesktopIconButton(
-                                        tooltip: 'Close tab ${tab.title}',
-                                        onPressed: () => closeTab(id),
-                                        icon: const Icon(
-                                          CupertinoIcons.xmark,
-                                          size: 14,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                    DesktopIconButton(
-                      tooltip: 'Open document',
-                      onPressed: () {
-                        finishStroke();
-                        setState(() => inLibrary = true);
-                      },
-                      icon: const Icon(CupertinoIcons.folder_open, size: 19),
-                    ),
-                    DesktopIconButton(
-                      tooltip: 'New document',
-                      onPressed: create,
-                      icon: const Icon(CupertinoIcons.plus, size: 19),
-                    ),
-                    DesktopPopupMenuButton<String>(
-                      tooltip: 'Import, export and backup',
-                      onSelected: transfer,
-                      itemBuilder: (_) => const [
-                        DesktopMenuItem(
-                          value: 'export',
-                          child: Text('Export notebook'),
-                        ),
-                        DesktopMenuItem(
-                          value: 'backup',
-                          child: Text('Back up library'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
             WorkspaceToolbar(
               session: session,
               note: note,
@@ -989,4 +971,275 @@ class InkPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant InkPainter oldDelegate) => true;
+}
+
+class DesktopWindowHeader extends StatelessWidget {
+  const DesktopWindowHeader({
+    super.key,
+    required this.canGoBack,
+    required this.canGoForward,
+    required this.onBack,
+    required this.onForward,
+    required this.onToggleSidebar,
+    required this.notes,
+    required this.openIds,
+    required this.currentId,
+    required this.showTabs,
+    required this.onSelectTab,
+    required this.onCloseTab,
+    required this.onCreate,
+    required this.onOpenDocument,
+    required this.onTransfer,
+  });
+
+  final bool canGoBack;
+  final bool canGoForward;
+  final VoidCallback? onBack;
+  final VoidCallback? onForward;
+  final VoidCallback? onToggleSidebar;
+  final List<Notebook> notes;
+  final List<String> openIds;
+  final String? currentId;
+  final bool showTabs;
+  final ValueChanged<Notebook> onSelectTab;
+  final ValueChanged<String> onCloseTab;
+  final VoidCallback onCreate;
+  final VoidCallback onOpenDocument;
+  final ValueChanged<String> onTransfer;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xff161616),
+      child: Container(
+        height: 42,
+        decoration: const BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: Color(0xff252525), width: 0.8),
+          ),
+        ),
+        child: Row(
+          children: [
+            if (defaultTargetPlatform == TargetPlatform.macOS)
+              const DragToMoveArea(
+                child: SizedBox(width: 78, height: 42),
+              ),
+            DesktopHeaderButton(
+              tooltip: 'Back to documents',
+              icon: CupertinoIcons.chevron_left,
+              onPressed: canGoBack ? onBack : null,
+            ),
+            const SizedBox(width: 2),
+            DesktopHeaderButton(
+              tooltip: 'Forward',
+              icon: CupertinoIcons.chevron_right,
+              onPressed: canGoForward ? onForward : null,
+            ),
+            const SizedBox(width: 2),
+            DesktopHeaderButton(
+              tooltip: 'Toggle sidebar',
+              icon: CupertinoIcons.sidebar_left,
+              onPressed: onToggleSidebar,
+            ),
+            Container(
+              width: 1,
+              height: 16,
+              margin: const EdgeInsets.symmetric(horizontal: 8),
+              color: Colors.white.withValues(alpha: 0.1),
+            ),
+            if (showTabs)
+              Flexible(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final id in openIds) ...[
+                        _buildTab(context, id),
+                        const SizedBox(width: 4),
+                      ],
+                      _buildCreateButton(),
+                    ],
+                  ),
+                ),
+              )
+            else
+              _buildCreateButton(),
+            const Expanded(
+              child: DragToMoveArea(
+                child: SizedBox(
+                  height: 42,
+                  width: double.infinity,
+                ),
+              ),
+            ),
+            DesktopIconButton(
+              tooltip: 'Open document',
+              onPressed: onOpenDocument,
+              icon: const Icon(CupertinoIcons.folder_open, size: 18),
+            ),
+            DesktopPopupMenuButton<String>(
+              tooltip: 'Import, export and backup',
+              onSelected: onTransfer,
+              itemBuilder: (_) => const [
+                DesktopMenuItem(
+                  value: 'export',
+                  child: Text('Export notebook'),
+                ),
+                DesktopMenuItem(
+                  value: 'backup',
+                  child: Text('Back up library'),
+                ),
+                DesktopMenuItem(
+                  value: 'import',
+                  child: Text('Import .novi file'),
+                ),
+                DesktopMenuItem(
+                  value: 'restore',
+                  child: Text('Restore backup'),
+                ),
+              ],
+            ),
+            const SizedBox(width: 6),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTab(BuildContext context, String id) {
+    final tab = notes.firstWhere(
+      (n) => n.id == id,
+      orElse: () => Notebook(id: id, title: 'Document'),
+    );
+    final active = tab.id == currentId;
+    return Material(
+      color: active ? const Color(0xff2b2b2b) : const Color(0xff1c1c1c),
+      borderRadius: BorderRadius.circular(7),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(7),
+        onTap: () => onSelectTab(tab),
+        child: Container(
+          height: 28,
+          constraints: const BoxConstraints(minWidth: 90, maxWidth: 175),
+          padding: const EdgeInsets.only(left: 8, right: 3),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(7),
+            border: Border.all(
+              color: active
+                  ? Colors.white.withValues(alpha: 0.14)
+                  : Colors.white.withValues(alpha: 0.05),
+              width: 0.8,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                kindIcon(tab.kind),
+                size: 13,
+                color: active ? Colors.white : Colors.white60,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  tab.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                    color: active ? Colors.white : Colors.white70,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 2),
+              DesktopIconButton(
+                tooltip: 'Close tab ${tab.title}',
+                onPressed: () => onCloseTab(id),
+                icon: Icon(
+                  CupertinoIcons.xmark,
+                  size: 11,
+                  color: active ? Colors.white70 : Colors.white38,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCreateButton() {
+    return Tooltip(
+      message: 'New document',
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(6),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(6),
+          onTap: onCreate,
+          child: Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.12),
+                width: 0.8,
+              ),
+            ),
+            alignment: Alignment.center,
+            child: const Icon(
+              CupertinoIcons.plus,
+              size: 13,
+              color: Colors.white70,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class DesktopHeaderButton extends StatelessWidget {
+  const DesktopHeaderButton({
+    super.key,
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(6),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(6),
+          onTap: onPressed,
+          child: Container(
+            width: 28,
+            height: 28,
+            alignment: Alignment.center,
+            child: Icon(
+              icon,
+              size: 15,
+              color: enabled
+                  ? Colors.white70
+                  : Colors.white.withValues(alpha: 0.22),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
