@@ -38,6 +38,7 @@ dependencies:
   file_selector: ^1.1.0
   sqlite3: ^3.7.1
   archive: ^4.5.2
+  macos_ui: ^2.2.2
 
 dev_dependencies:
   integration_test:
