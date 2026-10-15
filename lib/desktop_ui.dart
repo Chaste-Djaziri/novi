@@ -196,7 +196,7 @@ class DesktopPopupMenuButton<T> extends StatelessWidget {
   Widget build(BuildContext context) => Tooltip(
     message: tooltip,
     child: mac.MacosPulldownButton(
-      icon: const Icon(Icons.more_horiz, size: 19),
+      icon: Icons.more_horiz,
       items: itemBuilder(context)
           .map(
             (item) => mac.MacosPulldownMenuItem(
@@ -348,11 +348,11 @@ class DesktopListTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
-                children: [title, if (subtitle != null) subtitle!],
+                children: [title, ?subtitle],
               ),
             ),
           ),
-          if (trailing != null) trailing!,
+          ?trailing,
         ],
       ),
     ),
