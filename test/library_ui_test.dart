@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:novi/main.dart';
@@ -14,6 +15,21 @@ void main() {
   testWidgets(
     'grayscale library, creation preview, favorites and minimum-size layout',
     (tester) async {
+      // Use an available desktop font for readable local preview artifacts.
+      // Other platforms still run all layout and behavior assertions.
+      await tester.runAsync(() async {
+        final font = File('/System/Library/Fonts/SFNS.ttf');
+        if (await font.exists()) {
+          final loader = FontLoader('Roboto')
+            ..addFont(
+              font.readAsBytes().then((bytes) => ByteData.sublistView(bytes)),
+            );
+          await loader.load();
+        }
+        final icons = FontLoader('MaterialIcons')
+          ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
+        await icons.load();
+      });
       tester.view.physicalSize = const Size(1200, 800);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
