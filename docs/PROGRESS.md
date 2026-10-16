@@ -295,6 +295,24 @@ The first technical alpha is implemented. A reported native crash on New noteboo
 - [x] Unit and widget test suite: all 17 tests pass (`test/library_ui_test.dart`, `test/widget_test.dart`, `test/workspace_test.dart`).
 - [ ] Hands-on interaction check in the running Mac app.
 
+## Small zoom out smaller than viewport and centered side scroll — 2026-10-16
+- [x] Allowed zooming out the page to small sizes even smaller than the viewport:
+  - Lowered minimum scale threshold to 5% (`minScale: 0.05` on `InteractiveViewer` and `.clamp(0.05, 3.0)` in `zoom()`).
+  - Sized viewer child dynamically with `childHeight: isFitting ? math.max(constraints.maxHeight / scale, pageHeight + 48) : math.max(constraints.maxHeight, pageHeight + 48)` and `childWidth: isFitting ? (constraints.maxWidth / scale) : pageWidth`, allowing small zoom scales to render cleanly without being clipped or restricted by viewport bounds.
+  - Centered child contents vertically and horizontally via `Align(alignment: isFitting ? Alignment.center : Alignment.topCenter)`.
+- [x] Maintained center alignment on side scroll when smaller than the viewport:
+  - In `_handleCanvasScroll`, horizontal translation bounds remain locked (`minX = maxX = 0.0`) when `paperWidth <= constraints.maxWidth`.
+  - When smaller than the viewport height (`totalHeight <= constraints.maxHeight`), vertical bounds also lock (`minY = maxY = 0.0`) to preserve vertical centering.
+  - Reset view button resets back to 100% scale and centers the paper in the viewport.
+- [x] Added automated widget test in `test/widget_test.dart`:
+  - Verified zooming out 8 steps reaches `< 0.5` scale and paper width/height are smaller than the viewport.
+  - Verified paper center aligns with viewport center horizontally.
+  - Verified left and right pointer scroll events keep the paper centered with 0 drift.
+  - Verified Reset view restores 1.0 scale and centered alignment.
+- [x] `flutter analyze`: clean (0 issues).
+- [x] Unit and widget test suite: all 17 tests pass (`test/library_ui_test.dart`, `test/widget_test.dart`, `test/workspace_test.dart`).
+- [ ] Hands-on interaction check in the running Mac app.
+
 ## Next
 Perform hands-on visual and drag verification in the rebuilt Mac app. Continue the desktop acceptance checks listed in the checklist above, recording results here.
 
