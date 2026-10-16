@@ -199,13 +199,16 @@ class DesktopSlider extends StatelessWidget {
   final double max;
   final ValueChanged<double> onChanged;
   @override
-  Widget build(BuildContext context) => mac.MacosSlider(
-    value: value,
-    min: min,
-    max: max,
-    onChanged: onChanged,
-    color: const Color(0xffbcbcbc),
-    backgroundColor: const Color(0xff4a4a4a),
+  Widget build(BuildContext context) => SizedBox(
+    height: 20,
+    child: mac.MacosSlider(
+      value: value,
+      min: min,
+      max: max,
+      onChanged: onChanged,
+      color: const Color(0xffbcbcbc),
+      backgroundColor: const Color(0xff4a4a4a),
+    ),
   );
 }
 
