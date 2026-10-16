@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:ui' as ui;
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:novi/ink_material.dart';
@@ -33,6 +34,12 @@ Future<ui.Image> render(String kind, {bool dark = false}) async {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(() async {
+    final font = File('/System/Library/Fonts/SFNS.ttf');
+    if (font.existsSync()) {
+      await (FontLoader('InkPreview')..addFont(Future.value(ByteData.sublistView(font.readAsBytesSync())))).load();
+    }
+  });
   test('all materials have matching size geometry and pressure response', () {
     final session = EditorSession(Notebook(id: 'ink', title: 'Ink'));
     addTearDown(session.dispose);
@@ -106,7 +113,7 @@ void main() {
         final image = await render(kinds[i], dark: column == 1);
         canvas.drawImage(image, Offset(column * 180, i * 155 + 25), Paint());
         image.dispose();
-        final label = TextPainter(text: TextSpan(text: kinds[i], style: const TextStyle(color: Colors.white, fontSize: 14)), textDirection: TextDirection.ltr)..layout();
+        final label = TextPainter(text: TextSpan(text: kinds[i], style: const TextStyle(color: Colors.white, fontSize: 14, fontFamily: 'InkPreview')), textDirection: TextDirection.ltr)..layout();
         canvas.drawRect(Rect.fromLTWH(column * 180, i * 155, 180, 25), Paint()..color = Colors.black);
         label.paint(canvas, Offset(column * 180 + 5, i * 155 + 3));
       }
