@@ -45,25 +45,28 @@ class ToolMenuPopup extends StatelessWidget {
                   ),
                 ),
               ),
-              Container(
-                width: width,
-                decoration: BoxDecoration(
-                  color: const Color(0xff1c1c1e),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.12),
-                    width: 0.8,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.6),
-                      blurRadius: 28,
-                      spreadRadius: 4,
-                      offset: const Offset(0, 10),
+              Material(
+                color: Colors.transparent,
+                child: Container(
+                  width: width,
+                  decoration: BoxDecoration(
+                    color: const Color(0xff1c1c1e),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.12),
+                      width: 0.8,
                     ),
-                  ],
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.6),
+                        blurRadius: 28,
+                        spreadRadius: 4,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: child,
                 ),
-                child: child,
               ),
             ],
           ),

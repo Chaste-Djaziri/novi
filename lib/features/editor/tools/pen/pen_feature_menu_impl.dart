@@ -142,17 +142,20 @@ class PenFeatureMenuDialog extends StatelessWidget {
           color: const Color(0xff2c2c2e),
           borderRadius: BorderRadius.circular(20),
         ),
-        child: SwitchListTile.adaptive(
-          title: Text(
-            label,
-            style: const TextStyle(color: Colors.white, fontSize: 14),
+        child: Material(
+          color: Colors.transparent,
+          child: SwitchListTile.adaptive(
+            title: Text(
+              label,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+            ),
+            value: value,
+            onChanged: (next) {
+              onChanged(next);
+              onUpdate();
+            },
+            activeThumbColor: const Color(0xff34c759),
           ),
-          value: value,
-          onChanged: (next) {
-            onChanged(next);
-            onUpdate();
-          },
-          activeThumbColor: const Color(0xff34c759),
         ),
       );
 }

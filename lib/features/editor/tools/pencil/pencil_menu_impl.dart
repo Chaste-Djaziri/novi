@@ -157,19 +157,22 @@ class _PencilMenuDialogState extends State<PencilMenuDialog> {
           color: const Color(0xff2c2c2e),
           borderRadius: BorderRadius.circular(20),
         ),
-        child: SwitchListTile.adaptive(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14),
-          title: Text(
-            label,
-            style: const TextStyle(color: Colors.white, fontSize: 14),
+        child: Material(
+          color: Colors.transparent,
+          child: SwitchListTile.adaptive(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+            title: Text(
+              label,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+            ),
+            value: value,
+            onChanged: (next) {
+              onChanged(next);
+              widget.onUpdate();
+              setState(() {});
+            },
+            activeThumbColor: const Color(0xff34c759),
           ),
-          value: value,
-          onChanged: (next) {
-            onChanged(next);
-            widget.onUpdate();
-            setState(() {});
-          },
-          activeThumbColor: const Color(0xff34c759),
         ),
       );
 
@@ -179,18 +182,21 @@ class _PencilMenuDialogState extends State<PencilMenuDialog> {
       color: const Color(0xff2c2c2e),
       borderRadius: BorderRadius.circular(20),
     ),
-    child: ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14),
-      title: Text(
-        label,
-        style: const TextStyle(color: Colors.white, fontSize: 14),
+    child: Material(
+      color: Colors.transparent,
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+        title: Text(
+          label,
+          style: const TextStyle(color: Colors.white, fontSize: 14),
+        ),
+        trailing: const Icon(
+          CupertinoIcons.chevron_right,
+          color: Colors.white38,
+          size: 18,
+        ),
+        onTap: onTap,
       ),
-      trailing: const Icon(
-        CupertinoIcons.chevron_right,
-        color: Colors.white38,
-        size: 18,
-      ),
-      onTap: onTap,
     ),
   );
 }

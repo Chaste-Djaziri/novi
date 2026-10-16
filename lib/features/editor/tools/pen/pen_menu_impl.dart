@@ -301,19 +301,22 @@ class _PenMenuDialogState extends State<PenMenuDialog> {
     return Container(
       height: 44,
       decoration: const BoxDecoration(color: Color(0xff242426)),
-      child: ListTile(
-        dense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14),
-        title: Text(
-          label,
-          style: const TextStyle(color: Colors.white, fontSize: 13.5),
+      child: Material(
+        color: Colors.transparent,
+        child: ListTile(
+          dense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+          title: Text(
+            label,
+            style: const TextStyle(color: Colors.white, fontSize: 13.5),
+          ),
+          trailing: const Icon(
+            CupertinoIcons.chevron_right,
+            color: Colors.white38,
+            size: 17,
+          ),
+          onTap: onTap,
         ),
-        trailing: const Icon(
-          CupertinoIcons.chevron_right,
-          color: Colors.white38,
-          size: 17,
-        ),
-        onTap: onTap,
       ),
     );
   }
