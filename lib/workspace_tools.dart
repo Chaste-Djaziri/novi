@@ -11,6 +11,7 @@ import 'ink_material.dart';
 import 'features/editor/tools/common/tool_types.dart';
 import 'features/editor/tools/common/writing_icon_painters.dart';
 import 'features/editor/tools/common/editor_icon_painters.dart';
+import 'features/editor/widgets/tool_menu_popup.dart';
 
 // Temporary compatibility export for callers migrating from this legacy file.
 export 'features/editor/tools/common/tool_types.dart';
