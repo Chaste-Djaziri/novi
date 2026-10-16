@@ -34,6 +34,36 @@ class PaperTextEditor extends StatefulWidget {
 
 class _PaperTextEditorState extends State<PaperTextEditor> {
   Offset? down;
+  late String _previousText;
+  bool _wasComposing = false;
+  @override
+  void initState() {
+    super.initState();
+    _previousText = widget.controller.text;
+    widget.controller.addListener(_compositionChanged);
+  }
+
+  void _compositionChanged() {
+    final value = widget.controller.value;
+    final composing = value.composing.isValid && !value.composing.isCollapsed;
+    final committedWithoutTextChange =
+        _wasComposing && !composing && value.text == _previousText;
+    _previousText = value.text;
+    _wasComposing = composing;
+    if (committedWithoutTextChange) {
+      scheduleMicrotask(() {
+        if (mounted && widget.controller.text == value.text)
+          widget.onChanged(value.text);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_compositionChanged);
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final style = DefaultTextStyle.of(context).style.merge(
