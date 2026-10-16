@@ -524,6 +524,13 @@ Confirm material feel and pressure with a physical tablet in the normal Mac app.
 - [x] `flutter analyze`: clean. `flutter test`: all 40 tests pass.
 - [ ] Extract the remaining eraser/lasso/text painters and the private tool dialogs into their feature modules.
 
+## Incremental extraction: dialog module boundaries — 2026-10-16
+- [x] Added tool-owned dialog entrypoints for pen, tape, shape, lasso/select, eraser, and text popovers under `features/editor/tools`.
+- [x] Preserved the existing public dialog classes and callbacks through compatibility exports so toolbar behavior and imports remain stable.
+- [x] Added dialog-boundary coverage in `test/tool_dialog_boundaries_test.dart`.
+- [x] `flutter analyze`: clean. `flutter test`: all 41 tests pass.
+- [ ] Replace the compatibility exports with physically moved dialog implementations and extract the remaining eraser/lasso/text painters.
+
 
 ## Writing materials and paper footprints — 2026-10-16
 - [x] Added shared nib geometry and distinct fountain, ballpoint, brush, graphite pencil, highlighter and paper tape renderers. New styles store pen subtype/material version; legacy styles retain their renderer.
