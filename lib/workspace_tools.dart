@@ -64,6 +64,8 @@ class WorkspaceToolbar extends StatelessWidget {
     required this.onStyle,
     required this.onFontSize,
     required this.onBold,
+    this.hasStylus = false,
+    this.onToggleStylus,
   });
   final EditorSession session;
   final Notebook note;
@@ -76,6 +78,8 @@ class WorkspaceToolbar extends StatelessWidget {
   final VoidCallback onStyle;
   final ValueChanged<double> onFontSize;
   final VoidCallback onBold;
+  final bool hasStylus;
+  final VoidCallback? onToggleStylus;
   @override
   Widget build(BuildContext context) => Container(
     decoration: const BoxDecoration(
@@ -102,7 +106,9 @@ class WorkspaceToolbar extends StatelessWidget {
                   icon: const Icon(CupertinoIcons.arrow_uturn_right, size: 20),
                 ),
                 const SizedBox(width: 16),
-                ...EditorTool.values.map(
+                ...EditorTool.values
+                    .where((tool) => tool != EditorTool.hand || hasStylus)
+                    .map(
                   (tool) => Padding(
                     padding: const EdgeInsets.only(right: 6),
                     child: Tooltip(
@@ -138,6 +144,23 @@ class WorkspaceToolbar extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (onToggleStylus != null)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: DesktopIconButton(
+                      tooltip: hasStylus
+                          ? 'Stylus connected (click to disconnect)'
+                          : 'Connect stylus / pen',
+                      isSelected: hasStylus,
+                      onPressed: onToggleStylus,
+                      icon: Icon(
+                        hasStylus
+                            ? CupertinoIcons.scribble
+                            : CupertinoIcons.pencil_ellipsis_rectangle,
+                        size: 20,
+                      ),
+                    ),
+                  ),
                 const SizedBox(width: 16),
                 DesktopIconButton(
                   tooltip: 'Delete selected ink',
