@@ -561,6 +561,8 @@ Confirm material feel and pressure with a physical tablet in the normal Mac app.
 - [x] Added a Math Assist equation preview and separate feature-menu boundary coverage; `flutter analyze` and dialog tests pass.
 - [x] Fixed tool menu runtime assertions by adding Material ancestors for interactive tiles and the reusable popup surface.
 - [x] Verified `flutter analyze`, popup rendering, and dialog boundary tests after the Material fix.
+- [x] Pen feature links now navigate inside the existing popup with an animated content slide and back button instead of opening nested dialogs.
+- [x] Verified analyzer, popup rendering, and dialog boundary tests after the in-place navigation change.
 - [ ] Finish reducing legacy editor files and add broader painter comparison coverage.
 
 
