@@ -672,6 +672,46 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect((tester.getTopLeft(inkCanvasFinder).dx - viewerLeft).abs(), lessThan(5.0));
+
+    // 8. Allow zooming out the page to small size even smaller than the viewport,
+    // and keep paper centered on side scroll when smaller than viewport
+    for (var i = 0; i < 8; i++) {
+      await tester.tap(find.byTooltip('Zoom out'));
+      await tester.pumpAndSettle();
+    }
+    final smallIv = tester.widget<InteractiveViewer>(viewerFinder);
+    final smallScale = smallIv.transformationController!.value.getMaxScaleOnAxis();
+    expect(smallScale, lessThan(0.5));
+    expect(smallIv.panAxis, PanAxis.vertical);
+
+    // Verify paper is centered horizontally when zoomed out small
+    final smallCenter = tester.getCenter(inkCanvasFinder);
+    expect((smallCenter.dx - viewerCenter.dx).abs(), lessThan(5.0));
+
+    // Side scroll attempts in both directions keep the paper centered
+    await tester.sendEventToBinding(
+      PointerScrollEvent(
+        position: viewerCenter,
+        scrollDelta: const Offset(600, 0),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect((tester.getCenter(inkCanvasFinder).dx - viewerCenter.dx).abs(), lessThan(5.0));
+
+    await tester.sendEventToBinding(
+      PointerScrollEvent(
+        position: viewerCenter,
+        scrollDelta: const Offset(-800, 0),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect((tester.getCenter(inkCanvasFinder).dx - viewerCenter.dx).abs(), lessThan(5.0));
+
+    // Reset view returns back to 100% and centered
+    await tester.tap(find.text('Reset view'));
+    await tester.pumpAndSettle();
+    expect(smallIv.transformationController!.value.getMaxScaleOnAxis(), 1.0);
+    expect((tester.getCenter(inkCanvasFinder).dx - viewerCenter.dx).abs(), lessThan(2.0));
   });
 }
 
