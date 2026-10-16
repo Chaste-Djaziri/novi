@@ -285,6 +285,9 @@ class _WorkspaceState extends State<Workspace> {
     }
   }
 
+  BoxConstraints? _lastConstraints;
+  double get _currentPaperWidth => current?.landscape == true ? 980.0 : 760.0;
+
   void zoom(double factor) {
     setState(() {
       if (factor == 0) {
@@ -292,10 +295,14 @@ class _WorkspaceState extends State<Workspace> {
       } else {
         final scale = session.view.value.getMaxScaleOnAxis();
         final target = (scale * factor).clamp(0.25, 3.0);
-        final matrix = session.view.value.clone();
-        matrix.multiply(
-          Matrix4.diagonal3Values(target / scale, target / scale, 1),
-        );
+        final matrix = Matrix4.identity()..scaleByDouble(target, target, target, 1);
+        if (_lastConstraints != null) {
+          final effectiveWidth = math.max(_lastConstraints!.maxWidth, _currentPaperWidth);
+          final paperWidth = _currentPaperWidth * target;
+          final paperLeftInChild = (effectiveWidth - _currentPaperWidth) / 2 * target;
+          final centeredTx = (_lastConstraints!.maxWidth - (2 * paperLeftInChild + paperWidth)) / 2;
+          matrix.storage[12] = centeredTx;
+        }
         session.view.value = matrix;
       }
     });
@@ -309,16 +316,26 @@ class _WorkspaceState extends State<Workspace> {
   ) {
     final matrix = session.view.value.clone();
     final scale = matrix.getMaxScaleOnAxis();
+    final currentTx = matrix.storage[12];
     final currentTy = matrix.storage[13];
 
     final effectiveWidth = math.max(constraints.maxWidth, pageWidth);
     final effectiveHeight = math.max(constraints.maxHeight, pageHeight + 48);
 
+    final paperWidth = pageWidth * scale;
     final totalWidth = effectiveWidth * scale;
     final totalHeight = effectiveHeight * scale;
 
-    // Always stick to horizontal center when scrolling left or right
-    final centeredTx = (constraints.maxWidth - totalWidth) / 2;
+    final double minX, maxX;
+    if (paperWidth <= constraints.maxWidth) {
+      // Don't allow left and right scrolls when paper fits in view; stay centered!
+      minX = maxX = (constraints.maxWidth - totalWidth) / 2;
+    } else {
+      // When too big out of view, allow left and right scrolling to the edges of the paper
+      final paperLeftInChild = (effectiveWidth - pageWidth) / 2 * scale;
+      maxX = -paperLeftInChild;
+      minX = constraints.maxWidth - (paperLeftInChild + paperWidth);
+    }
 
     final double minY, maxY;
     if (totalHeight <= constraints.maxHeight) {
@@ -328,12 +345,40 @@ class _WorkspaceState extends State<Workspace> {
       maxY = 0.0;
     }
 
+    final newTx = (currentTx - event.scrollDelta.dx).clamp(minX, maxX);
     final newTy = (currentTy - event.scrollDelta.dy).clamp(minY, maxY);
 
-    if (matrix.storage[12] != centeredTx || currentTy != newTy) {
-      matrix.storage[12] = centeredTx;
+    if (currentTx != newTx || currentTy != newTy) {
+      matrix.storage[12] = newTx;
       matrix.storage[13] = newTy;
       session.view.value = matrix;
+    }
+  }
+
+  void _snapHorizontalToCenter(BoxConstraints constraints, double pageWidth) {
+    final matrix = session.view.value.clone();
+    final scale = matrix.getMaxScaleOnAxis();
+    final effectiveWidth = math.max(constraints.maxWidth, pageWidth);
+    final paperWidth = pageWidth * scale;
+
+    if (paperWidth <= constraints.maxWidth) {
+      // Don't allow left and right scrolls when paper fits in view; stay centered!
+      final totalWidth = effectiveWidth * scale;
+      final centeredTx = (constraints.maxWidth - totalWidth) / 2;
+      if ((matrix.storage[12] - centeredTx).abs() > 0.5) {
+        matrix.storage[12] = centeredTx;
+        session.view.value = matrix;
+      }
+    } else {
+      // When too big out of view, clamp left and right to the edges of the paper
+      final paperLeftInChild = (effectiveWidth - pageWidth) / 2 * scale;
+      final maxX = -paperLeftInChild;
+      final minX = constraints.maxWidth - (paperLeftInChild + paperWidth);
+      final clampedTx = matrix.storage[12].clamp(minX, maxX);
+      if ((matrix.storage[12] - clampedTx).abs() > 0.5) {
+        matrix.storage[12] = clampedTx;
+        session.view.value = matrix;
+      }
     }
   }
 
@@ -637,27 +682,32 @@ class _WorkspaceState extends State<Workspace> {
             ),
             Expanded(
               child: LayoutBuilder(
-                builder: (context, constraints) => Listener(
-                  onPointerSignal: (event) {
-                    if (event is PointerScrollEvent) {
-                      _handleCanvasScroll(
-                        event,
-                        constraints,
-                        pageWidth,
-                        pageHeight,
-                      );
-                    }
-                  },
-                  child: InteractiveViewer(
-                    key: ValueKey('view-${note.id}'),
-                    transformationController: session.view,
-                    constrained: false,
-                    minScale: 0.25,
-                    maxScale: 3,
-                    boundaryMargin: const EdgeInsets.symmetric(horizontal: 100),
-                    panEnabled: tool == EditorTool.hand,
-                    scaleEnabled: tool == EditorTool.hand,
-                    onInteractionEnd: (_) => setState(() {}),
+                builder: (context, constraints) {
+                  _lastConstraints = constraints;
+                  return Listener(
+                    onPointerSignal: (event) {
+                      if (event is PointerScrollEvent) {
+                        _handleCanvasScroll(
+                          event,
+                          constraints,
+                          pageWidth,
+                          pageHeight,
+                        );
+                      }
+                    },
+                    child: InteractiveViewer(
+                      key: ValueKey('view-${note.id}'),
+                      transformationController: session.view,
+                      constrained: false,
+                      minScale: 0.25,
+                      maxScale: 3,
+                      boundaryMargin: const EdgeInsets.symmetric(horizontal: 50, vertical: 50),
+                      panEnabled: tool == EditorTool.hand,
+                      scaleEnabled: tool == EditorTool.hand,
+                      onInteractionEnd: (_) {
+                        _snapHorizontalToCenter(constraints, pageWidth);
+                        setState(() {});
+                      },
                     child: SizedBox(
                       width: math.max(constraints.maxWidth, pageWidth),
                       height: math.max(constraints.maxHeight, pageHeight + 48),
@@ -769,9 +819,10 @@ class _WorkspaceState extends State<Workspace> {
                   ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         ),
+      ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
               child: Row(
