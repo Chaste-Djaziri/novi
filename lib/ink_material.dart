@@ -148,8 +148,9 @@ class InkFootprintPainter extends CustomPainter {
           ..strokeWidth = border.$2,
       );
     }
-    if (eraserRadius == null)
+    if (eraserRadius == null) {
       canvas.drawPath(path, Paint()..color = color.withValues(alpha: 0.16));
+    }
   }
 
   @override
