@@ -66,6 +66,18 @@ void main() {
     expect(session.width, 7);
   });
 
+  test('unchanged ink skips repaint but in-place stroke edits invalidate it', () {
+    final strokes = <List<List<double>>>[[[10, 10, 1], [30, 30, 1]]];
+    final styles = [style('pencil')];
+    final old = InkPainter(strokes, styles: styles);
+    expect(InkPainter(strokes, styles: styles).shouldRepaint(old), isFalse);
+    strokes.first.last[0] = 35;
+    final moved = InkPainter(strokes, styles: styles);
+    expect(moved.shouldRepaint(old), isTrue);
+    styles.first['color'] = 0xff000000;
+    expect(InkPainter(strokes, styles: styles).shouldRepaint(moved), isTrue);
+  });
+
   test('material metadata survives SQLite and both portable formats', () {
     final dir = Directory.systemTemp.createTempSync('novi-ink');
     addTearDown(() => dir.deleteSync(recursive: true));
