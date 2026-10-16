@@ -431,8 +431,8 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
     }
   }
 
-  void _handleCanvasScroll(
-    PointerScrollEvent event,
+  void _handleScrollDelta(
+    Offset scrollDelta,
     BoxConstraints constraints,
     double pageWidth,
     double pageHeight,
@@ -470,14 +470,14 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
       maxY = 0.0;
     }
 
-    final newTx = (currentTx - event.scrollDelta.dx).clamp(minX, maxX);
+    final newTx = (currentTx - scrollDelta.dx).clamp(minX, maxX);
     double newTy;
 
     final bool atOrPastBottom =
         currentTy <= minY + 1.0 || _bottomOverscroll > 0;
-    if (atOrPastBottom && event.scrollDelta.dy > 0) {
+    if (atOrPastBottom && scrollDelta.dy > 0) {
       // User is at or past the bottom and scrolling further down to add page!
-      _bottomOverscroll += event.scrollDelta.dy;
+      _bottomOverscroll += scrollDelta.dy;
       final overscrollShift = math.min(50.0, _bottomOverscroll * 0.25);
       newTy = minY - overscrollShift;
 
@@ -498,20 +498,20 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
         return;
       }
       setState(() {});
-    } else if (event.scrollDelta.dy < 0 && _bottomOverscroll > 0) {
-      if (_bottomOverscroll + event.scrollDelta.dy >= 0) {
-        _bottomOverscroll += event.scrollDelta.dy;
+    } else if (scrollDelta.dy < 0 && _bottomOverscroll > 0) {
+      if (_bottomOverscroll + scrollDelta.dy >= 0) {
+        _bottomOverscroll += scrollDelta.dy;
         final overscrollShift = math.min(50.0, _bottomOverscroll * 0.25);
         newTy = minY - overscrollShift;
       } else {
-        final remainingDelta = event.scrollDelta.dy + _bottomOverscroll;
+        final remainingDelta = scrollDelta.dy + _bottomOverscroll;
         _bottomOverscroll = 0.0;
         newTy = (minY - remainingDelta).clamp(minY, maxY);
       }
       setState(() {});
     } else {
       _bottomOverscroll = 0.0;
-      newTy = (currentTy - event.scrollDelta.dy).clamp(minY, maxY);
+      newTy = (currentTy - scrollDelta.dy).clamp(minY, maxY);
     }
 
     if (currentTx != newTx || currentTy != newTy) {
@@ -1038,12 +1038,63 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
                           zoom(event.scale / _pinchScale);
                         }
                         _pinchScale = event.scale;
-                        _panCanvas(event.panDelta);
+                        if (event.panDelta != Offset.zero) {
+                          final scrollDelta = Offset(
+                            -event.panDelta.dx,
+                            -event.panDelta.dy,
+                          );
+                          _handleScrollDelta(
+                            scrollDelta,
+                            constraints,
+                            pageWidth,
+                            pageHeight,
+                          );
+                        }
+                      },
+                      onPointerPanZoomEnd: (_) {
+                        _pinchScale = 1;
+                        _snapHorizontalToCenter(constraints, pageWidth);
+                        if (_bottomOverscroll > 0 && !_isCreatingPage) {
+                          _overscrollResetTimer?.cancel();
+                          _overscrollResetTimer = Timer(
+                            const Duration(milliseconds: 300),
+                            () {
+                              if (mounted &&
+                                  _bottomOverscroll > 0 &&
+                                  !_isCreatingPage) {
+                                setState(() {
+                                  _bottomOverscroll = 0.0;
+                                  final m = session.view.value.clone();
+                                  final scale = m.getMaxScaleOnAxis();
+                                  final hasCover = current?.kind == 'Notebook';
+                                  final paperCount = current?.pages.length ?? 1;
+                                  final totalSheets =
+                                      (hasCover ? 1 : 0) + paperCount;
+                                  final totalContentHeight = totalSheets *
+                                          pageHeight +
+                                      (totalSheets + 1) * 24.0;
+                                  final totalHeight =
+                                      totalContentHeight * scale;
+                                  final minY = totalHeight <=
+                                          constraints.maxHeight
+                                      ? 0.0
+                                      : constraints.maxHeight - totalHeight;
+                                  m.storage[13] = m.storage[13].clamp(
+                                    minY,
+                                    0.0,
+                                  );
+                                  session.view.value = m;
+                                });
+                              }
+                            },
+                          );
+                        }
+                        setState(() {});
                       },
                       onPointerSignal: (event) {
                         if (event is PointerScrollEvent) {
-                          _handleCanvasScroll(
-                            event,
+                          _handleScrollDelta(
+                            event.scrollDelta,
                             constraints,
                             pageWidth,
                             pageHeight,
