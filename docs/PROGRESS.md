@@ -555,6 +555,8 @@ Confirm material feel and pressure with a physical tablet in the normal Mac app.
 - [x] Verified the pencil dialog boundary test and `flutter analyze` after the visual update.
 - [x] Added reusable `ToolMenuPopup` shell for shared positioning, dismissal, arrow, card styling, shadow, and supplied content.
 - [x] Refactored the pencil menu to use the shared shell and added focused popup rendering coverage.
+- [x] Updated pencil settings to match the two-level design: Reduce Latency on the main page, Draw and Hold navigation, and a dedicated submenu with Snap to Other Shapes.
+- [x] Verified analyzer, dialog boundary, and reusable popup tests after the pencil settings redesign.
 - [ ] Finish reducing legacy editor files and add broader painter comparison coverage.
 
 
