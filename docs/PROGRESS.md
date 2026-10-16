@@ -577,7 +577,11 @@ Confirm material feel and pressure with a physical tablet in the normal Mac app.
 - [x] Verified analyzer and shape-recognition integration coverage after polygon classification changes.
 - [x] Replaced the broad bounding-box heuristic with turn-angle corner detection so triangles, rectangles, trapezia, hexagons, and other polygons are recognized by their actual corners while smooth loops remain circles.
 - [x] Verified analyzer and shape-recognition integration coverage after the classifier correction.
-- [ ] Add live held-stroke shape preview and resize/move interaction before pointer release.
+- [x] Moved shape recognition into `features/editor/tools/shape/shape_recognition.dart`; previews and saved strokes now share the same recognizer for Draw Shape, held pen, and held pencil.
+- [x] Added imperfect sampled circle, ellipse, rotated polygon, open-angle, line, and curve coverage plus canvas coverage for circles, triangles, rectangles, and hexagons.
+- [x] Preserved original sampled points and pressure in stroke metadata for recognized and transformed strokes.
+- [x] `flutter analyze`: clean. Full Flutter suite: all 51 tests pass.
+- [ ] Add resize/move interaction for a recognized shape before pointer release.
 - [ ] Finish reducing legacy editor files and add broader painter comparison coverage.
 
 
