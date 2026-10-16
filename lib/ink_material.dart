@@ -120,13 +120,16 @@ class InkMaterial {
 
 class InkFootprintPainter extends CustomPainter {
   const InkFootprintPainter({
-    required this.position,
+    required Offset position,
+    this.resolvePosition,
     required this.material,
     required this.color,
     this.pressure = 1,
     this.eraserRadius,
-  });
-  final Offset position;
+  }) : _position = position;
+  final Offset _position;
+  final Offset Function()? resolvePosition;
+  Offset get position => resolvePosition?.call() ?? _position;
   final InkMaterial material;
   final Color color;
   final double pressure;
