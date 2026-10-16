@@ -24,6 +24,7 @@ import 'package:window_manager/window_manager.dart';
 import 'notebook.dart';
 import 'library_ui.dart';
 import 'workspace_tools.dart';
+import 'features/editor/tools/shape/shape_recognition.dart';
 import 'pages_sidebar.dart';
 
 import 'package:flutter/services.dart';
@@ -132,33 +133,57 @@ class _WorkspaceState extends State<Workspace>
     final stroke = activeStroke!;
     final style = activeStyle!;
     if (stroke.length < 2) return stroke;
-    if ((style['kind'] == 'tape' && style['straight'] == true) ||
-        (style['kind'] == 'pen' && style['holdForLine'] == true && _inkHeld)) {
+    if (style['kind'] == 'tape' && style['straight'] == true) {
       return [stroke.first, stroke.last];
     }
-    if (style['kind'] == 'shape' && _inkHeld) return _recognizeAndFitShape(stroke, session).stroke;
+    if (_inkHeld &&
+        ((style['kind'] == 'pen' && style['holdForLine'] == true) ||
+            (style['kind'] == 'pencil' && style['drawAndHold'] == true) ||
+            style['kind'] == 'shape')) {
+      return ShapeRecognition.recognize(stroke).stroke;
+    }
     return stroke;
   }
 
-  bool get _showInkFootprint => !_isPanning &&
-      !HardwareKeyboard.instance.isLogicalKeyPressed(LogicalKeyboardKey.space) &&
-      (session.tool == EditorTool.pen || session.tool == EditorTool.highlighter || session.tool == EditorTool.eraser);
+  bool get _showInkFootprint =>
+      !_isPanning &&
+      !HardwareKeyboard.instance.isLogicalKeyPressed(
+        LogicalKeyboardKey.space,
+      ) &&
+      (session.tool == EditorTool.pen ||
+          session.tool == EditorTool.highlighter ||
+          session.tool == EditorTool.eraser);
 
   void _trackInkPointer(PointerEvent event, int pageIndex) {
     setState(() {
       _inkGlobalPointer = event.position;
-      _inkHover = event.kind == PointerDeviceKind.touch ? null : event.localPosition;
+      _inkHover = event.kind == PointerDeviceKind.touch
+          ? null
+          : event.localPosition;
       _inkHoverPage = pageIndex;
-      _inkPressure = event is PointerHoverEvent || event is PointerEnterEvent || event.kind == PointerDeviceKind.mouse ? 1 : event.pressure;
+      _inkPressure =
+          event is PointerHoverEvent ||
+              event is PointerEnterEvent ||
+              event.kind == PointerDeviceKind.mouse
+          ? 1
+          : event.pressure;
     });
   }
 
   void _scheduleInkHold() {
     _inkHoldTimer?.cancel();
     _inkHeld = false;
-    if (activeStyle == null || activeStroke == null || activeStroke!.length < 2) return;
-    if ((activeStyle!['kind'] == 'pen' && activeStyle!['holdForLine'] == true) ||
-        (activeStyle!['kind'] == 'shape' && activeStyle!['requireHold'] == true)) {
+    if (activeStyle == null ||
+        activeStroke == null ||
+        activeStroke!.length < 2) {
+      return;
+    }
+    if ((activeStyle!['kind'] == 'pen' &&
+            activeStyle!['holdForLine'] == true) ||
+        (activeStyle!['kind'] == 'pencil' &&
+            activeStyle!['drawAndHold'] == true) ||
+        (activeStyle!['kind'] == 'shape' &&
+            activeStyle!['requireHold'] == true)) {
       _inkHoldTimer = Timer(const Duration(milliseconds: 500), () {
         if (!mounted || activeStroke == null) return;
         setState(() => _inkHeld = true);
@@ -410,8 +435,9 @@ class _WorkspaceState extends State<Workspace>
   AnimationController? _pageCreationScrollController;
   int activeStrokePageIndex = 0;
   Ticker? _flingTicker;
-  VelocityTracker _panVelocityTracker =
-      VelocityTracker.withKind(PointerDeviceKind.trackpad);
+  VelocityTracker _panVelocityTracker = VelocityTracker.withKind(
+    PointerDeviceKind.trackpad,
+  );
   double _accumulatedPanY = 0.0;
 
   double _calculateOverscrollShift(double overscroll) {
@@ -581,37 +607,40 @@ class _WorkspaceState extends State<Workspace>
       parent: _overscrollBounceController!,
       curve: Curves.easeOutCubic,
     );
-    _overscrollBounceAnimation = Tween<double>(begin: startVal, end: 0.0)
-        .animate(curve)
-      ..addListener(() {
-        if (!mounted || current == null) return;
-        setState(() {
-          _bottomOverscroll = _overscrollBounceAnimation!.value;
-          final matrix = session.view.value.clone();
-          final scale = matrix.getMaxScaleOnAxis();
-          final hasCover = current?.kind == 'Notebook';
-          final paperCount = current?.pages.length ?? 1;
-          final totalSheets = (hasCover ? 1 : 0) + paperCount;
-          final totalContentHeight =
-              totalSheets * pageHeight + (totalSheets + 1) * 24.0;
-          final totalHeight = totalContentHeight * scale;
-          final minY = totalHeight <= constraints.maxHeight
-              ? 0.0
-              : constraints.maxHeight - totalHeight;
-          final overscrollShift = _calculateOverscrollShift(_bottomOverscroll);
-          matrix.storage[13] = minY - overscrollShift;
-          session.view.value = matrix;
-        });
-      })
-      ..addStatusListener((s) {
-        if (s == AnimationStatus.completed || s == AnimationStatus.dismissed) {
-          if (mounted && _bottomOverscroll != 0.0) {
+    _overscrollBounceAnimation =
+        Tween<double>(begin: startVal, end: 0.0).animate(curve)
+          ..addListener(() {
+            if (!mounted || current == null) return;
             setState(() {
-              _bottomOverscroll = 0.0;
+              _bottomOverscroll = _overscrollBounceAnimation!.value;
+              final matrix = session.view.value.clone();
+              final scale = matrix.getMaxScaleOnAxis();
+              final hasCover = current?.kind == 'Notebook';
+              final paperCount = current?.pages.length ?? 1;
+              final totalSheets = (hasCover ? 1 : 0) + paperCount;
+              final totalContentHeight =
+                  totalSheets * pageHeight + (totalSheets + 1) * 24.0;
+              final totalHeight = totalContentHeight * scale;
+              final minY = totalHeight <= constraints.maxHeight
+                  ? 0.0
+                  : constraints.maxHeight - totalHeight;
+              final overscrollShift = _calculateOverscrollShift(
+                _bottomOverscroll,
+              );
+              matrix.storage[13] = minY - overscrollShift;
+              session.view.value = matrix;
             });
-          }
-        }
-      });
+          })
+          ..addStatusListener((s) {
+            if (s == AnimationStatus.completed ||
+                s == AnimationStatus.dismissed) {
+              if (mounted && _bottomOverscroll != 0.0) {
+                setState(() {
+                  _bottomOverscroll = 0.0;
+                });
+              }
+            }
+          });
     _overscrollBounceController!.forward(from: 0.0);
   }
 
@@ -769,7 +798,8 @@ class _WorkspaceState extends State<Workspace>
           session.view.value = m;
         })
         ..addStatusListener((s) {
-          if (s == AnimationStatus.completed || s == AnimationStatus.dismissed) {
+          if (s == AnimationStatus.completed ||
+              s == AnimationStatus.dismissed) {
             if (mounted) {
               setState(() {
                 _isCreatingPage = false;
@@ -1307,11 +1337,7 @@ class _WorkspaceState extends State<Workspace>
                   },
                   onAddPage: () {
                     if (_lastConstraints != null) {
-                      _createNextPage(
-                        _lastConstraints!,
-                        pageWidth,
-                        pageHeight,
-                      );
+                      _createNextPage(_lastConstraints!, pageWidth, pageHeight);
                     }
                   },
                   currentPageIndex: _getCurrentActivePageIndex(pageHeight),
@@ -1347,8 +1373,9 @@ class _WorkspaceState extends State<Workspace>
                       onSettings: () => setState(() {}),
                       onUndo: undo.isEmpty ? null : () => history(true),
                       onRedo: redo.isEmpty ? null : () => history(false),
-                      onDelete:
-                          session.selection.isEmpty ? null : deleteSelection,
+                      onDelete: session.selection.isEmpty
+                          ? null
+                          : deleteSelection,
                       onZoom: zoom,
                       onStyle: styleDocument,
                       onFontSize: (v) => formatText(size: v),
@@ -1364,381 +1391,452 @@ class _WorkspaceState extends State<Workspace>
                         }
                       },
                       onExport: () => transfer('export'),
-                      onTogglePages: () => setState(
-                        () => showPagesSidebar = !showPagesSidebar,
-                      ),
+                      onTogglePages: () =>
+                          setState(() => showPagesSidebar = !showPagesSidebar),
                       showPages: showPagesSidebar,
                     ),
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    _lastConstraints = constraints;
-                    final hasCover = note.kind == 'Notebook';
-                    final paperCount = note.pages.length;
-                    final totalSheets = (hasCover ? 1 : 0) + paperCount;
-                    final scale = session.view.value.getMaxScaleOnAxis();
-                    final paperWidth = pageWidth * scale;
-                    final totalContentHeight =
-                        totalSheets * pageHeight +
-                        (totalSheets + 1) * 24.0;
-                    final isFittingHorizontally =
-                        paperWidth <= constraints.maxWidth;
-                    final isFittingVertically =
-                        (totalContentHeight * scale) <= constraints.maxHeight;
-                    final childWidth = isFittingHorizontally
-                        ? (constraints.maxWidth / scale)
-                        : pageWidth;
-                    final childHeight = isFittingVertically
-                        ? math.max(
-                            constraints.maxHeight / scale,
-                            totalContentHeight,
-                          )
-                        : totalContentHeight + 80.0;
-                    return Stack(
-                      children: [
-                        Positioned.fill(
-                          child: Listener(
-                            behavior: HitTestBehavior.translucent,
-                      onPointerHover: (event) {
-                        if (event.kind == PointerDeviceKind.stylus ||
-                            event.kind == PointerDeviceKind.invertedStylus) {
-                          tablets.observePen();
-                        }
-                      },
-                      onPointerDown: (event) {
-                        _stopFling();
-                        _stopPageCreationAnimation();
-                        if (event.kind == PointerDeviceKind.stylus ||
-                            event.kind == PointerDeviceKind.invertedStylus) {
-                          if (!hasStylus) {
-                            tablets.observePen();
-                          }
-                        }
-                        final isSpace = HardwareKeyboard.instance
-                            .isLogicalKeyPressed(LogicalKeyboardKey.space);
-                        final isMiddle = (event.buttons & 4) != 0;
-                        if (isSpace || isMiddle || tool == EditorTool.hand) {
-                          _isPanning = true;
-                          _panStartPos = event.position;
-                          _panStartMatrix = session.view.value.clone();
-                        }
-                      },
-                      onPointerMove: (event) {
-                        if (_isPanning &&
-                            _panStartPos != null &&
-                            _panStartMatrix != null) {
-                          final delta = event.position - _panStartPos!;
-                          final matrix = _panStartMatrix!.clone();
-                          final scale = matrix.getMaxScaleOnAxis();
-                          final (minX, minY) = _getCanvasScrollBounds(
-                            constraints,
-                            pageWidth,
-                            pageHeight,
-                            scale,
-                          );
-                          final startTx = _panStartMatrix!.storage[12];
-                          final startTy = _panStartMatrix!.storage[13];
-                          final newTx = (startTx + delta.dx).clamp(minX, 0.0);
-                          final newTy = (startTy + delta.dy).clamp(minY, 0.0);
-                          matrix.storage[12] = newTx;
-                          matrix.storage[13] = newTy;
-                          session.view.value = matrix;
-                          setState(() {});
-                        }
-                      },
-                      onPointerUp: (event) {
-                        if (_isPanning) {
-                          _isPanning = false;
-                          _panStartPos = null;
-                          _panStartMatrix = null;
-                          _snapHorizontalToCenter(constraints, pageWidth);
-                          setState(() {});
-                        }
-                      },
-                      onPointerCancel: (event) {
-                        if (_isPanning) {
-                          _isPanning = false;
-                          _panStartPos = null;
-                          _panStartMatrix = null;
-                          _snapHorizontalToCenter(constraints, pageWidth);
-                          setState(() {});
-                        }
-                      },
-                      onPointerPanZoomStart: (event) {
-                        _isTrackpadPanning = true;
-                        _stopFling();
-                        _stopPageCreationAnimation();
-                        _pinchScale = 1;
-                        _accumulatedPanY = 0.0;
-                        _panVelocityTracker =
-                            VelocityTracker.withKind(PointerDeviceKind.trackpad);
-                        _panVelocityTracker.addPosition(
-                          event.timeStamp,
-                          Offset.zero,
-                        );
-                      },
-                      onPointerPanZoomUpdate: (event) {
-                        if (event.scale != _pinchScale) {
-                          zoom(event.scale / _pinchScale);
-                        }
-                        _pinchScale = event.scale;
-                        if (event.panDelta != Offset.zero) {
-                          _accumulatedPanY += event.panDelta.dy;
-                          _panVelocityTracker.addPosition(
-                            event.timeStamp,
-                            Offset(0, _accumulatedPanY),
-                          );
-                          final scrollDelta = Offset(
-                            -event.panDelta.dx,
-                            -event.panDelta.dy,
-                          );
-                          _handleScrollDelta(
-                            scrollDelta,
-                            constraints,
-                            pageWidth,
-                            pageHeight,
-                          );
-                        }
-                      },
-                      onPointerPanZoomEnd: (_) {
-                        _isTrackpadPanning = false;
-                        _pinchScale = 1;
-                        _snapHorizontalToCenter(constraints, pageWidth);
-                        if (_bottomOverscroll > 0 && !_isCreatingPage) {
-                          _startBounceBack(constraints, pageWidth, pageHeight);
-                        } else if (!_isCreatingPage) {
-                          final velocity = _panVelocityTracker.getVelocity();
-                          final vy = velocity.pixelsPerSecond.dy;
-                          if (vy.abs() > 40.0) {
-                            _startFling(vy, constraints, pageWidth, pageHeight);
-                          }
-                        }
-                      },
-                      onPointerSignal: (event) {
-                        if (event is PointerScrollEvent) {
-                          _stopFling();
-                          _stopPageCreationAnimation();
-                          _handleScrollDelta(
-                            event.scrollDelta,
-                            constraints,
-                            pageWidth,
-                            pageHeight,
-                          );
-                        }
-                      },
-                      child: InteractiveViewer(
-                        key: ValueKey('view-${note.id}'),
-                        transformationController: session.view,
-                        constrained: false,
-                        minScale: 0.05,
-                        maxScale: 3,
-                        panAxis: isFittingHorizontally
-                            ? PanAxis.vertical
-                            : PanAxis.free,
-                        boundaryMargin: const EdgeInsets.symmetric(
-                          horizontal: 0,
-                          vertical: 50,
-                        ),
-                        panEnabled: false,
-                        scaleEnabled: false,
-                        onInteractionEnd: (_) {
-                          _snapHorizontalToCenter(constraints, pageWidth);
-                          setState(() {});
-                        },
-                        child: SizedBox(
-                          width: childWidth,
-                          height: childHeight,
-                          child: Listener(
-                            behavior: HitTestBehavior.translucent,
-                            onPointerDown: (event) {
-                              if (event.kind == PointerDeviceKind.stylus ||
-                                  event.kind ==
-                                      PointerDeviceKind.invertedStylus) {
-                                if (!hasStylus) {
-                                  tablets.observePen();
-                                }
-                              }
-                              final sheetLeft = (childWidth - pageWidth) / 2;
-                              final onSheet =
-                                  event.localPosition.dx >= sheetLeft &&
-                                  event.localPosition.dx <=
-                                      sheetLeft + pageWidth &&
-                                  event.localPosition.dy >= 24 &&
-                                  event.localPosition.dy <=
-                                      totalContentHeight - 24;
-                              if (!onSheet &&
-                                  tool != EditorTool.hand &&
-                                  (event.buttons & 1) != 0) {
-                                _isPanning = true;
-                                _panStartPos = event.position;
-                                _panStartMatrix = session.view.value.clone();
-                              }
-                            },
-                            child: Align(
-                              alignment: isFittingVertically
-                                  ? Alignment.center
-                                  : Alignment.topCenter,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 24,
-                                ),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    if (hasCover) ...[
-                                      // Page 1: Notebook Cover
-                                      SizedBox(
-                                        key: ValueKey('cover-page-${note.id}'),
-                                        width: pageWidth,
-                                        height: pageHeight,
-                                        child: DecoratedBox(
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black.withValues(
-                                                  alpha: 0.35,
-                                                ),
-                                                blurRadius: 16,
-                                                offset: const Offset(0, 4),
-                                              ),
-                                            ],
-                                          ),
-                                          child: DocumentCover(note),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 24),
-                                    ],
-                                    // Paper Canvases (Page 2, Page 3, etc.)
-                                    for (
-                                      var i = 0;
-                                      i < note.pages.length;
-                                      i++
-                                    ) ...[
-                                      if (i > 0) const SizedBox(height: 24),
-                                      _buildPaperPage(
-                                        note,
-                                        i,
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          _lastConstraints = constraints;
+                          final hasCover = note.kind == 'Notebook';
+                          final paperCount = note.pages.length;
+                          final totalSheets = (hasCover ? 1 : 0) + paperCount;
+                          final scale = session.view.value.getMaxScaleOnAxis();
+                          final paperWidth = pageWidth * scale;
+                          final totalContentHeight =
+                              totalSheets * pageHeight +
+                              (totalSheets + 1) * 24.0;
+                          final isFittingHorizontally =
+                              paperWidth <= constraints.maxWidth;
+                          final isFittingVertically =
+                              (totalContentHeight * scale) <=
+                              constraints.maxHeight;
+                          final childWidth = isFittingHorizontally
+                              ? (constraints.maxWidth / scale)
+                              : pageWidth;
+                          final childHeight = isFittingVertically
+                              ? math.max(
+                                  constraints.maxHeight / scale,
+                                  totalContentHeight,
+                                )
+                              : totalContentHeight + 80.0;
+                          return Stack(
+                            children: [
+                              Positioned.fill(
+                                child: Listener(
+                                  behavior: HitTestBehavior.translucent,
+                                  onPointerHover: (event) {
+                                    if (event.kind ==
+                                            PointerDeviceKind.stylus ||
+                                        event.kind ==
+                                            PointerDeviceKind.invertedStylus) {
+                                      tablets.observePen();
+                                    }
+                                  },
+                                  onPointerDown: (event) {
+                                    _stopFling();
+                                    _stopPageCreationAnimation();
+                                    if (event.kind ==
+                                            PointerDeviceKind.stylus ||
+                                        event.kind ==
+                                            PointerDeviceKind.invertedStylus) {
+                                      if (!hasStylus) {
+                                        tablets.observePen();
+                                      }
+                                    }
+                                    final isSpace = HardwareKeyboard.instance
+                                        .isLogicalKeyPressed(
+                                          LogicalKeyboardKey.space,
+                                        );
+                                    final isMiddle = (event.buttons & 4) != 0;
+                                    if (isSpace ||
+                                        isMiddle ||
+                                        tool == EditorTool.hand) {
+                                      _isPanning = true;
+                                      _panStartPos = event.position;
+                                      _panStartMatrix = session.view.value
+                                          .clone();
+                                    }
+                                  },
+                                  onPointerMove: (event) {
+                                    if (_isPanning &&
+                                        _panStartPos != null &&
+                                        _panStartMatrix != null) {
+                                      final delta =
+                                          event.position - _panStartPos!;
+                                      final matrix = _panStartMatrix!.clone();
+                                      final scale = matrix.getMaxScaleOnAxis();
+                                      final (
+                                        minX,
+                                        minY,
+                                      ) = _getCanvasScrollBounds(
+                                        constraints,
                                         pageWidth,
                                         pageHeight,
-                                        foreground,
-                                        tool,
+                                        scale,
+                                      );
+                                      final startTx =
+                                          _panStartMatrix!.storage[12];
+                                      final startTy =
+                                          _panStartMatrix!.storage[13];
+                                      final newTx = (startTx + delta.dx).clamp(
+                                        minX,
+                                        0.0,
+                                      );
+                                      final newTy = (startTy + delta.dy).clamp(
+                                        minY,
+                                        0.0,
+                                      );
+                                      matrix.storage[12] = newTx;
+                                      matrix.storage[13] = newTy;
+                                      session.view.value = matrix;
+                                      setState(() {});
+                                    }
+                                  },
+                                  onPointerUp: (event) {
+                                    if (_isPanning) {
+                                      _isPanning = false;
+                                      _panStartPos = null;
+                                      _panStartMatrix = null;
+                                      _snapHorizontalToCenter(
+                                        constraints,
+                                        pageWidth,
+                                      );
+                                      setState(() {});
+                                    }
+                                  },
+                                  onPointerCancel: (event) {
+                                    if (_isPanning) {
+                                      _isPanning = false;
+                                      _panStartPos = null;
+                                      _panStartMatrix = null;
+                                      _snapHorizontalToCenter(
+                                        constraints,
+                                        pageWidth,
+                                      );
+                                      setState(() {});
+                                    }
+                                  },
+                                  onPointerPanZoomStart: (event) {
+                                    _isTrackpadPanning = true;
+                                    _stopFling();
+                                    _stopPageCreationAnimation();
+                                    _pinchScale = 1;
+                                    _accumulatedPanY = 0.0;
+                                    _panVelocityTracker =
+                                        VelocityTracker.withKind(
+                                          PointerDeviceKind.trackpad,
+                                        );
+                                    _panVelocityTracker.addPosition(
+                                      event.timeStamp,
+                                      Offset.zero,
+                                    );
+                                  },
+                                  onPointerPanZoomUpdate: (event) {
+                                    if (event.scale != _pinchScale) {
+                                      zoom(event.scale / _pinchScale);
+                                    }
+                                    _pinchScale = event.scale;
+                                    if (event.panDelta != Offset.zero) {
+                                      _accumulatedPanY += event.panDelta.dy;
+                                      _panVelocityTracker.addPosition(
+                                        event.timeStamp,
+                                        Offset(0, _accumulatedPanY),
+                                      );
+                                      final scrollDelta = Offset(
+                                        -event.panDelta.dx,
+                                        -event.panDelta.dy,
+                                      );
+                                      _handleScrollDelta(
+                                        scrollDelta,
+                                        constraints,
+                                        pageWidth,
+                                        pageHeight,
+                                      );
+                                    }
+                                  },
+                                  onPointerPanZoomEnd: (_) {
+                                    _isTrackpadPanning = false;
+                                    _pinchScale = 1;
+                                    _snapHorizontalToCenter(
+                                      constraints,
+                                      pageWidth,
+                                    );
+                                    if (_bottomOverscroll > 0 &&
+                                        !_isCreatingPage) {
+                                      _startBounceBack(
+                                        constraints,
+                                        pageWidth,
+                                        pageHeight,
+                                      );
+                                    } else if (!_isCreatingPage) {
+                                      final velocity = _panVelocityTracker
+                                          .getVelocity();
+                                      final vy = velocity.pixelsPerSecond.dy;
+                                      if (vy.abs() > 40.0) {
+                                        _startFling(
+                                          vy,
+                                          constraints,
+                                          pageWidth,
+                                          pageHeight,
+                                        );
+                                      }
+                                    }
+                                  },
+                                  onPointerSignal: (event) {
+                                    if (event is PointerScrollEvent) {
+                                      _stopFling();
+                                      _stopPageCreationAnimation();
+                                      _handleScrollDelta(
+                                        event.scrollDelta,
+                                        constraints,
+                                        pageWidth,
+                                        pageHeight,
+                                      );
+                                    }
+                                  },
+                                  child: InteractiveViewer(
+                                    key: ValueKey('view-${note.id}'),
+                                    transformationController: session.view,
+                                    constrained: false,
+                                    minScale: 0.05,
+                                    maxScale: 3,
+                                    panAxis: isFittingHorizontally
+                                        ? PanAxis.vertical
+                                        : PanAxis.free,
+                                    boundaryMargin: const EdgeInsets.symmetric(
+                                      horizontal: 0,
+                                      vertical: 50,
+                                    ),
+                                    panEnabled: false,
+                                    scaleEnabled: false,
+                                    onInteractionEnd: (_) {
+                                      _snapHorizontalToCenter(
+                                        constraints,
+                                        pageWidth,
+                                      );
+                                      setState(() {});
+                                    },
+                                    child: SizedBox(
+                                      width: childWidth,
+                                      height: childHeight,
+                                      child: Listener(
+                                        behavior: HitTestBehavior.translucent,
+                                        onPointerDown: (event) {
+                                          if (event.kind ==
+                                                  PointerDeviceKind.stylus ||
+                                              event.kind ==
+                                                  PointerDeviceKind
+                                                      .invertedStylus) {
+                                            if (!hasStylus) {
+                                              tablets.observePen();
+                                            }
+                                          }
+                                          final sheetLeft =
+                                              (childWidth - pageWidth) / 2;
+                                          final onSheet =
+                                              event.localPosition.dx >=
+                                                  sheetLeft &&
+                                              event.localPosition.dx <=
+                                                  sheetLeft + pageWidth &&
+                                              event.localPosition.dy >= 24 &&
+                                              event.localPosition.dy <=
+                                                  totalContentHeight - 24;
+                                          if (!onSheet &&
+                                              tool != EditorTool.hand &&
+                                              (event.buttons & 1) != 0) {
+                                            _isPanning = true;
+                                            _panStartPos = event.position;
+                                            _panStartMatrix = session.view.value
+                                                .clone();
+                                          }
+                                        },
+                                        child: Align(
+                                          alignment: isFittingVertically
+                                              ? Alignment.center
+                                              : Alignment.topCenter,
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 24,
+                                            ),
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                if (hasCover) ...[
+                                                  // Page 1: Notebook Cover
+                                                  SizedBox(
+                                                    key: ValueKey(
+                                                      'cover-page-${note.id}',
+                                                    ),
+                                                    width: pageWidth,
+                                                    height: pageHeight,
+                                                    child: DecoratedBox(
+                                                      decoration: BoxDecoration(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              12,
+                                                            ),
+                                                        boxShadow: [
+                                                          BoxShadow(
+                                                            color: Colors.black
+                                                                .withValues(
+                                                                  alpha: 0.35,
+                                                                ),
+                                                            blurRadius: 16,
+                                                            offset:
+                                                                const Offset(
+                                                                  0,
+                                                                  4,
+                                                                ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      child: DocumentCover(
+                                                        note,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 24),
+                                                ],
+                                                // Paper Canvases (Page 2, Page 3, etc.)
+                                                for (
+                                                  var i = 0;
+                                                  i < note.pages.length;
+                                                  i++
+                                                ) ...[
+                                                  if (i > 0)
+                                                    const SizedBox(height: 24),
+                                                  _buildPaperPage(
+                                                    note,
+                                                    i,
+                                                    pageWidth,
+                                                    pageHeight,
+                                                    foreground,
+                                                    tool,
+                                                  ),
+                                                ],
+                                                if (_bottomOverscroll > 0 ||
+                                                    _isCreatingPage)
+                                                  _PageCreationLoader(
+                                                    progress:
+                                                        (_bottomOverscroll /
+                                                                _createPageThreshold)
+                                                            .clamp(0.0, 1.0),
+                                                    isCreating: _isCreatingPage,
+                                                  ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
                                       ),
-                                    ],
-                                    if (_bottomOverscroll > 0 ||
-                                        _isCreatingPage)
-                                      _PageCreationLoader(
-                                        progress:
-                                            (_bottomOverscroll /
-                                                    _createPageThreshold)
-                                                .clamp(0.0, 1.0),
-                                        isCreating: _isCreatingPage,
-                                      ),
-                                  ],
+                                    ),
+                                  ),
                                 ),
                               ),
+                              Positioned(
+                                top: 6,
+                                bottom: 6,
+                                right: 4,
+                                child: CanvasScrollIndicator(
+                                  session: session,
+                                  constraints: constraints,
+                                  pageWidth: pageWidth,
+                                  pageHeight: pageHeight,
+                                  note: note,
+                                  isCreatingPage: _isCreatingPage,
+                                  bottomOverscroll: _bottomOverscroll,
+                                  onScrollTo: (ty) {
+                                    _stopFling();
+                                    _stopPageCreationAnimation();
+                                    final m = session.view.value.clone();
+                                    m.storage[13] = ty;
+                                    session.view.value = m;
+                                  },
+                                ),
+                              ),
+                              Positioned(
+                                top: 14,
+                                left: 0,
+                                right: 0,
+                                child: Center(
+                                  child: FloatingToolControls(
+                                    session: session,
+                                    note: note,
+                                    onSettings: () => setState(() {
+                                      save();
+                                    }),
+                                    onFontSize: (v) => formatText(size: v),
+                                    onBold: () =>
+                                        formatText(bold: !note.boldText),
+                                    onZoom: zoom,
+                                    onDelete: session.selection.isEmpty
+                                        ? null
+                                        : deleteSelection,
+                                    onClearPage: clearActivePageInk,
+                                    onRemoveAllTape: removeAllTape,
+                                    onOpenCustomColor: _showCustomColorPicker,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 6,
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            '${note.kind} / ${note.paper}',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey,
                             ),
                           ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                        top: 6,
-                        bottom: 6,
-                        right: 4,
-                        child: CanvasScrollIndicator(
-                          session: session,
-                          constraints: constraints,
-                          pageWidth: pageWidth,
-                          pageHeight: pageHeight,
-                          note: note,
-                          isCreatingPage: _isCreatingPage,
-                          bottomOverscroll: _bottomOverscroll,
-                          onScrollTo: (ty) {
-                            _stopFling();
-                            _stopPageCreationAnimation();
-                            final m = session.view.value.clone();
-                            m.storage[13] = ty;
-                            session.view.value = m;
-                          },
-                        ),
-                      ),
-                      Positioned(
-                        top: 14,
-                        left: 0,
-                        right: 0,
-                        child: Center(
-                          child: FloatingToolControls(
-                            session: session,
-                            note: note,
-                            onSettings: () => setState(() {
-                              save();
-                            }),
-                            onFontSize: (v) => formatText(size: v),
-                            onBold: () => formatText(bold: !note.boldText),
-                            onZoom: zoom,
-                            onDelete: session.selection.isEmpty
-                                ? null
-                                : deleteSelection,
-                            onClearPage: clearActivePageInk,
-                            onRemoveAllTape: removeAllTape,
-                            onOpenCustomColor: _showCustomColorPicker,
+                          const Spacer(),
+                          Builder(
+                            builder: (_) {
+                              final hasCover = note.kind == 'Notebook';
+                              final totalPages =
+                                  (hasCover ? 1 : 0) + note.pages.length;
+                              final scale = session.view.value
+                                  .getMaxScaleOnAxis();
+                              final scrollY = session.view.value.storage[13]
+                                  .abs();
+                              final sheetHeightWithGap =
+                                  (pageHeight + 24.0) * scale;
+                              final pageNum =
+                                  (sheetHeightWithGap <= 0
+                                          ? 1
+                                          : ((scrollY +
+                                                            sheetHeightWithGap *
+                                                                0.4) /
+                                                        sheetHeightWithGap)
+                                                    .floor() +
+                                                1)
+                                      .clamp(1, totalPages);
+                              return Text(
+                                'Page $pageNum of $totalPages · ${session.tool.name}',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.grey,
+                                ),
+                              );
+                            },
                           ),
-                        ),
+                        ],
                       ),
-                    ],
-                  );
-                },
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 6,
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      '${note.kind} / ${note.paper}',
-                      style: const TextStyle(fontSize: 10, color: Colors.grey),
-                    ),
-                    const Spacer(),
-                    Builder(
-                      builder: (_) {
-                        final hasCover = note.kind == 'Notebook';
-                        final totalPages =
-                            (hasCover ? 1 : 0) + note.pages.length;
-                        final scale = session.view.value.getMaxScaleOnAxis();
-                        final scrollY = session.view.value.storage[13].abs();
-                        final sheetHeightWithGap = (pageHeight + 24.0) * scale;
-                        final pageNum =
-                            (sheetHeightWithGap <= 0
-                                    ? 1
-                                    : ((scrollY + sheetHeightWithGap * 0.4) /
-                                                  sheetHeightWithGap)
-                                              .floor() +
-                                          1)
-                                .clamp(1, totalPages);
-                        return Text(
-                          'Page $pageNum of $totalPages · ${session.tool.name}',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey,
-                          ),
-                        );
-                      },
                     ),
                   ],
                 ),
               ),
             ],
           ),
-        ),
-      ],
-    ),
         ),
       ),
     );
@@ -1798,8 +1896,8 @@ class _WorkspaceState extends State<Workspace>
                       textAlign: note.textAlign == 'center'
                           ? TextAlign.center
                           : note.textAlign == 'right'
-                              ? TextAlign.right
-                              : TextAlign.left,
+                          ? TextAlign.right
+                          : TextAlign.left,
                       lineHeight: note.lineHeight,
                       lineHeightAuto: note.lineHeightAuto,
                       textColor: note.textColor,
@@ -1826,10 +1924,15 @@ class _WorkspaceState extends State<Workspace>
                     ignoring:
                         tool == EditorTool.text || tool == EditorTool.hand,
                     child: MouseRegion(
-                      cursor: _showInkFootprint ? SystemMouseCursors.none : SystemMouseCursors.precise,
+                      cursor: _showInkFootprint
+                          ? SystemMouseCursors.none
+                          : SystemMouseCursors.precise,
                       onEnter: (e) => _trackInkPointer(e, pageIndex),
                       onHover: (e) => _trackInkPointer(e, pageIndex),
-                      onExit: (_) => setState(() { _inkHover = null; _inkHoverPage = null; }),
+                      onExit: (_) => setState(() {
+                        _inkHover = null;
+                        _inkHoverPage = null;
+                      }),
                       child: Listener(
                         behavior: HitTestBehavior.opaque,
                         onPointerDown: (e) {
@@ -1853,41 +1956,59 @@ class _WorkspaceState extends State<Workspace>
                         child: AnimatedBuilder(
                           animation: session.view,
                           builder: (paperContext, _) => CustomPaint(
-                          foregroundPainter: _showInkFootprint && _inkHover != null && _inkHoverPage == pageIndex
-                              ? InkFootprintPainter(position: _inkHover!,
-                                  resolvePosition: () => (paperContext.findRenderObject() as RenderBox).globalToLocal(_inkGlobalPointer!),
-                                  material: InkMaterial(activeStyle ?? session.inkStyle()),
-                                  color: Color((activeStyle?['color'] as int?) ?? session.color ?? foreground.toARGB32()),
-                                  pressure: _inkPressure,
-                                  eraserRadius: session.tool == EditorTool.eraser ? session.eraserRadius : null)
-                              : null,
-                          child: RepaintBoundary(
-                            child: CustomPaint(
-                          painter: InkPainter(
-                            [
-                              ...page.strokes,
-                              if (activeStrokePageIndex == pageIndex &&
-                                  activeStroke != null)
-                                _displayActiveStroke,
-                            ],
-                            color: foreground,
-                            styles: [
-                              ...page.inkStyles,
-                              if (activeStrokePageIndex == pageIndex &&
-                                  activeStyle != null)
-                                activeStyle!,
-                            ],
-                            selected: activeStrokePageIndex == pageIndex
-                                ? session.selection
-                                : const {},
-                            selectionBox: activeStrokePageIndex == pageIndex
-                                ? selectionBox
+                            foregroundPainter:
+                                _showInkFootprint &&
+                                    _inkHover != null &&
+                                    _inkHoverPage == pageIndex
+                                ? InkFootprintPainter(
+                                    position: _inkHover!,
+                                    resolvePosition: () =>
+                                        (paperContext.findRenderObject()
+                                                as RenderBox)
+                                            .globalToLocal(_inkGlobalPointer!),
+                                    material: InkMaterial(
+                                      activeStyle ?? session.inkStyle(),
+                                    ),
+                                    color: Color(
+                                      (activeStyle?['color'] as int?) ??
+                                          session.color ??
+                                          foreground.toARGB32(),
+                                    ),
+                                    pressure: _inkPressure,
+                                    eraserRadius:
+                                        session.tool == EditorTool.eraser
+                                        ? session.eraserRadius
+                                        : null,
+                                  )
                                 : null,
-                          ),
-                          size: Size.infinite,
+                            child: RepaintBoundary(
+                              child: CustomPaint(
+                                painter: InkPainter(
+                                  [
+                                    ...page.strokes,
+                                    if (activeStrokePageIndex == pageIndex &&
+                                        activeStroke != null)
+                                      _displayActiveStroke,
+                                  ],
+                                  color: foreground,
+                                  styles: [
+                                    ...page.inkStyles,
+                                    if (activeStrokePageIndex == pageIndex &&
+                                        activeStyle != null)
+                                      activeStyle!,
+                                  ],
+                                  selected: activeStrokePageIndex == pageIndex
+                                      ? session.selection
+                                      : const {},
+                                  selectionBox:
+                                      activeStrokePageIndex == pageIndex
+                                      ? selectionBox
+                                      : null,
+                                ),
+                                size: Size.infinite,
+                              ),
                             ),
                           ),
-                        ),
                         ),
                       ),
                     ),
@@ -2083,9 +2204,16 @@ class _WorkspaceState extends State<Workspace>
     if (session.tool == EditorTool.eraser) {
       final start = lastPoint ?? e.localPosition;
       final delta = e.localPosition - start;
-      final steps = math.max(1, (delta.distance / math.max(1, session.eraserRadius / 2)).ceil());
+      final steps = math.max(
+        1,
+        (delta.distance / math.max(1, session.eraserRadius / 2)).ceil(),
+      );
       for (var i = 1; i <= steps; i++) {
-        eraseAt(start + delta * (i / steps), pageIndex: activeStrokePageIndex, persist: false);
+        eraseAt(
+          start + delta * (i / steps),
+          pageIndex: activeStrokePageIndex,
+          persist: false,
+        );
       }
       if (editedGesture) save();
     } else if (session.tool == EditorTool.select) {
@@ -2194,8 +2322,9 @@ class _WorkspaceState extends State<Workspace>
 
     for (var i = 0; i < page.strokes.length; i++) {
       final stroke = page.strokes[i];
-      final style =
-          i < page.inkStyles.length ? page.inkStyles[i] : <String, dynamic>{};
+      final style = i < page.inkStyles.length
+          ? page.inkStyles[i]
+          : <String, dynamic>{};
       if (!canEraseStyle(style) || stroke.isEmpty) {
         newStrokes.add(stroke);
         newStyles.add(style);
@@ -2210,8 +2339,7 @@ class _WorkspaceState extends State<Workspace>
         if (p[1] < minY) minY = p[1];
         if (p[1] > maxY) maxY = p[1];
       }
-      final bbox =
-          Rect.fromLTRB(minX, minY, maxX, maxY).inflate(radius + 4.0);
+      final bbox = Rect.fromLTRB(minX, minY, maxX, maxY).inflate(radius + 4.0);
       if (!bbox.contains(position)) {
         newStrokes.add(stroke);
         newStyles.add(style);
@@ -2226,8 +2354,7 @@ class _WorkspaceState extends State<Workspace>
           dense.add(p1);
         } else {
           final p0 = stroke[j - 1];
-          final dist =
-              (Offset(p1[0], p1[1]) - Offset(p0[0], p0[1])).distance;
+          final dist = (Offset(p1[0], p1[1]) - Offset(p0[0], p0[1])).distance;
           final step = math.max(1.8, radius / 2.5);
           if (dist > step) {
             final count = (dist / step).ceil();
@@ -2326,9 +2453,8 @@ class _WorkspaceState extends State<Workspace>
   Future<void> _showCustomColorPicker() async {
     final selected = await showDialog<Color>(
       context: context,
-      builder: (ctx) => CustomColorPickerDialog(
-        initialColor: session.color ?? 0xff151515,
-      ),
+      builder: (ctx) =>
+          CustomColorPickerDialog(initialColor: session.color ?? 0xff151515),
     );
     if (selected != null) {
       setState(() {
@@ -2365,38 +2491,49 @@ class _WorkspaceState extends State<Workspace>
     final page = _activePage;
     setState(() {
       if (activeStroke != null) {
-        final originalPoints = activeStroke!.map((p) => List<double>.from(p)).toList();
+        final originalPoints = activeStroke!
+            .map((p) => List<double>.from(p))
+            .toList();
         var finalStroke = activeStroke!;
         var finalStyle = Map<String, dynamic>.from(activeStyle!);
 
-        final holdToShape = _inkHeld &&
-            ((finalStyle['kind'] == 'pen' && finalStyle['holdForLine'] == true) ||
+        final holdToShape =
+            _inkHeld &&
+            ((finalStyle['kind'] == 'pen' &&
+                    finalStyle['holdForLine'] == true) ||
                 (finalStyle['kind'] == 'pencil' &&
                     finalStyle['drawAndHold'] == true));
         if (finalStyle['kind'] == 'tape' &&
             finalStyle['straight'] == true &&
             finalStroke.length > 1) {
-          finalStroke = [
-            finalStroke.first,
-            finalStroke.last,
-          ];
+          finalStroke = [finalStroke.first, finalStroke.last];
         } else if ((finalStyle['kind'] == 'shape' || holdToShape) &&
-            (finalStyle['requireHold'] != true || _inkHeld) && finalStroke.length >= 2) {
-          final recognized = _recognizeAndFitShape(finalStroke, session);
+            (finalStyle['requireHold'] != true || _inkHeld) &&
+            finalStroke.length >= 2) {
+          final recognized = ShapeRecognition.recognize(finalStroke);
           finalStroke = recognized.stroke;
           if (finalStyle['snapToShapes'] == true) {
             for (final point in finalStroke) {
               Offset? closest;
               var distance = 10.0;
               for (var i = 0; i < page.strokes.length; i++) {
-                if (i >= page.inkStyles.length || page.inkStyles[i]['kind'] != 'shape') continue;
+                if (i >= page.inkStyles.length ||
+                    page.inkStyles[i]['kind'] != 'shape') {
+                  continue;
+                }
                 for (final target in page.strokes[i]) {
                   final candidate = Offset(target[0], target[1]);
                   final d = (candidate - Offset(point[0], point[1])).distance;
-                  if (d < distance) { distance = d; closest = candidate; }
+                  if (d < distance) {
+                    distance = d;
+                    closest = candidate;
+                  }
                 }
               }
-              if (closest != null) { point[0] = closest.dx; point[1] = closest.dy; }
+              if (closest != null) {
+                point[0] = closest.dx;
+                point[1] = closest.dy;
+              }
             }
           }
           if (recognized.isClosed && finalStyle['shapeFill'] == true) {
@@ -2405,7 +2542,7 @@ class _WorkspaceState extends State<Workspace>
           }
         }
 
-        if (!identical(finalStroke, activeStroke)) {
+        if (finalStyle['kind'] == 'shape' || holdToShape) {
           finalStyle['originalPoints'] = originalPoints;
         }
         page.strokes.add(finalStroke);
@@ -2434,168 +2571,6 @@ class _WorkspaceState extends State<Workspace>
       gestureStart = null;
     });
   }
-}
-
-class _RecognizedShape {
-  const _RecognizedShape({required this.stroke, required this.isClosed});
-  final List<List<double>> stroke;
-  final bool isClosed;
-}
-
-_RecognizedShape _recognizeAndFitShape(
-  List<List<double>> stroke,
-  EditorSession session,
-) {
-  if (stroke.length < 2) {
-    return _RecognizedShape(stroke: stroke, isClosed: false);
-  }
-
-  final first = stroke.first;
-  final last = stroke.last;
-  final endDist =
-      (Offset(last[0], last[1]) - Offset(first[0], first[1])).distance;
-
-  double minX = stroke[0][0], maxX = stroke[0][0];
-  double minY = stroke[0][1], maxY = stroke[0][1];
-  double totalLength = 0;
-  for (var i = 0; i < stroke.length; i++) {
-    final x = stroke[i][0];
-    final y = stroke[i][1];
-    if (x < minX) minX = x;
-    if (x > maxX) maxX = x;
-    if (y < minY) minY = y;
-    if (y > maxY) maxY = y;
-    if (i > 0) {
-      totalLength +=
-          (Offset(x, y) - Offset(stroke[i - 1][0], stroke[i - 1][1])).distance;
-    }
-  }
-
-  final width = maxX - minX;
-  final height = maxY - minY;
-  final maxDim = math.max(width, height);
-
-  // 2. Closed Loop Checks
-  final isLoop = endDist <= math.max(36.0, maxDim * 0.35);
-
-  if (isLoop && width > 15 && height > 15) {
-    final cx = (minX + maxX) / 2;
-    final cy = (minY + maxY) / 2;
-    final rx = width / 2;
-    final ry = height / 2;
-
-    double sumDistFromEllipse = 0;
-    for (final p in stroke) {
-      final dx = (p[0] - cx) / (rx == 0 ? 1 : rx);
-      final dy = (p[1] - cy) / (ry == 0 ? 1 : ry);
-      final d = (math.sqrt(dx * dx + dy * dy) - 1.0).abs();
-      sumDistFromEllipse += d;
-    }
-    final avgEllipseErr = sumDistFromEllipse / stroke.length;
-
-    // Detect true corners from turn angles. Smooth circles have no sustained
-    // sharp turns, while triangles, rectangles, trapezia, and hexagons do.
-    final corners = <int>[];
-    final window = math.max(2, (stroke.length / 28).round());
-    for (var i = window; i < stroke.length - window; i++) {
-      final before = Offset(stroke[i - window][0], stroke[i - window][1]);
-      final current = Offset(stroke[i][0], stroke[i][1]);
-      final after = Offset(stroke[i + window][0], stroke[i + window][1]);
-      final a = before - current;
-      final b = after - current;
-      if (a.distance < 1 || b.distance < 1) continue;
-      final cosine = (a.dx * b.dx + a.dy * b.dy) / (a.distance * b.distance);
-      final angle = math.acos(cosine.clamp(-1.0, 1.0));
-      if (angle > 0.62) corners.add(i);
-    }
-    final cornerGroups = <List<int>>[];
-    for (final index in corners) {
-      if (cornerGroups.isEmpty || index - cornerGroups.last.last > window * 2) {
-        cornerGroups.add([index]);
-      } else {
-        cornerGroups.last.add(index);
-      }
-    }
-    if (cornerGroups.length >= 3 && cornerGroups.length <= 8) {
-      final polygon = <List<double>>[];
-      for (final group in cornerGroups) {
-        final index = group[group.length ~/ 2];
-        polygon.add([stroke[index][0], stroke[index][1], first[2]]);
-      }
-      polygon.add(List<double>.from(polygon.first));
-      return _RecognizedShape(stroke: polygon, isClosed: true);
-    }
-
-    if (avgEllipseErr < 0.28) {
-      const count = 36;
-      final ellipsePoints = <List<double>>[];
-      for (var i = 0; i <= count; i++) {
-        final theta = (i / count) * 2 * math.pi;
-        ellipsePoints.add([
-          cx + rx * math.cos(theta),
-          cy + ry * math.sin(theta),
-          first[2],
-        ]);
-      }
-      return _RecognizedShape(stroke: ellipsePoints, isClosed: true);
-    }
-
-    return _RecognizedShape(stroke: stroke, isClosed: true);
-  }
-
-  // 1. Straight Line Check
-  if (totalLength > 0 && (endDist / totalLength) >= 0.82) {
-    double maxDev = 0;
-    final lineVec = Offset(last[0] - first[0], last[1] - first[1]);
-    final lenSq = lineVec.distanceSquared;
-    for (final p in stroke) {
-      if (lenSq > 0) {
-        final t = (((p[0] - first[0]) * lineVec.dx +
-                    (p[1] - first[1]) * lineVec.dy) /
-                lenSq)
-            .clamp(0.0, 1.0);
-        final proj =
-            Offset(first[0] + lineVec.dx * t, first[1] + lineVec.dy * t);
-        final dev = (Offset(p[0], p[1]) - proj).distance;
-        if (dev > maxDev) maxDev = dev;
-      }
-    }
-    if (maxDev < math.max(16.0, totalLength * 0.15)) {
-      return _RecognizedShape(
-        stroke: [
-          [first[0], first[1], first[2]],
-          [last[0], last[1], last[2]],
-        ],
-        isClosed: false,
-      );
-    }
-  }
-
-
-  // Preserve open two-segment gestures such as L, >, and simple arrows.
-  if (stroke.length >= 3 && totalLength > 24) {
-    final chord = Offset(last[0] - first[0], last[1] - first[1]);
-    final chordLengthSq = chord.distanceSquared;
-    if (chordLengthSq > 1) {
-      var cornerIndex = 1;
-      var cornerDeviation = 0.0;
-      for (var i = 1; i < stroke.length - 1; i++) {
-        final point = Offset(stroke[i][0], stroke[i][1]);
-        final origin = Offset(first[0], first[1]);
-        final t = (((point - origin).dx * chord.dx + (point - origin).dy * chord.dy) / chordLengthSq).clamp(0.0, 1.0);
-        final projection = origin + chord * t;
-        final deviation = (point - projection).distance;
-        if (deviation > cornerDeviation) { cornerDeviation = deviation; cornerIndex = i; }
-      }
-      if (cornerDeviation >= math.max(12.0, totalLength * 0.12)) {
-        final corner = stroke[cornerIndex];
-        return _RecognizedShape(stroke: [[first[0], first[1], first[2]], [corner[0], corner[1], corner[2]], [last[0], last[1], last[2]]], isClosed: false);
-      }
-    }
-  }
-
-
-  return _RecognizedShape(stroke: stroke, isClosed: false);
 }
 
 class _PageCreationLoader extends StatelessWidget {
@@ -2644,14 +2619,16 @@ class _PageCreationLoader extends StatelessWidget {
                     child: isCreating
                         ? const CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           )
                         : CircularProgressIndicator(
                             value: progress.clamp(0.04, 1.0),
                             strokeWidth: 2.2,
-                            backgroundColor:
-                                Colors.white.withValues(alpha: 0.15),
+                            backgroundColor: Colors.white.withValues(
+                              alpha: 0.15,
+                            ),
                             valueColor: AlwaysStoppedAnimation<Color>(
                               progress >= 1.0 ? Colors.white : Colors.white70,
                             ),
@@ -2662,8 +2639,8 @@ class _PageCreationLoader extends StatelessWidget {
                     isCreating
                         ? 'Creating new page…'
                         : progress >= 1.0
-                            ? 'Release or scroll to create page'
-                            : 'Scroll to add page $percent%',
+                        ? 'Release or scroll to create page'
+                        : 'Scroll to add page $percent%',
                     style: TextStyle(
                       color: progress >= 1.0 ? Colors.white : Colors.grey[300],
                       fontSize: 11.5,
@@ -2721,8 +2698,7 @@ class _CanvasScrollIndicatorState extends State<CanvasScrollIndicator> {
         final paperCount = widget.note.pages.length;
         final totalSheets = (hasCover ? 1 : 0) + paperCount;
         final totalContentHeight =
-            totalSheets * widget.pageHeight +
-            (totalSheets + 1) * 24.0;
+            totalSheets * widget.pageHeight + (totalSheets + 1) * 24.0;
         final totalHeight = totalContentHeight * scale;
         final viewportHeight = widget.constraints.maxHeight;
 
@@ -2731,13 +2707,15 @@ class _CanvasScrollIndicatorState extends State<CanvasScrollIndicator> {
         }
 
         final minY = viewportHeight - totalHeight;
-        final currentTy =
-            widget.session.view.value.storage[13].clamp(minY, 0.0);
+        final currentTy = widget.session.view.value.storage[13].clamp(
+          minY,
+          0.0,
+        );
         final scrollFraction = (-currentTy / -minY).clamp(0.0, 1.0);
 
         final trackHeight = math.max(40.0, viewportHeight - 16.0);
-        final thumbHeight =
-            ((viewportHeight / totalHeight) * trackHeight).clamp(32.0, trackHeight - 10.0);
+        final thumbHeight = ((viewportHeight / totalHeight) * trackHeight)
+            .clamp(32.0, trackHeight - 10.0);
         final travelSpace = math.max(1.0, trackHeight - thumbHeight);
         final thumbTop = scrollFraction * travelSpace;
 
@@ -2815,8 +2793,12 @@ class InkPainter extends CustomPainter {
     this.selected = const {},
     this.selectionBox,
   }) : _fingerprint = Object.hash(
-         color, selectionBox, Object.hashAll(selected),
-         Object.hashAll(strokes.map((stroke) => Object.hashAll(stroke.expand((p) => p)))),
+         color,
+         selectionBox,
+         Object.hashAll(selected),
+         Object.hashAll(
+           strokes.map((stroke) => Object.hashAll(stroke.expand((p) => p))),
+         ),
          Object.hashAll(styles.map((style) => style.toString())),
        );
   final int _fingerprint;
@@ -2914,7 +2896,8 @@ class InkPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant InkPainter oldDelegate) => _fingerprint != oldDelegate._fingerprint;
+  bool shouldRepaint(covariant InkPainter oldDelegate) =>
+      _fingerprint != oldDelegate._fingerprint;
 }
 
 class DesktopWindowHeader extends StatelessWidget {
