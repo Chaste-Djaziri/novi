@@ -13,6 +13,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/physics.dart';
+import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:forui/forui.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:path_provider/path_provider.dart';
@@ -357,6 +359,68 @@ class _WorkspaceState extends State<Workspace>
   AnimationController? _overscrollBounceController;
   Animation<double>? _overscrollBounceAnimation;
   int activeStrokePageIndex = 0;
+  Ticker? _flingTicker;
+  VelocityTracker _panVelocityTracker =
+      VelocityTracker.withKind(PointerDeviceKind.trackpad);
+  double _accumulatedPanY = 0.0;
+
+  void _stopFling() {
+    _flingTicker?.stop();
+    _flingTicker?.dispose();
+    _flingTicker = null;
+  }
+
+  void _applyFlingY(double targetTy) {
+    final m = session.view.value.clone();
+    m.storage[13] = targetTy;
+    session.view.value = m;
+  }
+
+  void _startFling(
+    double vy,
+    BoxConstraints constraints,
+    double pageWidth,
+    double pageHeight,
+  ) {
+    _stopFling();
+    final matrix = session.view.value;
+    final scale = matrix.getMaxScaleOnAxis();
+    final currentTy = matrix.storage[13];
+    final (_, minY) = _getCanvasScrollBounds(
+      constraints,
+      pageWidth,
+      pageHeight,
+      scale,
+    );
+
+    if (minY >= 0.0 || currentTy > 0.0 || currentTy < minY) return;
+
+    final simulation = FrictionSimulation(0.135, currentTy, vy);
+
+    _flingTicker = createTicker((elapsed) {
+      if (!mounted || current == null) {
+        _stopFling();
+        return;
+      }
+      final t = elapsed.inMicroseconds / 1000000.0;
+      final targetTy = simulation.x(t);
+      final v = simulation.dx(t);
+
+      if (simulation.isDone(t) || v.abs() < 12.0) {
+        _stopFling();
+        _applyFlingY(targetTy.clamp(minY, 0.0));
+      } else if (targetTy >= 0.0) {
+        _stopFling();
+        _applyFlingY(0.0);
+      } else if (targetTy <= minY) {
+        _stopFling();
+        _applyFlingY(minY);
+      } else {
+        _applyFlingY(targetTy);
+      }
+    });
+    _flingTicker!.start();
+  }
 
   void zoom(double factor) {
     setState(() {
@@ -563,13 +627,15 @@ class _WorkspaceState extends State<Workspace>
       session.view.value = matrix;
       setState(() {});
     } else {
-      _bottomOverscroll = 0.0;
+      if (_bottomOverscroll > 0) {
+        _bottomOverscroll = 0.0;
+        setState(() {});
+      }
       newTy = (currentTy - scrollDelta.dy).clamp(minY, maxY);
       if (currentTx != newTx || currentTy != newTy) {
         matrix.storage[12] = newTx;
         matrix.storage[13] = newTy;
         session.view.value = matrix;
-        setState(() {});
       }
     }
   }
@@ -936,6 +1002,7 @@ class _WorkspaceState extends State<Workspace>
     tablets.dispose();
     _overscrollResetTimer?.cancel();
     _overscrollBounceController?.dispose();
+    _stopFling();
     for (final editor in sessions.values) {
       editor.dispose();
     }
@@ -1204,6 +1271,7 @@ class _WorkspaceState extends State<Workspace>
                         }
                       },
                       onPointerDown: (event) {
+                        _stopFling();
                         if (event.kind == PointerDeviceKind.stylus ||
                             event.kind == PointerDeviceKind.invertedStylus) {
                           if (!hasStylus) {
@@ -1260,8 +1328,16 @@ class _WorkspaceState extends State<Workspace>
                           setState(() {});
                         }
                       },
-                      onPointerPanZoomStart: (_) {
+                      onPointerPanZoomStart: (event) {
+                        _stopFling();
                         _pinchScale = 1;
+                        _accumulatedPanY = 0.0;
+                        _panVelocityTracker =
+                            VelocityTracker.withKind(PointerDeviceKind.trackpad);
+                        _panVelocityTracker.addPosition(
+                          event.timeStamp,
+                          Offset.zero,
+                        );
                       },
                       onPointerPanZoomUpdate: (event) {
                         if (event.scale != _pinchScale) {
@@ -1269,6 +1345,11 @@ class _WorkspaceState extends State<Workspace>
                         }
                         _pinchScale = event.scale;
                         if (event.panDelta != Offset.zero) {
+                          _accumulatedPanY += event.panDelta.dy;
+                          _panVelocityTracker.addPosition(
+                            event.timeStamp,
+                            Offset(0, _accumulatedPanY),
+                          );
                           final scrollDelta = Offset(
                             -event.panDelta.dx,
                             -event.panDelta.dy,
@@ -1286,11 +1367,17 @@ class _WorkspaceState extends State<Workspace>
                         _snapHorizontalToCenter(constraints, pageWidth);
                         if (_bottomOverscroll > 0 && !_isCreatingPage) {
                           _startBounceBack(constraints, pageWidth, pageHeight);
+                        } else if (!_isCreatingPage) {
+                          final velocity = _panVelocityTracker.getVelocity();
+                          final vy = velocity.pixelsPerSecond.dy;
+                          if (vy.abs() > 40.0) {
+                            _startFling(vy, constraints, pageWidth, pageHeight);
+                          }
                         }
-                        setState(() {});
                       },
                       onPointerSignal: (event) {
                         if (event is PointerScrollEvent) {
+                          _stopFling();
                           _handleScrollDelta(
                             event.scrollDelta,
                             constraints,
@@ -1431,10 +1518,10 @@ class _WorkspaceState extends State<Workspace>
                           isCreatingPage: _isCreatingPage,
                           bottomOverscroll: _bottomOverscroll,
                           onScrollTo: (ty) {
+                            _stopFling();
                             final m = session.view.value.clone();
                             m.storage[13] = ty;
                             session.view.value = m;
-                            setState(() {});
                           },
                         ),
                       ),
@@ -2048,94 +2135,99 @@ class _CanvasScrollIndicatorState extends State<CanvasScrollIndicator> {
 
   @override
   Widget build(BuildContext context) {
-    final scale = widget.session.view.value.getMaxScaleOnAxis();
-    final hasCover = widget.note.kind == 'Notebook';
-    final paperCount = widget.note.pages.length;
-    final totalSheets = (hasCover ? 1 : 0) + paperCount;
-    final loaderExtra =
-        (widget.bottomOverscroll > 0 || widget.isCreatingPage) ? 72.0 : 0.0;
-    final totalContentHeight =
-        totalSheets * widget.pageHeight +
-        (totalSheets + 1) * 24.0 +
-        loaderExtra;
-    final totalHeight = totalContentHeight * scale;
-    final viewportHeight = widget.constraints.maxHeight;
+    return ListenableBuilder(
+      listenable: widget.session.view,
+      builder: (context, _) {
+        final scale = widget.session.view.value.getMaxScaleOnAxis();
+        final hasCover = widget.note.kind == 'Notebook';
+        final paperCount = widget.note.pages.length;
+        final totalSheets = (hasCover ? 1 : 0) + paperCount;
+        final loaderExtra =
+            (widget.bottomOverscroll > 0 || widget.isCreatingPage) ? 72.0 : 0.0;
+        final totalContentHeight =
+            totalSheets * widget.pageHeight +
+            (totalSheets + 1) * 24.0 +
+            loaderExtra;
+        final totalHeight = totalContentHeight * scale;
+        final viewportHeight = widget.constraints.maxHeight;
 
-    if (totalHeight <= viewportHeight + 1.0) {
-      return const SizedBox.shrink();
-    }
+        if (totalHeight <= viewportHeight + 1.0) {
+          return const SizedBox.shrink();
+        }
 
-    final minY = viewportHeight - totalHeight;
-    final currentTy =
-        widget.session.view.value.storage[13].clamp(minY, 0.0);
-    final scrollFraction = (-currentTy / -minY).clamp(0.0, 1.0);
+        final minY = viewportHeight - totalHeight;
+        final currentTy =
+            widget.session.view.value.storage[13].clamp(minY, 0.0);
+        final scrollFraction = (-currentTy / -minY).clamp(0.0, 1.0);
 
-    final trackHeight = math.max(40.0, viewportHeight - 16.0);
-    final thumbHeight =
-        ((viewportHeight / totalHeight) * trackHeight).clamp(32.0, trackHeight - 10.0);
-    final travelSpace = math.max(1.0, trackHeight - thumbHeight);
-    final thumbTop = scrollFraction * travelSpace;
+        final trackHeight = math.max(40.0, viewportHeight - 16.0);
+        final thumbHeight =
+            ((viewportHeight / totalHeight) * trackHeight).clamp(32.0, trackHeight - 10.0);
+        final travelSpace = math.max(1.0, trackHeight - thumbHeight);
+        final thumbTop = scrollFraction * travelSpace;
 
-    final isActive = _isHovered || _isDragging;
+        final isActive = _isHovered || _isDragging;
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        key: const Key('canvas-scroll-indicator'),
-        behavior: HitTestBehavior.opaque,
-        onTapDown: (details) {
-          final targetTop = (details.localPosition.dy - thumbHeight / 2)
-              .clamp(0.0, travelSpace);
-          final frac = targetTop / travelSpace;
-          final targetTy = -frac * -minY;
-          widget.onScrollTo(targetTy);
-        },
-        onVerticalDragStart: (_) => setState(() => _isDragging = true),
-        onVerticalDragEnd: (_) => setState(() => _isDragging = false),
-        onVerticalDragCancel: () => setState(() => _isDragging = false),
-        onVerticalDragUpdate: (details) {
-          final deltaY = details.delta.dy;
-          final deltaFrac = deltaY / travelSpace;
-          final currentFrac = (-currentTy / -minY).clamp(0.0, 1.0);
-          final newFrac = (currentFrac + deltaFrac).clamp(0.0, 1.0);
-          final targetTy = -newFrac * -minY;
-          widget.onScrollTo(targetTy);
-        },
-        child: Container(
-          width: isActive ? 10.0 : 7.0,
-          height: trackHeight,
-          margin: const EdgeInsets.only(right: 3),
-          decoration: BoxDecoration(
-            color: isActive
-                ? Colors.white.withValues(alpha: 0.06)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(5),
-          ),
-          child: Stack(
-            children: [
-              Positioned(
-                top: thumbTop,
-                left: 1.0,
-                right: 1.0,
-                height: thumbHeight,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: isActive
-                        ? Colors.white.withValues(alpha: 0.50)
-                        : Colors.white.withValues(alpha: 0.24),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.08),
-                      width: 0.5,
+        return MouseRegion(
+          onEnter: (_) => setState(() => _isHovered = true),
+          onExit: (_) => setState(() => _isHovered = false),
+          child: GestureDetector(
+            key: const Key('canvas-scroll-indicator'),
+            behavior: HitTestBehavior.opaque,
+            onTapDown: (details) {
+              final targetTop = (details.localPosition.dy - thumbHeight / 2)
+                  .clamp(0.0, travelSpace);
+              final frac = targetTop / travelSpace;
+              final targetTy = -frac * -minY;
+              widget.onScrollTo(targetTy);
+            },
+            onVerticalDragStart: (_) => setState(() => _isDragging = true),
+            onVerticalDragEnd: (_) => setState(() => _isDragging = false),
+            onVerticalDragCancel: () => setState(() => _isDragging = false),
+            onVerticalDragUpdate: (details) {
+              final deltaY = details.delta.dy;
+              final deltaFrac = deltaY / travelSpace;
+              final currentFrac = (-currentTy / -minY).clamp(0.0, 1.0);
+              final newFrac = (currentFrac + deltaFrac).clamp(0.0, 1.0);
+              final targetTy = -newFrac * -minY;
+              widget.onScrollTo(targetTy);
+            },
+            child: Container(
+              width: isActive ? 10.0 : 7.0,
+              height: trackHeight,
+              margin: const EdgeInsets.only(right: 3),
+              decoration: BoxDecoration(
+                color: isActive
+                    ? Colors.white.withValues(alpha: 0.06)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(5),
+              ),
+              child: Stack(
+                children: [
+                  Positioned(
+                    top: thumbTop,
+                    left: 1.0,
+                    right: 1.0,
+                    height: thumbHeight,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isActive
+                            ? Colors.white.withValues(alpha: 0.50)
+                            : Colors.white.withValues(alpha: 0.24),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          width: 0.5,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

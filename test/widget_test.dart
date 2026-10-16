@@ -1284,6 +1284,97 @@ void main() {
   );
 
   testWidgets(
+    'trackpad release during in-bounds scrolling engages inertial fling and gradually decelerates',
+    (tester) async {
+      final dir = Directory.systemTemp.createTempSync('novi_test_fling_');
+      final original = PathProviderPlatform.instance;
+      PathProviderPlatform.instance = TestPaths(dir.path);
+      addTearDown(() {
+        PathProviderPlatform.instance = original;
+        dir.deleteSync(recursive: true);
+      });
+      final store = LibraryStore('${dir.path}/novi.sqlite');
+      final note = Notebook(
+        id: 'test-trackpad-fling',
+        title: 'Fling Note',
+        kind: 'Notebook',
+        pages: [NotebookPage(), NotebookPage()], // 3 sheets total
+      );
+      store.save(note);
+      store.close();
+
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(const NoviApp());
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Fling Note').first);
+      await tester.pumpAndSettle();
+
+      final viewerFinder = find.byKey(ValueKey('view-${note.id}'));
+      final center = tester.getCenter(viewerFinder);
+
+      // Start trackpad pan
+      await tester.sendEventToBinding(
+        PointerPanZoomStartEvent(
+          position: center,
+          timeStamp: Duration.zero,
+        ),
+      );
+      await tester.pump();
+
+      // Pan upwards quickly (moving finger up to scroll down)
+      await tester.sendEventToBinding(
+        PointerPanZoomUpdateEvent(
+          position: center,
+          panDelta: const Offset(0, -40),
+          timeStamp: const Duration(milliseconds: 16),
+        ),
+      );
+      await tester.pump();
+
+      await tester.sendEventToBinding(
+        PointerPanZoomUpdateEvent(
+          position: center,
+          panDelta: const Offset(0, -40),
+          timeStamp: const Duration(milliseconds: 32),
+        ),
+      );
+      await tester.pump();
+
+      // Release trackpad while moving with velocity
+      await tester.sendEventToBinding(
+        PointerPanZoomEndEvent(
+          position: center,
+          timeStamp: const Duration(milliseconds: 34),
+        ),
+      );
+      await tester.pump();
+
+      final ivAtRelease = tester.widget<InteractiveViewer>(viewerFinder);
+      final tyAtRelease = ivAtRelease.transformationController!.value.storage[13];
+      // Has scrolled down from 0.0
+      expect(tyAtRelease, lessThan(0.0));
+
+      // Advance by 150ms: inertial fling continues scrolling forward!
+      await tester.pump(const Duration(milliseconds: 150));
+      final ivDuringFling = tester.widget<InteractiveViewer>(viewerFinder);
+      final tyDuringFling = ivDuringFling.transformationController!.value.storage[13];
+      expect(tyDuringFling, lessThan(tyAtRelease));
+
+      // Advance until fling simulation decelerates to a stop
+      await tester.pumpAndSettle();
+      final ivAtRest = tester.widget<InteractiveViewer>(viewerFinder);
+      final tyAtRest = ivAtRest.transformationController!.value.storage[13];
+      expect(tyAtRest, lessThanOrEqualTo(tyDuringFling));
+    },
+  );
+
+  testWidgets(
     'canvas scroll indicator appears on right edge and allows dragging to scroll smoothly',
     (tester) async {
       final dir = Directory.systemTemp.createTempSync('novi_test_indicator_');
