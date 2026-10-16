@@ -127,6 +127,18 @@ class _WorkspaceState extends State<Workspace>
   bool _inkHeld = false;
   Map<String, dynamic>? activeStyle;
 
+  List<List<double>> get _displayActiveStroke {
+    final stroke = activeStroke!;
+    final style = activeStyle!;
+    if (stroke.length < 2) return stroke;
+    if ((style['kind'] == 'tape' && style['straight'] == true) ||
+        (style['kind'] == 'pen' && style['holdForLine'] == true && _inkHeld)) {
+      return [stroke.first, stroke.last];
+    }
+    if (style['kind'] == 'shape' && _inkHeld) return _recognizeAndFitShape(stroke, session).stroke;
+    return stroke;
+  }
+
   bool get _showInkFootprint => !_isPanning &&
       !HardwareKeyboard.instance.isLogicalKeyPressed(LogicalKeyboardKey.space) &&
       (session.tool == EditorTool.pen || session.tool == EditorTool.highlighter || session.tool == EditorTool.eraser);
@@ -1841,7 +1853,7 @@ class _WorkspaceState extends State<Workspace>
                               ...page.strokes,
                               if (activeStrokePageIndex == pageIndex &&
                                   activeStroke != null)
-                                activeStroke!,
+                                _displayActiveStroke,
                             ],
                             color: foreground,
                             styles: [
@@ -2329,6 +2341,7 @@ class _WorkspaceState extends State<Workspace>
     final page = _activePage;
     setState(() {
       if (activeStroke != null) {
+        final originalPoints = activeStroke!.map((p) => List<double>.from(p)).toList();
         var finalStroke = activeStroke!;
         var finalStyle = Map<String, dynamic>.from(activeStyle!);
 
@@ -2364,6 +2377,9 @@ class _WorkspaceState extends State<Workspace>
           }
         }
 
+        if (!identical(finalStroke, activeStroke)) {
+          finalStyle['originalPoints'] = originalPoints;
+        }
         page.strokes.add(finalStroke);
         page.inkStyles.add(finalStyle);
         save();
@@ -2764,22 +2780,22 @@ class InkPainter extends CustomPainter {
       if (style['materialVersion'] == 1) {
         InkMaterial(style).paint(canvas, stroke, strokeColor);
       } else {
-      final isTape = style['kind'] == 'tape';
-      final paint = Paint()
-        ..color = strokeColor
-        ..strokeCap = isTape ? StrokeCap.square : StrokeCap.round
-        ..strokeJoin = isTape ? StrokeJoin.miter : StrokeJoin.round;
-      for (var i = 0; i < stroke.length; i++) {
-        final p = stroke[i];
-        paint.strokeWidth = width * (0.5 + 0.5 * p[2].clamp(0, 1));
-        final a = Offset(p[0], p[1]);
-        if (i == 0) {
-          canvas.drawCircle(a, paint.strokeWidth / 2, paint);
-        } else {
-          final previous = stroke[math.max(0, i - 1)];
-          canvas.drawLine(Offset(previous[0], previous[1]), a, paint);
+        final isTape = style['kind'] == 'tape';
+        final paint = Paint()
+          ..color = strokeColor
+          ..strokeCap = isTape ? StrokeCap.square : StrokeCap.round
+          ..strokeJoin = isTape ? StrokeJoin.miter : StrokeJoin.round;
+        for (var i = 0; i < stroke.length; i++) {
+          final p = stroke[i];
+          paint.strokeWidth = width * (0.5 + 0.5 * p[2].clamp(0, 1));
+          final a = Offset(p[0], p[1]);
+          if (i == 0) {
+            canvas.drawCircle(a, paint.strokeWidth / 2, paint);
+          } else {
+            final previous = stroke[math.max(0, i - 1)];
+            canvas.drawLine(Offset(previous[0], previous[1]), a, paint);
+          }
         }
-      }
       }
       if (opacity < 1 && style['materialVersion'] != 1) {
         canvas.restore();
