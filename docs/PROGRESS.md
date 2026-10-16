@@ -15,12 +15,13 @@
 - [ ] Step 11: Complete hands-on desktop acceptance checks listed below.
 
 ## Current
-Icon-only toolbar with tooltips, floating hovering context controls for sub-components, and Select tool as the initial document tool are implemented and verified with automated test suites (`flutter test`: 24 passing, `flutter analyze`: clean).
+More controls and options for each tool are moved completely out of the header into a draggable, glassmorphic `FloatingToolControls` component floating over the workspace canvas. The header toolbar is now a compact 44px bar. All 24 automated tests pass and analysis is clean.
 
 ## Toolbar Icon-Only Design, Hovering Sub-Components, and Select Tool — 2026-10-16
 - [x] Configured `EditorTool.select` as initial tool when opening notebooks/documents.
 - [x] Converted top toolbar items and sub-components to icon-only buttons with zero text clutter, passing text names and actions into tooltips.
-- [x] Designed `_HoveringContextControls` floating/hovering component with elevation, shadow, mouse hover animation (`_isHovered`), and dark glassmorphic container (`Key('context-controls')`).
+- [x] Moved all more controls / tool options out of the top header into `FloatingToolControls`, freeing header vertical space to a clean 44px.
+- [x] Designed `FloatingToolControls` floating over the document canvas in the viewport Stack with glassmorphism blur, soft shadow, hover micro-interactions, and freeform draggable positioning (`Key('floating-drag-handle')`).
 - [x] Added contextual icon-based sub-controls for all active tools:
   - `select`: select mode indicator, delete selected ink, clear selection.
   - `pen` & `highlighter`: stroke width slider, dynamic width preview dot, auto contrast wand, ink shade selector pills.
