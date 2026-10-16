@@ -152,10 +152,6 @@ class _WorkspaceState extends State<Workspace>
       vsync: this,
       duration: const Duration(milliseconds: 400),
     );
-    _smoothScrollController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 220),
-    );
     tablets.addListener(_tabletsChanged);
     tablets.start();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -360,10 +356,6 @@ class _WorkspaceState extends State<Workspace>
   static const double _createPageThreshold = 180.0;
   AnimationController? _overscrollBounceController;
   Animation<double>? _overscrollBounceAnimation;
-  AnimationController? _smoothScrollController;
-  Animation<double>? _smoothScrollAnimation;
-  Offset _lastPanDelta = Offset.zero;
-  DateTime? _lastPanTime;
   int activeStrokePageIndex = 0;
 
   void zoom(double factor) {
@@ -533,8 +525,7 @@ class _WorkspaceState extends State<Workspace>
     final bool atOrPastBottom =
         currentTy <= minY + 1.0 || _bottomOverscroll > 0;
     if (atOrPastBottom && scrollDelta.dy > 0) {
-      // User is at or past the bottom and scrolling further down to add page!
-      _smoothScrollController?.stop();
+      // User is at the bottom and scrolling further down to add page
       _overscrollBounceController?.stop();
       _overscrollResetTimer?.cancel();
       _bottomOverscroll += scrollDelta.dy;
@@ -556,7 +547,6 @@ class _WorkspaceState extends State<Workspace>
       session.view.value = matrix;
       setState(() {});
     } else if (scrollDelta.dy < 0 && _bottomOverscroll > 0) {
-      _smoothScrollController?.stop();
       _overscrollBounceController?.stop();
       _overscrollResetTimer?.cancel();
       if (_bottomOverscroll + scrollDelta.dy >= 0) {
@@ -574,34 +564,12 @@ class _WorkspaceState extends State<Workspace>
       setState(() {});
     } else {
       _bottomOverscroll = 0.0;
-      final targetTy = (currentTy - scrollDelta.dy).clamp(minY, maxY);
-      if (scrollDelta.dy.abs() < 12.0) {
-        newTy = targetTy;
-        if (currentTx != newTx || currentTy != newTy) {
-          matrix.storage[12] = newTx;
-          matrix.storage[13] = newTy;
-          session.view.value = matrix;
-          setState(() {});
-        }
-      } else {
-        // Smooth slide interpolation for larger scroll jumps (e.g. mouse wheel)
-        _overscrollBounceController?.stop();
-        final startTy = currentTy;
-        final curve = CurvedAnimation(
-          parent: _smoothScrollController!,
-          curve: Curves.easeOutCubic,
-        );
-        _smoothScrollAnimation = Tween<double>(begin: startTy, end: targetTy)
-            .animate(curve)
-          ..addListener(() {
-            if (!mounted || current == null) return;
-            final m = session.view.value.clone();
-            m.storage[12] = newTx;
-            m.storage[13] = _smoothScrollAnimation!.value;
-            session.view.value = m;
-            setState(() {});
-          });
-        _smoothScrollController!.forward(from: 0.0);
+      newTy = (currentTy - scrollDelta.dy).clamp(minY, maxY);
+      if (currentTx != newTx || currentTy != newTy) {
+        matrix.storage[12] = newTx;
+        matrix.storage[13] = newTy;
+        session.view.value = matrix;
+        setState(() {});
       }
     }
   }
@@ -968,7 +936,6 @@ class _WorkspaceState extends State<Workspace>
     tablets.dispose();
     _overscrollResetTimer?.cancel();
     _overscrollBounceController?.dispose();
-    _smoothScrollController?.dispose();
     for (final editor in sessions.values) {
       editor.dispose();
     }
@@ -1295,8 +1262,6 @@ class _WorkspaceState extends State<Workspace>
                       },
                       onPointerPanZoomStart: (_) {
                         _pinchScale = 1;
-                        _lastPanDelta = Offset.zero;
-                        _lastPanTime = DateTime.now();
                       },
                       onPointerPanZoomUpdate: (event) {
                         if (event.scale != _pinchScale) {
@@ -1304,8 +1269,6 @@ class _WorkspaceState extends State<Workspace>
                         }
                         _pinchScale = event.scale;
                         if (event.panDelta != Offset.zero) {
-                          _lastPanDelta = event.panDelta;
-                          _lastPanTime = DateTime.now();
                           final scrollDelta = Offset(
                             -event.panDelta.dx,
                             -event.panDelta.dy,
@@ -1323,20 +1286,7 @@ class _WorkspaceState extends State<Workspace>
                         _snapHorizontalToCenter(constraints, pageWidth);
                         if (_bottomOverscroll > 0 && !_isCreatingPage) {
                           _startBounceBack(constraints, pageWidth, pageHeight);
-                        } else if (_lastPanDelta != Offset.zero &&
-                            _lastPanTime != null &&
-                            DateTime.now().difference(_lastPanTime!).inMilliseconds < 100 &&
-                            _lastPanDelta.dy.abs() > 3.0) {
-                          final scrollDelta = Offset(0, -_lastPanDelta.dy * 8.0);
-                          _handleScrollDelta(
-                            scrollDelta,
-                            constraints,
-                            pageWidth,
-                            pageHeight,
-                          );
                         }
-                        _lastPanDelta = Offset.zero;
-                        _lastPanTime = null;
                         setState(() {});
                       },
                       onPointerSignal: (event) {
