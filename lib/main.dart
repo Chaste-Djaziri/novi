@@ -189,7 +189,6 @@ class _WorkspaceState extends State<Workspace> {
       final opened = LibraryStore('${directory.path}/novi.sqlite');
       if (!mounted) {
         opened.close();
-        return;
       }
       try {
         notes = opened.load();
@@ -198,8 +197,18 @@ class _WorkspaceState extends State<Workspace> {
         rethrow;
       }
       store = opened;
-      if (notes.isNotEmpty) {
-        select(notes.first, pushHistory: false);
+      final savedOpenIds = opened.loadOpenTabs();
+      final validOpenIds = savedOpenIds
+          .where((id) => notes.any((n) => n.id == id))
+          .toList();
+      openIds.clear();
+      openIds.addAll(validOpenIds);
+      if (openIds.isNotEmpty) {
+        current = notes.firstWhere((n) => n.id == openIds.last);
+        sessions.putIfAbsent(current!.id, () => EditorSession(current!));
+      } else if (notes.isNotEmpty) {
+        current = notes.first;
+        sessions.putIfAbsent(current!.id, () => EditorSession(current!));
       }
       _pushNav(null);
       setState(() {
@@ -228,6 +237,7 @@ class _WorkspaceState extends State<Workspace> {
       gestureStart = null;
       selectionBox = null;
     });
+    store?.saveOpenTabs(openIds);
     if (pushHistory) {
       _pushNav(note.id);
     }
@@ -259,7 +269,8 @@ class _WorkspaceState extends State<Workspace> {
     setState(() {
       openIds.remove(id);
     });
-    if (current?.id == id) {
+    store?.saveOpenTabs(openIds);
+    if (current?.id == id && !inLibrary) {
       if (openIds.isEmpty) {
         _pushNav(null);
         setState(() => inLibrary = true);
@@ -472,7 +483,7 @@ class _WorkspaceState extends State<Workspace> {
           notes: notes,
           openIds: openIds,
           currentId: inLibrary ? null : current?.id,
-          showTabs: !inLibrary,
+          showTabs: openIds.isNotEmpty,
           onSelectTab: (tab) => select(tab),
           onCloseTab: closeTab,
           onCreate: create,
@@ -1038,7 +1049,7 @@ class DesktopWindowHeader extends StatelessWidget {
               const DragToMoveArea(
                 child: SizedBox(width: 78, height: 34),
               ),
-            if (showTabs) ...[
+            if (currentId != null) ...[
               DesktopHeaderButton(
                 key: const Key('home-button'),
                 tooltip: 'Home',
