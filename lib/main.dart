@@ -149,7 +149,7 @@ class _WorkspaceState extends State<Workspace>
       _inkGlobalPointer = event.position;
       _inkHover = event.kind == PointerDeviceKind.touch ? null : event.localPosition;
       _inkHoverPage = pageIndex;
-      _inkPressure = event is PointerHoverEvent || event.kind == PointerDeviceKind.mouse ? 1 : event.pressure;
+      _inkPressure = event is PointerHoverEvent || event is PointerEnterEvent || event.kind == PointerDeviceKind.mouse ? 1 : event.pressure;
     });
   }
 
