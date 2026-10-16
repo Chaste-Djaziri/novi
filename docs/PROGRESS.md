@@ -539,7 +539,9 @@ Confirm material feel and pressure with a physical tablet in the normal Mac app.
 - [x] `flutter analyze`: clean. `flutter test`: all 41 tests pass. The file checker reports `workspace_tools.dart` reduced from 6,216 to 5,406 lines.
 - [x] Physically moved eraser type and advanced settings dialogs into `features/editor/tools/eraser` with compatibility-preserving part wiring.
 - [x] `flutter analyze`: clean. `flutter test`: all 41 tests pass.
-- [ ] Physically move lasso and text dialog implementations, then extract their remaining private painters.
+- [x] Physically moved the text popover implementations into `features/editor/tools/text/text_popovers_impl.dart`.
+- [x] `flutter analyze`: clean. `flutter test`: all 41 tests pass.
+- [ ] Extract the remaining private eraser/lasso/text painters and finish reducing legacy editor files.
 
 
 ## Writing materials and paper footprints — 2026-10-16
