@@ -146,6 +146,14 @@ void main() {
         await tester.pump();
       }
     }
+    // Scrolling under a stationary pointer must not drag the indicator with the ink.
+    final stationary = session.view.value.clone();
+    stationary.storage[13] -= 40;
+    session.view.value = stationary;
+    await tester.pump();
+    final shiftedBox = tester.renderObject<RenderBox>(papers.at(1));
+    final shiftedPosition = (overlay(1).foregroundPainter! as InkFootprintPainter).position;
+    expect(shiftedPosition.dy, closeTo(shiftedBox.globalToLocal(const Offset(500, 400)).dy, 0.1));
     await tester.sendKeyDownEvent(LogicalKeyboardKey.space);
     await tester.pump();
     expect(overlay(1).foregroundPainter, isNull);
