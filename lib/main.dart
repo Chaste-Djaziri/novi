@@ -147,12 +147,15 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
     windowManager.addListener(this);
     tablets.addListener(_tabletsChanged);
     tablets.start();
-    _checkFullScreen();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _checkFullScreen();
+    });
     initialize();
   }
 
   Future<void> _checkFullScreen() async {
     try {
+      await windowManager.ensureInitialized();
       final fs = await windowManager.isFullScreen();
       if (mounted && isFullScreen != fs) {
         setState(() => isFullScreen = fs);
@@ -646,6 +649,14 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
       current = changed;
       save();
     });
+    _paperChanged(
+      0,
+      changed.pages.first.text,
+      changed.landscape ? 980 : 760,
+      changed.landscape ? 760 : 980,
+      recordUndo: false,
+      caretSource: session.activeTextPage.clamp(0, changed.pages.length - 1),
+    );
   }
 
   void toggleFavorite(Notebook note) {
