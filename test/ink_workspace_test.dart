@@ -94,6 +94,7 @@ void main() {
     await tester.pumpAndSettle();
     // Move each content page into view using the real page transform.
     final papers = find.byWidgetPredicate((w) => w is CustomPaint && w.painter is InkPainter);
+    CustomPaint overlay(int page) => tester.widget<CustomPaint>(find.ancestor(of: papers.at(page), matching: find.byType(CustomPaint)).first);
     final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await mouse.addPointer(location: Offset.zero);
     for (final scale in [0.5, 1.0, 1.5]) {
@@ -113,25 +114,40 @@ void main() {
         await mouse.moveTo(const Offset(490, 390));
         await mouse.moveTo(const Offset(500, 400));
         await tester.pump();
-        final painter = tester.widget<CustomPaint>(papers.at(page)).foregroundPainter! as InkFootprintPainter;
+        final painter = overlay(page).foregroundPainter! as InkFootprintPainter;
         final expected = box.globalToLocal(const Offset(500, 400));
         expect(painter.position.dx, closeTo(expected.dx, 0.1));
         expect(painter.position.dy, closeTo(expected.dy, 0.1));
         expect(painter.material.width, closeTo(7 * 22 / 3, 0.001));
         workspace.chooseTool(EditorTool.eraser);
         await tester.pump();
-        expect((tester.widget<CustomPaint>(papers.at(page)).foregroundPainter! as InkFootprintPainter).eraserRadius, 26);
+        expect((overlay(page).foregroundPainter! as InkFootprintPainter).eraserRadius, 26);
         workspace.chooseTool(EditorTool.pen);
         await tester.pump();
       }
     }
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(overlay(1).foregroundPainter, isNull);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(overlay(1).foregroundPainter, isA<InkFootprintPainter>());
+    await tester.tap(find.byTooltip('Medium stroke (4px)'));
+    await tester.pumpAndSettle();
+    expect(session.width, 4);
+    workspace.chooseTool(EditorTool.eraser);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Small eraser'));
+    await tester.pumpAndSettle();
+    expect(session.eraserRadius, 6);
+    expect(session.width, 4);
     await mouse.moveTo(const Offset(10, 10));
     await tester.pump();
-    expect(tester.widget<CustomPaint>(papers.first).foregroundPainter, isNull);
+    expect(overlay(0).foregroundPainter, isNull);
     await mouse.removePointer();
     await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
     await tester.pumpAndSettle();
-    expect(tester.widget<CustomPaint>(papers.first).foregroundPainter, isNull);
+    expect(overlay(0).foregroundPainter, isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpAndSettle();
   });
