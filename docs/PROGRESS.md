@@ -211,6 +211,15 @@ The first technical alpha is implemented. A reported native crash on New noteboo
 - [x] Regenerated visual preview artifact `build/ui-preview/editor.png` confirming the Home button placement alongside the traffic lights and navigation buttons.
 - [ ] Hands-on interaction check in the running Mac app.
 
+## Open tabs preservation until specifically closed by user — 2026-10-16
+- [x] Preserved open document tabs in `DesktopWindowHeader` whenever `openIds.isNotEmpty`, so tabs remain visible and accessible in the window header even when navigating back to the documents library or between documents.
+- [x] Persisted open tab IDs in SQLite `app_state` table (`loadOpenTabs`, `saveOpenTabs` in `LibraryStore`), restoring open tabs across app launches and sessions.
+- [x] Ensured tabs are strictly preserved open until specifically closed by the user tapping the tab's close (`x`) button (`closeTab`).
+- [x] Added automated widget test in `test/widget_test.dart` verifying multi-document tab preservation across library navigation, active tab switching, selective closing, and final cleanup.
+- [x] `flutter analyze`: clean (0 issues).
+- [x] Unit and widget test suite: all 15 tests pass (`test/library_ui_test.dart`, `test/widget_test.dart`, `test/workspace_test.dart`).
+- [ ] Hands-on interaction check in the running Mac app.
+
 ## Next
 Perform hands-on visual and drag verification in the rebuilt Mac app. Continue the desktop acceptance checks listed in the checklist above, recording results here.
 
