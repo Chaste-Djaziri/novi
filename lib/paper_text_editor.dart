@@ -43,9 +43,9 @@ class _PaperTextEditorState extends State<PaperTextEditor> {
     final sample = widget.layout.painter('M', widget.pageWidth, style, scaler);
     final baseline = sample.computeLineMetrics().first.baseline;
     sample.dispose();
-    final top = (widget.layout.spacing - baseline).clamp(
+    final top = (widget.layout.lineHeight(widget.fontSize) - baseline).clamp(
       0.0,
-      widget.layout.spacing,
+      widget.layout.lineHeight(widget.fontSize),
     );
     return Listener(
       onPointerDown: (event) => down = event.localPosition,
