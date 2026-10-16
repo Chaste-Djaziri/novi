@@ -239,10 +239,7 @@ class WorkspaceToolbar extends StatelessWidget {
                         DesktopIconButton(
                           tooltip: 'Add page',
                           onPressed: onAddPage,
-                          icon: const Icon(
-                            CupertinoIcons.doc_badge_plus,
-                            size: 18,
-                          ),
+                          icon: const Icon(CupertinoIcons.doc_append, size: 18),
                         ),
                         DesktopIconButton(
                           tooltip: 'Document style',
