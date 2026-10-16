@@ -11,17 +11,20 @@ class NotebookPage {
     this.text = '',
     List<List<List<double>>>? strokes,
     List<Map<String, dynamic>>? inkStyles,
+    this.isBookmarked = false,
   }) : strokes = strokes ?? [],
        inkStyles = inkStyles ?? [];
 
   String text;
   List<List<List<double>>> strokes;
   List<Map<String, dynamic>> inkStyles;
+  bool isBookmarked;
 
   Map<String, dynamic> toJson() => {
     'text': text,
     'strokes': strokes,
     'inkStyles': inkStyles,
+    if (isBookmarked) 'isBookmarked': true,
   };
 
   factory NotebookPage.fromJson(Map<String, dynamic> json) {
@@ -44,6 +47,7 @@ class NotebookPage {
           .map((s) => Map<String, dynamic>.from(s as Map))
           .toList(),
       strokes: strokes,
+      isBookmarked: json['isBookmarked'] as bool? ?? false,
     );
   }
 
@@ -67,6 +71,7 @@ class Notebook {
     List<Map<String, dynamic>>? inkStyles,
     this.fontSize = 16,
     this.boldText = false,
+    this.coverBookmarked = false,
     List<List<List<double>>>? strokes,
     List<NotebookPage>? pages,
   }) : _pages = pages ?? [
@@ -86,6 +91,7 @@ class Notebook {
   String? coverImage;
   bool landscape;
   bool favorite;
+  bool coverBookmarked;
   double fontSize;
   bool boldText;
   List<NotebookPage>? _pages;
@@ -132,6 +138,7 @@ class Notebook {
     'coverImage': coverImage,
     'landscape': landscape,
     'favorite': favorite,
+    if (coverBookmarked) 'coverBookmarked': true,
     'inkStyles': inkStyles,
     'fontSize': fontSize,
     'boldText': boldText,
@@ -175,6 +182,7 @@ class Notebook {
       coverImage: json['coverImage'] as String?,
       landscape: json['landscape'] as bool? ?? false,
       favorite: json['favorite'] as bool? ?? false,
+      coverBookmarked: json['coverBookmarked'] as bool? ?? false,
       inkStyles: inkStyles,
       fontSize: (json['fontSize'] as num?)?.toDouble() ?? 16,
       boldText: json['boldText'] as bool? ?? false,
