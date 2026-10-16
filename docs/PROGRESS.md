@@ -575,6 +575,8 @@ Confirm material feel and pressure with a physical tablet in the normal Mac app.
 - [x] Verified analyzer and shape-recognition integration coverage after reordering recognizer stages.
 - [x] Added polygon classification before ellipse fitting: edge-aligned loops become rectangles/squares, while remaining angular loops become triangles instead of circles.
 - [x] Verified analyzer and shape-recognition integration coverage after polygon classification changes.
+- [x] Replaced the broad bounding-box heuristic with turn-angle corner detection so triangles, rectangles, trapezia, hexagons, and other polygons are recognized by their actual corners while smooth loops remain circles.
+- [x] Verified analyzer and shape-recognition integration coverage after the classifier correction.
 - [ ] Add live held-stroke shape preview and resize/move interaction before pointer release.
 - [ ] Finish reducing legacy editor files and add broader painter comparison coverage.
 
