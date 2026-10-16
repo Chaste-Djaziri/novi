@@ -590,15 +590,15 @@ void main() {
     final viewerBottom = tester.getBottomLeft(viewerFinder).dy;
     expect((viewerBottom - bottomReached - 24.0).abs(), lessThan(2.0));
 
-    // Scrolling down further still sticks to bottom gap (cannot scroll past bottom)
+    // Scrolling down slightly at bottom overscrolls slightly within bounds
     await tester.sendEventToBinding(
       PointerScrollEvent(
         position: viewerCenter,
-        scrollDelta: const Offset(0, 1000),
+        scrollDelta: const Offset(0, 30),
       ),
     );
     await tester.pumpAndSettle();
-    expect((viewerBottom - tester.getBottomLeft(inkCanvasFinder).dy - 24.0).abs(), lessThan(2.0));
+    expect((viewerBottom - tester.getBottomLeft(inkCanvasFinder).dy - 24.0).abs(), lessThan(10.0));
 
     // 5. Scroll all the way to the top: cover top leaves 24px gap below viewport top
     await tester.sendEventToBinding(
@@ -730,6 +730,111 @@ void main() {
     expect(smallIv.transformationController!.value.getMaxScaleOnAxis(), 1.0);
     expect((tester.getCenter(inkCanvasFinder).dx - viewerCenter.dx).abs(), lessThan(2.0));
   });
+
+  testWidgets(
+    'once on bottom on scroll shows loader, and scrolling past threshold creates new page',
+    (tester) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final directory = Directory.systemTemp.createTempSync('novi-multipage');
+      final original = PathProviderPlatform.instance;
+      PathProviderPlatform.instance = TestPaths(directory.path);
+      addTearDown(() {
+        PathProviderPlatform.instance = original;
+        directory.deleteSync(recursive: true);
+      });
+
+      final dbPath = '${directory.path}/novi.sqlite';
+      final store = LibraryStore(dbPath);
+      store.save(Notebook(id: 'note-multipage', title: 'Scroll Page Note'));
+      store.close();
+
+      await tester.pumpWidget(const NoviApp());
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
+      await tester.pumpAndSettle();
+
+      // Open the notebook
+      await tester.tap(find.text('Scroll Page Note').first);
+      await tester.pumpAndSettle();
+
+      // Initially 2 pages total (Page 1 Cover, Page 2 Paper)
+      expect(find.textContaining('Page 1 of 2'), findsOneWidget);
+
+      final viewerFinder = find.byType(InteractiveViewer);
+      final viewerCenter = tester.getCenter(viewerFinder);
+
+      // Scroll to the bottom of the document
+      await tester.sendEventToBinding(
+        PointerScrollEvent(
+          position: viewerCenter,
+          scrollDelta: const Offset(0, 3000),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Page 2 of 2'), findsOneWidget);
+
+      // Now at bottom: scroll down slightly (overscroll)
+      await tester.sendEventToBinding(
+        PointerScrollEvent(
+          position: viewerCenter,
+          scrollDelta: const Offset(0, 40),
+        ),
+      );
+      await tester.pump();
+
+      // Loader appears underneath showing progress!
+      expect(find.text('Scroll to add page 40%'), findsOneWidget);
+
+      // Scroll down further past the 100 threshold
+      await tester.sendEventToBinding(
+        PointerScrollEvent(
+          position: viewerCenter,
+          scrollDelta: const Offset(0, 70),
+        ),
+      );
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      // New page is created! Total pages is now 3 (Page 2 of 3)
+      expect(find.textContaining('of 3'), findsOneWidget);
+
+      // Scrolling down reaches Page 3 of 3
+      await tester.sendEventToBinding(
+        PointerScrollEvent(
+          position: viewerCenter,
+          scrollDelta: const Offset(0, 1000),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Page 3 of 3'), findsOneWidget);
+
+      // Verify two paper pages now exist
+      final inkCanvases = find.byWidgetPredicate(
+        (w) => w is CustomPaint && w.painter is InkPainter,
+      );
+      expect(inkCanvases, findsNWidgets(2));
+
+      // Paper Page 2 is directly under Paper Page 1 with a 24px gap
+      final page1Bottom = tester.getBottomLeft(inkCanvases.first).dy;
+      final page2Top = tester.getTopLeft(inkCanvases.last).dy;
+      expect((page2Top - page1Bottom - 24.0).abs(), lessThan(2.0));
+
+      // Undo reverts the page creation back to 2 pages
+      await tester.tap(find.byTooltip('Undo'));
+      await tester.pumpAndSettle();
+
+      final inkCanvasesAfterUndo = find.byWidgetPredicate(
+        (w) => w is CustomPaint && w.painter is InkPainter,
+      );
+      expect(inkCanvasesAfterUndo, findsNWidgets(1));
+      expect(find.textContaining('Page 2 of 2'), findsOneWidget);
+    },
+  );
 }
 
 
