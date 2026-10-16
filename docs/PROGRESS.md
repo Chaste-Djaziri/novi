@@ -571,6 +571,8 @@ Confirm material feel and pressure with a physical tablet in the normal Mac app.
 - [x] Verified analyzer and ink/workspace tests after the recognition update.
 - [x] Fixed completion ordering so held pen and pencil gestures reach full shape recognition before line fitting; circles and other closed shapes are no longer flattened into long lines.
 - [x] Verified analyzer and shape-recognition integration coverage after the ordering fix.
+- [x] Prioritized closed-loop detection ahead of line and corner fitting so imperfect circles and other loops are not classified as open strokes.
+- [x] Verified analyzer and shape-recognition integration coverage after reordering recognizer stages.
 - [ ] Add live held-stroke shape preview and resize/move interaction before pointer release.
 - [ ] Finish reducing legacy editor files and add broader painter comparison coverage.
 
