@@ -7,6 +7,7 @@ import 'package:integration_test/integration_test.dart';
 
 import '../test/widget_test.dart' as notebook_tests;
 import '../test/workspace_test.dart' as workspace_tests;
+import '../test/ink_workspace_test.dart' as ink_tests;
 
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -33,4 +34,5 @@ void main() {
   notebook_tests.main();
   workspace_tests.main();
   control_tests.main();
+  ink_tests.main();
 }
