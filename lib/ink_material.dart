@@ -156,3 +156,25 @@ class InkFootprintPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant InkFootprintPainter oldDelegate) => true;
 }
+
+/// A fitted material swatch; all presets of a tool use the same scale.
+class InkSamplePainter extends CustomPainter {
+  const InkSamplePainter(this.material);
+  final InkMaterial material;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final maxWidth = InkMaterial.toolWidth(material.kind, 7);
+    final scale = math.min(1.0, (size.height - 2) / maxWidth);
+    canvas.save();
+    canvas.translate(size.width / 2, size.height / 2);
+    canvas.scale(scale);
+    material.paint(canvas, [
+      [-5 / scale, 0, 1],
+      [5 / scale, 0, 1],
+    ], Colors.white);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant InkSamplePainter oldDelegate) => true;
+}
