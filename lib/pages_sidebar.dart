@@ -156,30 +156,86 @@ class _PagesSidebarState extends State<PagesSidebar> {
 
           // Filter row: All Pages ⌵
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             child: Row(
               children: [
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: DesktopPopupButton<String>(
-                      value: _filter,
-                      items: const [
-                        DesktopMenuItem(value: 'All Pages', child: Text('All Pages')),
-                        DesktopMenuItem(
-                          value: 'Bookmarked',
-                          child: Text('Bookmarked'),
+                PopupMenuButton<String>(
+                  tooltip: 'Filter pages',
+                  color: const Color(0xff222222),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: const BorderSide(color: Color(0xff333333)),
+                  ),
+                  offset: const Offset(0, 28),
+                  onSelected: (val) {
+                    setState(() => _filter = val);
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: 'All Pages',
+                      height: 32,
+                      child: Text(
+                        'All Pages',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _filter == 'All Pages'
+                              ? Colors.white
+                              : Colors.white70,
+                          fontWeight: _filter == 'All Pages'
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'Bookmarked',
+                      height: 32,
+                      child: Text(
+                        'Bookmarked',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _filter == 'Bookmarked'
+                              ? Colors.white
+                              : Colors.white70,
+                          fontWeight: _filter == 'Bookmarked'
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                  ],
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xff222222),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xff333333)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _filter,
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(
+                          CupertinoIcons.chevron_down,
+                          size: 10,
+                          color: Colors.white70,
                         ),
                       ],
-                      onChanged: (val) {
-                        if (val != null) {
-                          setState(() => _filter = val);
-                        }
-                      },
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const Spacer(),
                 Text(
                   '$totalSheets ${totalSheets == 1 ? "page" : "pages"}',
                   style: TextStyle(
