@@ -17,6 +17,7 @@ import 'package:novi/desktop_ui.dart';
 import 'package:novi/notebook.dart';
 import 'package:novi/library_ui.dart';
 import 'package:novi/pages_sidebar.dart';
+import 'package:novi/workspace_tools.dart';
 
 class TestPaths extends PathProviderPlatform {
   TestPaths(this.path);
@@ -1421,6 +1422,122 @@ void main() {
       await tester.tap(headerSidebarButton);
       await tester.pumpAndSettle();
       expect(find.byType(PagesSidebar), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'toolbar on top shows icon-only items with tooltips, hovering sub-components, and select as initial tool',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final directory = Directory.systemTemp.createTempSync('novi-toolbar-test-');
+      final original = PathProviderPlatform.instance;
+      PathProviderPlatform.instance = TestPaths(directory.path);
+      addTearDown(() {
+        PathProviderPlatform.instance = original;
+        directory.deleteSync(recursive: true);
+      });
+
+      final dbPath = '${directory.path}/novi.sqlite';
+      final seed = LibraryStore(dbPath);
+      seed.save(Notebook(id: 'nb1', title: 'Toolbar Notebook'));
+      seed.close();
+
+      await tester.pumpWidget(const NoviApp());
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
+      await tester.pumpAndSettle();
+
+      // Open notebook
+      await tester.tap(find.text('Toolbar Notebook').first);
+      await tester.pumpAndSettle();
+
+      final toolbarFinder = find.byType(WorkspaceToolbar);
+      expect(toolbarFinder, findsOneWidget);
+      final toolbar = tester.widget<WorkspaceToolbar>(toolbarFinder);
+
+      // 1. Initial tool is Select
+      expect(toolbar.session.tool, EditorTool.select);
+
+      // 2. Toolbar tool items are icon-only (DesktopToolButton contains no text child)
+      final selectButtonFinder = find.byKey(const ValueKey('tool-select'));
+      expect(selectButtonFinder, findsOneWidget);
+      expect(
+        find.descendant(of: selectButtonFinder, matching: find.byType(Text)),
+        findsNothing,
+      );
+      final drawButtonFinder = find.byKey(const ValueKey('tool-pen'));
+      expect(drawButtonFinder, findsOneWidget);
+      expect(
+        find.descendant(of: drawButtonFinder, matching: find.byType(Text)),
+        findsNothing,
+      );
+
+      // 3. Tooltips are configured for tools
+      expect(find.byTooltip('Select'), findsOneWidget);
+      expect(find.byTooltip('Draw'), findsOneWidget);
+      expect(find.byTooltip('Highlight'), findsOneWidget);
+      expect(find.byTooltip('Erase'), findsOneWidget);
+      expect(find.byTooltip('Type'), findsOneWidget);
+
+      // 4. Hovering context controls component exists and shows Select sub-components
+      final contextControlsFinder = find.byKey(const Key('context-controls'));
+      expect(contextControlsFinder, findsOneWidget);
+      expect(
+        find.descendant(
+          of: contextControlsFinder,
+          matching: find.byTooltip('Select ink strokes'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: contextControlsFinder,
+          matching: find.byTooltip('Delete selected ink'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: contextControlsFinder,
+          matching: find.byTooltip('Clear selection'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: contextControlsFinder,
+          matching: find.byTooltip('Zoom in'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: contextControlsFinder,
+          matching: find.byTooltip('Zoom out'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: contextControlsFinder,
+          matching: find.byTooltip('Reset view'),
+        ),
+        findsOneWidget,
+      );
+
+      // 5. Switching to Draw tool updates hovering component sub-controls to pen options
+      await tester.tap(drawButtonFinder);
+      await tester.pumpAndSettle();
+      expect(toolbar.session.tool, EditorTool.pen);
+
+      expect(find.byTooltip('Automatic ink contrast'), findsOneWidget);
+      expect(find.byTooltip('Ink shade 1'), findsOneWidget);
+      expect(find.byTooltip('Ink shade 4'), findsOneWidget);
     },
   );
 }
