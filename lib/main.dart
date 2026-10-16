@@ -687,6 +687,7 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
     setState(() {
       current = restored;
       session.selection.clear();
+      session.composingPages.clear();
       for (var i = 0; i < restored.pages.length; i++) {
         final controller = session.controllerForPage(i, restored.pages[i].text);
         final caret = controller.selection.baseOffset.clamp(
@@ -1341,7 +1342,6 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
     bool recordUndo = true,
     int? caretSource,
   }) {
-    if (recordUndo) snapshot();
     final note = current!;
     var caretPage = caretSource ?? pageIndex;
     final controller = session.controllerForPage(
@@ -1353,6 +1353,16 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
       controller.text.length,
     );
     final initialCaretPage = caretPage;
+    final composing =
+        controller.value.composing.isValid &&
+        !controller.value.composing.isCollapsed;
+    if (recordUndo) {
+      if (composing) {
+        if (session.composingPages.add(pageIndex)) snapshot();
+      } else if (!session.composingPages.remove(pageIndex)) {
+        snapshot();
+      }
+    }
     setState(() {
       note.pages[pageIndex].text = value;
       // Preserve in-progress IME composition. Reflow when it commits.
