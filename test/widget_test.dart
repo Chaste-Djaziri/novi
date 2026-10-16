@@ -301,4 +301,51 @@ void main() {
     expect(decoded.cover, 0xff255492);
     expect(decoded.title, 'Art Journal');
   });
+
+  testWidgets('home button appears on notebook write page right before route buttons and returns to library', (tester) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final directory = Directory.systemTemp.createTempSync('novi-home-test');
+    final original = PathProviderPlatform.instance;
+    PathProviderPlatform.instance = TestPaths(directory.path);
+    addTearDown(() {
+      PathProviderPlatform.instance = original;
+      directory.deleteSync(recursive: true);
+    });
+
+    await tester.pumpWidget(const NoviApp());
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 150)),
+    );
+    await tester.pumpAndSettle();
+
+    // In library: Home button is not displayed in the window header
+    expect(find.byKey(const Key('home-button')), findsNothing);
+
+    // Open New menu and create a notebook
+    await tester.tap(find.text('New'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Notebook').first);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('document-name')), 'Home Test Notebook');
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Create'));
+    await tester.tap(find.text('Create'));
+    await tester.pumpAndSettle();
+
+    // Now on notebook write page: Home button is present
+    expect(find.byKey(const Key('home-button')), findsOneWidget);
+    expect(find.byTooltip('Home'), findsOneWidget);
+
+    // Tap Home button to navigate back to documents library
+    await tester.tap(find.byKey(const Key('home-button')));
+    await tester.pumpAndSettle();
+
+    // Back in library: Documents view is visible, and Home button is gone
+    expect(find.text('Documents'), findsWidgets);
+    expect(find.byKey(const Key('home-button')), findsNothing);
+  });
 }
+
