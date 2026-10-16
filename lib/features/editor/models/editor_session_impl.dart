@@ -153,6 +153,7 @@ class EditorSession {
     'penMathSuggestions': penMathSuggestions,
     'pencilReduceLatency': pencilReduceLatency,
     'pencilDrawAndHold': pencilDrawAndHold,
+    'drawAndHold': inkKind == 'pencil' ? pencilDrawAndHold : penHoldForLine,
     'requireHold': shapeRequireHoldToSnap,
     'snapToShapes': shapeSnapToOtherShapes,
     'shapeFill': shapeFillColor,

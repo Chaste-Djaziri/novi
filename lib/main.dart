@@ -2369,6 +2369,10 @@ class _WorkspaceState extends State<Workspace>
         var finalStroke = activeStroke!;
         var finalStyle = Map<String, dynamic>.from(activeStyle!);
 
+        final holdToShape = _inkHeld &&
+            ((finalStyle['kind'] == 'pen' && finalStyle['holdForLine'] == true) ||
+                (finalStyle['kind'] == 'pencil' &&
+                    finalStyle['drawAndHold'] == true));
         if (((finalStyle['kind'] == 'tape' && finalStyle['straight'] == true) ||
             (finalStyle['kind'] == 'pen' && finalStyle['holdForLine'] == true && _inkHeld)) &&
             finalStroke.length > 1) {
@@ -2376,7 +2380,7 @@ class _WorkspaceState extends State<Workspace>
             finalStroke.first,
             finalStroke.last,
           ];
-        } else if (finalStyle['kind'] == 'shape' &&
+        } else if ((finalStyle['kind'] == 'shape' || holdToShape) &&
             (finalStyle['requireHold'] != true || _inkHeld) && finalStroke.length >= 2) {
           final recognized = _recognizeAndFitShape(finalStroke, session);
           finalStroke = recognized.stroke;
@@ -2496,6 +2500,28 @@ _RecognizedShape _recognizeAndFitShape(
         ],
         isClosed: false,
       );
+    }
+  }
+
+  // Preserve open two-segment gestures such as L, >, and simple arrows.
+  if (stroke.length >= 3 && totalLength > 24) {
+    final chord = Offset(last[0] - first[0], last[1] - first[1]);
+    final chordLengthSq = chord.distanceSquared;
+    if (chordLengthSq > 1) {
+      var cornerIndex = 1;
+      var cornerDeviation = 0.0;
+      for (var i = 1; i < stroke.length - 1; i++) {
+        final point = Offset(stroke[i][0], stroke[i][1]);
+        final origin = Offset(first[0], first[1]);
+        final t = (((point - origin).dx * chord.dx + (point - origin).dy * chord.dy) / chordLengthSq).clamp(0.0, 1.0);
+        final projection = origin + chord * t;
+        final deviation = (point - projection).distance;
+        if (deviation > cornerDeviation) { cornerDeviation = deviation; cornerIndex = i; }
+      }
+      if (cornerDeviation >= math.max(12.0, totalLength * 0.12)) {
+        final corner = stroke[cornerIndex];
+        return _RecognizedShape(stroke: [[first[0], first[1], first[2]], [corner[0], corner[1], corner[2]], [last[0], last[1], last[2]]], isClosed: false);
+      }
     }
   }
 
