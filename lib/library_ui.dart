@@ -1739,7 +1739,7 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
   }
 
   Widget _buildTemplateName(String pattern) {
-    if (pattern == 'Blank' && !guides) {
+    if (pattern == 'Blank') {
       return const Text(
         'Blank',
         style: TextStyle(
