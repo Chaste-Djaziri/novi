@@ -15,9 +15,12 @@
 - [ ] Step 11: Complete hands-on desktop acceptance checks listed below.
 
 ## Current
-Simplified scrolling to natural, direct 1:1 page scrolling: removed artificial smooth-scroll animation controllers, pan delta multipliers, and timer-based momentum hacks, letting macOS/desktop trackpad and mouse hardware deltas scroll pages fluidly. All 24 automated tests pass and analysis is clean.
-
-## Toolbar Icon-Only Design, Hovering Sub-Components, and Select Tool — 2026-10-16
+Implemented natural inertial deceleration on trackpad release and eliminated frame skipping ("sipping"):
+- Added `FrictionSimulation(0.135, ...)` driven by a Flutter `Ticker` on `PointerPanZoomEndEvent`, using velocity tracked via `VelocityTracker.withKind(PointerDeviceKind.trackpad)`. When releasing two fingers from the trackpad, the canvas continues scrolling at release velocity and smoothly glides to a stop.
+- Interrupted flings immediately on any user contact (`onPointerDown`, new pan `onPointerPanZoomStart`, mouse wheel `onPointerSignal`, or scrollbar dragging `onScrollTo`).
+- Eliminated redundant `setState` calls during normal in-bounds scrolling in `_handleScrollDelta`: the canvas transforms directly via `InteractiveViewer`'s internal Matrix4 listener without re-rendering all page widgets, text fields, and ink strokes on every sub-pixel trackpad event.
+- Wrapped `CanvasScrollIndicator` in `ListenableBuilder(listenable: session.view)` so the scroll thumb glides at a buttery 120fps independently.
+- Added comprehensive automated test in `test/widget_test.dart` verifying inertial glide deceleration on release. All 25 automated tests pass and analysis is completely clean (0 issues).
 - [x] Configured `EditorTool.select` as initial tool when opening notebooks/documents.
 - [x] Converted top toolbar items and sub-components to icon-only buttons with zero text clutter, passing text names and actions into tooltips.
 - [x] Moved all more controls / tool options out of the top header into `FloatingToolControls`, freeing header vertical space to a clean 44px.
