@@ -204,6 +204,37 @@ class _PenMenuDialogState extends State<PenMenuDialog> {
                           ],
                         ),
                       ),
+                      const SizedBox(height: 8),
+                      _buildFeatureRow(
+                        'Pen Settings',
+                        () => showPenFeatureMenu(
+                          context,
+                          targetRect: widget.targetRect,
+                          session: widget.session,
+                          feature: PenFeature.settings,
+                          onUpdate: widget.onUpdate,
+                        ),
+                      ),
+                      _buildFeatureRow(
+                        'Writing Aids',
+                        () => showPenFeatureMenu(
+                          context,
+                          targetRect: widget.targetRect,
+                          session: widget.session,
+                          feature: PenFeature.writingAids,
+                          onUpdate: widget.onUpdate,
+                        ),
+                      ),
+                      _buildFeatureRow(
+                        'Math Assist',
+                        () => showPenFeatureMenu(
+                          context,
+                          targetRect: widget.targetRect,
+                          session: widget.session,
+                          feature: PenFeature.mathAssist,
+                          onUpdate: widget.onUpdate,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -262,6 +293,27 @@ class _PenMenuDialogState extends State<PenMenuDialog> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildFeatureRow(String label, VoidCallback onTap) {
+    return Container(
+      height: 44,
+      decoration: const BoxDecoration(color: Color(0xff242426)),
+      child: ListTile(
+        dense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+        title: Text(
+          label,
+          style: const TextStyle(color: Colors.white, fontSize: 13.5),
+        ),
+        trailing: const Icon(
+          CupertinoIcons.chevron_right,
+          color: Colors.white38,
+          size: 17,
+        ),
+        onTap: onTap,
       ),
     );
   }

@@ -80,6 +80,9 @@ class EditorSession {
   WritingMode writingMode = WritingMode.pen;
   PenType penType = PenType.fountain;
   bool penHoldForLine = true;
+  bool penReduceLatency = true;
+  bool penSpelling = true;
+  bool penMathSuggestions = false;
   bool pencilReduceLatency = true;
   bool pencilDrawAndHold = false;
   bool shapeRequireHoldToSnap = false;
@@ -145,6 +148,9 @@ class EditorSession {
         : 1.0,
     'straight': tapeStraight,
     'holdForLine': penHoldForLine,
+    'penReduceLatency': penReduceLatency,
+    'penSpelling': penSpelling,
+    'penMathSuggestions': penMathSuggestions,
     'pencilReduceLatency': pencilReduceLatency,
     'pencilDrawAndHold': pencilDrawAndHold,
     'requireHold': shapeRequireHoldToSnap,

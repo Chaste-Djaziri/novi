@@ -10,6 +10,7 @@ import 'package:novi/features/editor/tools/text/text_popovers.dart';
 void main() {
   test('tool dialog boundaries expose the legacy-compatible public APIs', () {
     expect(PenMenuDialog, isA<Type>());
+    expect(PenFeatureMenuDialog, isA<Type>());
     expect(PencilMenuDialog, isA<Type>());
     expect(TapeMenuDialog, isA<Type>());
     expect(DrawShapeMenuDialog, isA<Type>());

@@ -18,6 +18,7 @@ export 'features/editor/tools/common/tool_types.dart';
 
 part 'features/editor/models/editor_session_impl.dart';
 part 'features/editor/tools/pen/pen_menu_impl.dart';
+part 'features/editor/tools/pen/pen_feature_menu_impl.dart';
 part 'features/editor/tools/pencil/pencil_menu_impl.dart';
 part 'features/editor/tools/tape/tape_menu_impl.dart';
 part 'features/editor/tools/shape/shape_menu_impl.dart';
