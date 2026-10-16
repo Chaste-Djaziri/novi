@@ -96,12 +96,7 @@ void main() {
       await tester.tap(find.byTooltip('Undo'));
       await tester.pumpAndSettle();
       expect(ink().strokes, hasLength(2));
-      await tester.tap(
-        find.ancestor(
-          of: find.byTooltip('Select'),
-          matching: find.byType(DesktopToolButton),
-        ),
-      );
+      await tester.tap(find.byKey(const ValueKey('tool-select')));
       await tester.pumpAndSettle();
       await tester.dragFrom(point(70, 70), const Offset(160, 90));
       await tester.pumpAndSettle();

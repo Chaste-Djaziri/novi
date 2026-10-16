@@ -1,13 +1,14 @@
+import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
-import 'package:flutter/cupertino.dart' show CupertinoIcons;
-
-import 'desktop_ui.dart';
-
+import 'package:flutter/cupertino.dart' show CupertinoIcons, CupertinoSwitch;
 import 'package:flutter/material.dart';
 
+import 'desktop_ui.dart';
 import 'notebook.dart';
 
-enum EditorTool { pen, highlighter, eraser, select, text, hand }
+enum LassoType { rectangular, freehand }
+
+enum EditorTool { select, pen, highlighter, eraser, text, hand }
 
 class EditorSession {
   EditorSession(Notebook note)
@@ -51,6 +52,18 @@ class EditorSession {
   EditorTool previousTool = EditorTool.select;
   double width = 3;
   int? color;
+  LassoType lassoType = LassoType.rectangular;
+  final Map<String, bool> lassoIncludes = {
+    'Handwriting': true,
+    'Images': true,
+    'Shapes': true,
+    'Arrows': true,
+    'Text Boxes': true,
+    'Equations': true,
+    'Tape': true,
+    'Sticky Notes': true,
+  };
+
   void dispose() {
     text.dispose();
     textFocus.dispose();
@@ -64,7 +77,444 @@ class EditorSession {
   }
 }
 
-class WorkspaceToolbar extends StatelessWidget {
+void _drawDashedPath(
+  Canvas canvas,
+  Path path,
+  Paint paint,
+  double dashWidth,
+  double dashSpace,
+) {
+  for (final metric in path.computeMetrics()) {
+    var distance = 0.0;
+    while (distance < metric.length) {
+      final length = math.min(dashWidth, metric.length - distance);
+      final extract = metric.extractPath(distance, distance + length);
+      canvas.drawPath(extract, paint);
+      distance += dashWidth + dashSpace;
+    }
+  }
+}
+
+class _DashedRectPainter extends CustomPainter {
+  const _DashedRectPainter({this.color = Colors.white});
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.6
+      ..style = PaintingStyle.stroke;
+    final rrect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(1, 1, size.width - 2, size.height - 2),
+      const Radius.circular(3),
+    );
+    final path = Path()..addRRect(rrect);
+    _drawDashedPath(canvas, path, paint, 3.5, 2.5);
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedRectPainter oldDelegate) =>
+      oldDelegate.color != color;
+}
+
+class _DashedLassoPainter extends CustomPainter {
+  const _DashedLassoPainter({this.color = Colors.white});
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.6
+      ..style = PaintingStyle.stroke;
+    final path = Path();
+    path.moveTo(size.width * 0.25, size.height * 0.2);
+    path.cubicTo(
+      size.width * 0.5,
+      size.height * 0.05,
+      size.width * 0.9,
+      size.height * 0.25,
+      size.width * 0.85,
+      size.height * 0.55,
+    );
+    path.cubicTo(
+      size.width * 0.8,
+      size.height * 0.85,
+      size.width * 0.45,
+      size.height * 0.95,
+      size.width * 0.2,
+      size.height * 0.75,
+    );
+    path.cubicTo(
+      size.width * 0.05,
+      size.height * 0.6,
+      size.width * 0.08,
+      size.height * 0.35,
+      size.width * 0.25,
+      size.height * 0.2,
+    );
+    path.close();
+    _drawDashedPath(canvas, path, paint, 3.5, 2.5);
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedLassoPainter oldDelegate) =>
+      oldDelegate.color != color;
+}
+
+class _LassoArrowPainter extends CustomPainter {
+  const _LassoArrowPainter({required this.color, required this.borderColor});
+
+  final Color color;
+  final Color borderColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final fillPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final path = Path()
+      ..moveTo(0, size.height + 1)
+      ..lineTo(size.width / 2, 0)
+      ..lineTo(size.width, size.height + 1)
+      ..close();
+    canvas.drawPath(path, fillPaint);
+
+    final strokePaint = Paint()
+      ..color = borderColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+
+    final strokePath = Path()
+      ..moveTo(0, size.height + 1)
+      ..lineTo(size.width / 2, 0)
+      ..lineTo(size.width, size.height + 1);
+    canvas.drawPath(strokePath, strokePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _LassoArrowPainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.borderColor != borderColor;
+}
+
+Future<void> showLassoToolMenu(
+  BuildContext context, {
+  required Rect targetRect,
+  required EditorSession session,
+  required VoidCallback onUpdate,
+}) {
+  return showGeneralDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'Close Lasso Menu',
+    barrierColor: Colors.transparent,
+    pageBuilder: (dialogContext, animation, secondaryAnimation) {
+      return LassoToolMenuDialog(
+        targetRect: targetRect,
+        session: session,
+        onUpdate: onUpdate,
+      );
+    },
+    transitionDuration: const Duration(milliseconds: 140),
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(
+        opacity: CurvedAnimation(parent: animation, curve: Curves.easeOutQuad),
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.95, end: 1.0).animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+          ),
+          alignment: Alignment.topCenter,
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
+class LassoToolMenuDialog extends StatefulWidget {
+  const LassoToolMenuDialog({
+    super.key,
+    required this.targetRect,
+    required this.session,
+    required this.onUpdate,
+  });
+
+  final Rect targetRect;
+  final EditorSession session;
+  final VoidCallback onUpdate;
+
+  @override
+  State<LassoToolMenuDialog> createState() => _LassoToolMenuDialogState();
+}
+
+class _LassoToolMenuDialogState extends State<LassoToolMenuDialog> {
+  static const includedItems = [
+    'Handwriting',
+    'Images',
+    'Shapes',
+    'Arrows',
+    'Text Boxes',
+    'Equations',
+    'Tape',
+    'Sticky Notes',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    const cardWidth = 286.0;
+    const arrowWidth = 18.0;
+    const arrowHeight = 9.0;
+
+    final buttonCenterX =
+        widget.targetRect.left + (widget.targetRect.width / 2);
+    final cardLeft = (buttonCenterX - (cardWidth / 2)).clamp(
+      12.0,
+      screenSize.width - cardWidth - 12.0,
+    );
+    final arrowLeft = (buttonCenterX - cardLeft - (arrowWidth / 2)).clamp(
+      16.0,
+      cardWidth - 16.0 - arrowWidth,
+    );
+    final cardTop = widget.targetRect.bottom + 6.0;
+
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => Navigator.of(context).pop(),
+          ),
+        ),
+        Positioned(
+          left: cardLeft,
+          top: cardTop,
+          child: Material(
+            color: Colors.transparent,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(left: arrowLeft),
+                  child: CustomPaint(
+                    size: const Size(arrowWidth, arrowHeight),
+                    painter: _LassoArrowPainter(
+                      color: const Color(0xff1c1c1e),
+                      borderColor: Colors.white.withValues(alpha: 0.12),
+                    ),
+                  ),
+                ),
+                Container(
+                  width: cardWidth,
+                  decoration: BoxDecoration(
+                    color: const Color(0xff1c1c1e),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.12),
+                      width: 0.8,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.6),
+                        blurRadius: 28,
+                        spreadRadius: 4,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Center(
+                        child: Text(
+                          'Lasso Tool',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Lasso Type',
+                        style: TextStyle(
+                          color: Colors.white60,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildTypeCard(
+                              type: LassoType.rectangular,
+                              title: 'Rectangular',
+                              key: const Key('lasso-type-rectangular'),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _buildTypeCard(
+                              type: LassoType.freehand,
+                              title: 'Freehand',
+                              key: const Key('lasso-type-freehand'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Included in Selection',
+                        style: TextStyle(
+                          color: Colors.white60,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xff242426),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.06),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              for (int i = 0; i < includedItems.length; i++) ...[
+                                if (i > 0)
+                                  Divider(
+                                    height: 1,
+                                    thickness: 0.8,
+                                    indent: 14,
+                                    color: Colors.white.withValues(alpha: 0.06),
+                                  ),
+                                _buildToggleRow(includedItems[i]),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTypeCard({
+    required LassoType type,
+    required String title,
+    required Key key,
+  }) {
+    final isSelected = widget.session.lassoType == type;
+    return GestureDetector(
+      key: key,
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        setState(() {
+          widget.session.lassoType = type;
+        });
+        widget.onUpdate();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        height: 76,
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xff2c2c2e) : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected
+                ? Colors.white.withValues(alpha: 0.18)
+                : Colors.white.withValues(alpha: 0.05),
+            width: isSelected ? 1.0 : 0.6,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CustomPaint(
+              size: const Size(26, 20),
+              painter: type == LassoType.rectangular
+                  ? _DashedRectPainter(
+                      color: isSelected ? Colors.white : Colors.white70,
+                    )
+                  : _DashedLassoPainter(
+                      color: isSelected ? Colors.white : Colors.white70,
+                    ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.white70,
+                fontSize: 12.5,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildToggleRow(String title) {
+    final value = widget.session.lassoIncludes[title] ?? true;
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.only(left: 14, right: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ),
+          Transform.scale(
+            scale: 0.74,
+            alignment: Alignment.centerRight,
+            child: CupertinoSwitch(
+              key: ValueKey('lasso-switch-$title'),
+              value: value,
+              activeTrackColor: const Color(0xff34c759),
+              onChanged: (val) {
+                setState(() {
+                  widget.session.lassoIncludes[title] = val;
+                });
+                widget.onUpdate();
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class WorkspaceToolbar extends StatefulWidget {
   const WorkspaceToolbar({
     super.key,
     required this.session,
@@ -84,6 +534,7 @@ class WorkspaceToolbar extends StatelessWidget {
     this.onTogglePages,
     this.showPages = false,
   });
+
   final EditorSession session;
   final Notebook note;
   final ValueChanged<EditorTool> onTool;
@@ -100,6 +551,7 @@ class WorkspaceToolbar extends StatelessWidget {
   final VoidCallback? onExport;
   final VoidCallback? onTogglePages;
   final bool showPages;
+
   static const futureTools = <String, IconData>{
     'Stickers': CupertinoIcons.smiley,
     'Images': CupertinoIcons.photo,
@@ -112,11 +564,38 @@ class WorkspaceToolbar extends StatelessWidget {
     'Graphing': CupertinoIcons.graph_square,
     'Code tools': CupertinoIcons.chevron_left_slash_chevron_right,
   };
+
+  @override
+  State<WorkspaceToolbar> createState() => _WorkspaceToolbarState();
+}
+
+class _WorkspaceToolbarState extends State<WorkspaceToolbar> {
+  final GlobalKey _selectKey = GlobalKey();
+
   Widget planned(String name, IconData icon) => DesktopIconButton(
     tooltip: '$name — Coming later',
     icon: Icon(icon, size: 17),
     onPressed: null,
   );
+
+  void _showLassoMenu(BuildContext context) {
+    final box = _selectKey.currentContext?.findRenderObject() as RenderBox?;
+    final rect = box != null && box.hasSize
+        ? (box.localToGlobal(Offset.zero) & box.size)
+        : Rect.fromLTWH(
+            MediaQuery.of(context).size.width / 2 - 20,
+            44,
+            40,
+            30,
+          );
+    showLassoToolMenu(
+      context,
+      targetRect: rect,
+      session: widget.session,
+      onUpdate: widget.onSettings,
+    );
+  }
+
   @override
   Widget build(BuildContext context) => Container(
     height: 44,
@@ -127,12 +606,12 @@ class WorkspaceToolbar extends StatelessWidget {
     child: LayoutBuilder(
       builder: (context, bounds) {
         final tools = EditorTool.values
-            .where((tool) => tool != EditorTool.hand || hasStylus)
+            .where((tool) => tool != EditorTool.hand || widget.hasStylus)
             .toList();
         final extras = bounds.maxWidth >= 1200
-            ? futureTools.entries.take(5).toList()
+            ? WorkspaceToolbar.futureTools.entries.take(5).toList()
             : bounds.maxWidth >= 1050
-                ? futureTools.entries.take(3).toList()
+                ? WorkspaceToolbar.futureTools.entries.take(3).toList()
                 : <MapEntry<String, IconData>>[];
         return Stack(
           alignment: Alignment.center,
@@ -143,23 +622,23 @@ class WorkspaceToolbar extends StatelessWidget {
               bottom: 5,
               child: Row(
                 children: [
-                  if (onTogglePages != null)
+                  if (widget.onTogglePages != null)
                     DesktopIconButton(
                       key: const Key('toolbar-toggle-pages'),
                       tooltip:
-                          showPages ? 'Hide pages' : 'Page manager',
-                      onPressed: onTogglePages,
+                          widget.showPages ? 'Hide pages' : 'Page manager',
+                      onPressed: widget.onTogglePages,
                       icon: Icon(
                         CupertinoIcons.sidebar_left,
                         size: 18,
-                        color: showPages
+                        color: widget.showPages
                             ? const Color(0xff007aff)
                             : Colors.white70,
                       ),
                     ),
                   DesktopIconButton(
                     tooltip: 'Undo',
-                    onPressed: onUndo,
+                    onPressed: widget.onUndo,
                     icon: const Icon(
                       CupertinoIcons.arrow_uturn_left,
                       size: 18,
@@ -167,7 +646,7 @@ class WorkspaceToolbar extends StatelessWidget {
                   ),
                   DesktopIconButton(
                     tooltip: 'Redo',
-                    onPressed: onRedo,
+                    onPressed: widget.onRedo,
                     icon: const Icon(
                       CupertinoIcons.arrow_uturn_right,
                       size: 18,
@@ -191,36 +670,81 @@ class WorkspaceToolbar extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       ...tools.map(
-                        (tool) => Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 2.5,
-                          ),
-                          child: DesktopToolButton(
-                            key: ValueKey('tool-${tool.name}'),
+                        (tool) {
+                          final isSelect = tool == EditorTool.select;
+                          final isSelected = widget.session.tool == tool;
+                          final button = DesktopToolButton(
                             tooltip: switch (tool) {
+                              EditorTool.select => 'Lasso Selection (V)',
                               EditorTool.pen => 'Draw',
                               EditorTool.highlighter => 'Highlight',
                               EditorTool.eraser => 'Erase',
-                              EditorTool.select => 'Select',
                               EditorTool.text => 'Type',
                               EditorTool.hand => 'Hand',
                             },
-                            avatar: Icon(switch (tool) {
-                              EditorTool.pen => CupertinoIcons.pencil,
-                              EditorTool.highlighter =>
-                                CupertinoIcons.pencil_outline,
-                              EditorTool.eraser =>
-                                CupertinoIcons.pencil_slash,
-                              EditorTool.select => CupertinoIcons.crop,
-                              EditorTool.text =>
-                                CupertinoIcons.textformat,
-                              EditorTool.hand =>
-                                CupertinoIcons.hand_raised,
-                            }, size: 17),
-                            selected: session.tool == tool,
-                            onSelected: (_) => onTool(tool),
-                          ),
-                        ),
+                            avatar: isSelect
+                                ? Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      CustomPaint(
+                                        size: const Size(15, 12),
+                                        painter: _DashedRectPainter(
+                                          color: isSelected
+                                              ? Colors.white
+                                              : Colors.white70,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 3),
+                                      Icon(
+                                        Icons.keyboard_arrow_down,
+                                        size: 11,
+                                        color: isSelected
+                                            ? Colors.white
+                                            : Colors.white70,
+                                      ),
+                                    ],
+                                  )
+                                : Icon(switch (tool) {
+                                    EditorTool.pen => CupertinoIcons.pencil,
+                                    EditorTool.highlighter =>
+                                      CupertinoIcons.pencil_outline,
+                                    EditorTool.eraser =>
+                                      CupertinoIcons.pencil_slash,
+                                    EditorTool.select => CupertinoIcons.crop,
+                                    EditorTool.text =>
+                                      CupertinoIcons.textformat,
+                                    EditorTool.hand =>
+                                      CupertinoIcons.hand_raised,
+                                  }, size: 17),
+                            selected: isSelected,
+                            onSelected: (_) {
+                              if (isSelect &&
+                                  widget.session.tool == EditorTool.select) {
+                                _showLassoMenu(context);
+                              } else {
+                                widget.onTool(tool);
+                              }
+                            },
+                          );
+
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 2.5,
+                            ),
+                            child: isSelect
+                                ? KeyedSubtree(
+                                    key: const ValueKey('tool-select'),
+                                    child: KeyedSubtree(
+                                      key: _selectKey,
+                                      child: button,
+                                    ),
+                                  )
+                                : KeyedSubtree(
+                                    key: ValueKey('tool-${tool.name}'),
+                                    child: button,
+                                  ),
+                          );
+                        },
                       ),
                       const SizedBox(width: 6),
                       Container(
@@ -236,15 +760,16 @@ class WorkspaceToolbar extends StatelessWidget {
                       DesktopPopupMenuButton<String>(
                         tooltip: 'More Tools',
                         onSelected: (_) {},
-                        itemBuilder: (_) => futureTools.keys
-                            .map(
-                              (name) => DesktopMenuItem(
-                                value: name,
-                                enabled: false,
-                                child: Text('$name — Coming later'),
-                              ),
-                            )
-                            .toList(),
+                        itemBuilder: (_) =>
+                            WorkspaceToolbar.futureTools.keys
+                                .map(
+                                  (name) => DesktopMenuItem(
+                                    value: name,
+                                    enabled: false,
+                                    child: Text('$name — Coming later'),
+                                  ),
+                                )
+                                .toList(),
                       ),
                     ],
                   ),
@@ -259,12 +784,12 @@ class WorkspaceToolbar extends StatelessWidget {
                 children: [
                   DesktopIconButton(
                     tooltip: 'Add page',
-                    onPressed: onAddPage,
+                    onPressed: widget.onAddPage,
                     icon: const Icon(CupertinoIcons.doc_append, size: 18),
                   ),
                   DesktopIconButton(
                     tooltip: 'Document style',
-                    onPressed: onStyle,
+                    onPressed: widget.onStyle,
                     icon: const Icon(
                       CupertinoIcons.slider_horizontal_3,
                       size: 18,
@@ -272,7 +797,7 @@ class WorkspaceToolbar extends StatelessWidget {
                   ),
                   DesktopIconButton(
                     tooltip: 'Export notebook',
-                    onPressed: onExport,
+                    onPressed: widget.onExport,
                     icon: const Icon(
                       CupertinoIcons.square_arrow_up,
                       size: 18,
@@ -280,7 +805,7 @@ class WorkspaceToolbar extends StatelessWidget {
                   ),
                   DesktopIconButton(
                     tooltip: 'Delete selected ink',
-                    onPressed: onDelete,
+                    onPressed: widget.onDelete,
                     icon: const Icon(CupertinoIcons.trash, size: 18),
                   ),
                 ],
@@ -325,6 +850,10 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
   Widget build(BuildContext context) {
     final session = widget.session;
     final note = widget.note;
+
+    if (session.tool == EditorTool.select) {
+      return const SizedBox.shrink();
+    }
 
     return Transform.translate(
       offset: dragOffset,
@@ -520,29 +1049,6 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
                   onPressed: widget.onDelete,
                   icon: const Icon(CupertinoIcons.trash, size: 16),
                 ),
-            ] else if (session.tool == EditorTool.select) ...[
-              Tooltip(
-                message: 'Select ink strokes',
-                child: const Icon(
-                  CupertinoIcons.crop,
-                  size: 16,
-                  color: Color(0xff007aff),
-                ),
-              ),
-              const SizedBox(width: 6),
-              DesktopIconButton(
-                tooltip: 'Delete selected ink',
-                onPressed: widget.onDelete,
-                icon: const Icon(CupertinoIcons.trash, size: 16),
-              ),
-              DesktopIconButton(
-                tooltip: 'Clear selection',
-                onPressed: () {
-                  session.selection.clear();
-                  widget.onSettings();
-                },
-                icon: const Icon(CupertinoIcons.xmark_circle, size: 16),
-              ),
             ] else ...[
               Tooltip(
                 message: 'Hand / pan mode',

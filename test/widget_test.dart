@@ -684,6 +684,8 @@ void main() {
       );
 
       // 6. On zoom: make sure it is aligned center
+      await tester.tap(find.byKey(const ValueKey('tool-pen')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Zoom in'));
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Zoom in'));
@@ -1646,8 +1648,13 @@ void main() {
       expect(toolbarFinder, findsOneWidget);
       final toolbar = tester.widget<WorkspaceToolbar>(toolbarFinder);
 
-      // 1. Initial tool is Select
+      // 1. Initial tool is Select and is the first tool on the line
       expect(toolbar.session.tool, EditorTool.select);
+      final centeredToolsFinder = find.byKey(const Key('centered-tools'));
+      expect(centeredToolsFinder, findsOneWidget);
+      final rowWidget = tester.widget<Row>(centeredToolsFinder);
+      final firstChild = rowWidget.children.first as Padding;
+      expect((firstChild.child as KeyedSubtree).key, const ValueKey('tool-select'));
 
       // 2. Toolbar tool items are icon-only (DesktopToolButton contains no text child)
       final selectButtonFinder = find.byKey(const ValueKey('tool-select'));
@@ -1663,76 +1670,73 @@ void main() {
         findsNothing,
       );
 
-      // 3. Tooltips are configured for tools
-      expect(find.byTooltip('Select'), findsOneWidget);
+      // 3. Tooltips are configured for tools with Lasso Selection (V) for select
+      expect(find.byTooltip('Lasso Selection (V)'), findsOneWidget);
       expect(find.byTooltip('Draw'), findsOneWidget);
       expect(find.byTooltip('Highlight'), findsOneWidget);
       expect(find.byTooltip('Erase'), findsOneWidget);
       expect(find.byTooltip('Type'), findsOneWidget);
 
-      // 4. Hovering context controls component exists and shows Select sub-components
-      final contextControlsFinder = find.byKey(const Key('context-controls'));
-      expect(contextControlsFinder, findsOneWidget);
-      expect(
-        find.descendant(
-          of: contextControlsFinder,
-          matching: find.byTooltip('Select ink strokes'),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: contextControlsFinder,
-          matching: find.byTooltip('Delete selected ink'),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: contextControlsFinder,
-          matching: find.byTooltip('Clear selection'),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: contextControlsFinder,
-          matching: find.byTooltip('Zoom in'),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: contextControlsFinder,
-          matching: find.byTooltip('Zoom out'),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: contextControlsFinder,
-          matching: find.byTooltip('Reset view'),
-        ),
-        findsOneWidget,
-      );
+      // 4. Select tool has NO floating option sub-menu
+      expect(find.byKey(const Key('context-controls')), findsNothing);
 
-      // 5. Switching to Draw tool updates hovering component sub-controls to pen options
+      // 5. Clicking select button while already selected pops open the Lasso Tool menu dialog
+      await tester.tap(selectButtonFinder);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Lasso Tool'), findsOneWidget);
+      expect(find.text('Lasso Type'), findsOneWidget);
+      expect(find.text('Rectangular'), findsOneWidget);
+      expect(find.text('Freehand'), findsOneWidget);
+      expect(find.text('Included in Selection'), findsOneWidget);
+      expect(find.text('Handwriting'), findsOneWidget);
+      expect(find.text('Images'), findsOneWidget);
+      expect(find.text('Shapes'), findsOneWidget);
+      expect(find.text('Arrows'), findsOneWidget);
+      expect(find.text('Text Boxes'), findsOneWidget);
+      expect(find.text('Equations'), findsOneWidget);
+      expect(find.text('Tape'), findsOneWidget);
+      expect(find.text('Sticky Notes'), findsOneWidget);
+
+      // Switch lasso type to Freehand
+      expect(toolbar.session.lassoType, LassoType.rectangular);
+      await tester.tap(find.byKey(const Key('lasso-type-freehand')));
+      await tester.pumpAndSettle();
+      expect(toolbar.session.lassoType, LassoType.freehand);
+
+      // Toggle switch in selection
+      expect(toolbar.session.lassoIncludes['Handwriting'], isTrue);
+      await tester.tap(find.byKey(const ValueKey('lasso-switch-Handwriting')));
+      await tester.pumpAndSettle();
+      expect(toolbar.session.lassoIncludes['Handwriting'], isFalse);
+
+      // Dismiss popover by tapping outside
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pumpAndSettle();
+      expect(find.text('Lasso Tool'), findsNothing);
+
+      // 6. Switching to Draw tool reveals floating component sub-controls for pen
       await tester.tap(drawButtonFinder);
       await tester.pumpAndSettle();
       expect(toolbar.session.tool, EditorTool.pen);
 
+      final contextControlsFinder = find.byKey(const Key('context-controls'));
+      expect(contextControlsFinder, findsOneWidget);
       expect(find.byTooltip('Automatic ink contrast'), findsOneWidget);
       expect(find.byTooltip('Ink shade 1'), findsOneWidget);
       expect(find.byTooltip('Ink shade 4'), findsOneWidget);
+      expect(find.byTooltip('Zoom in'), findsOneWidget);
+      expect(find.byTooltip('Zoom out'), findsOneWidget);
+      expect(find.byTooltip('Reset view'), findsOneWidget);
 
-      // 6. More controls are out of the header toolbar and floating over the canvas
+      // 7. More controls are out of the header toolbar and floating over the canvas
       expect(
         find.descendant(of: toolbarFinder, matching: contextControlsFinder),
         findsNothing,
       );
       expect(find.byType(FloatingToolControls), findsOneWidget);
 
-      // 7. Floating controls can be dragged around the screen
+      // 8. Floating controls can be dragged around the screen
       final dragGrip = find.byKey(const Key('floating-drag-handle'));
       expect(dragGrip, findsOneWidget);
       await tester.drag(dragGrip, const Offset(60, 40));
