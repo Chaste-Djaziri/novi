@@ -460,5 +460,30 @@ Implemented Writing tool dropdowns and pixel-precise segment erasing with floati
     - Canvas scroll indicator rendering on right edge and drag-to-scroll functionality.
     - Content Page Manager collapse/open, thumbnail navigation, bookmarks, and adding pages.
 
+## Text Tool Floating Bar, Options & Popovers — 2026-10-16
+- [x] Text Tool Floating Options Bar:
+  - Added floating contextual options bar for [EditorTool.text](file:///Users/chastedjaziri/Documents/ChatGPT/novi/lib/workspace_tools.dart) positioned below the main top toolbar with dark capsule theme (`#1a1c1e` / `#222428`).
+  - Implemented 10 controls matching the reference designs:
+    1. Collapse button: `( ⌄ )` icon.
+    2. Font Size dropdown pill: `[ 24 ˅ ]` with popover (`FontSizeMenuDialog`) providing quick size presets (12 to 64 pt).
+    3. Font Family dropdown pill: `[ Modern ˅ ]` (Tooltip: `Font Family`) with popover (`FontFamilyMenuDialog`) providing Modern (Inter), Classic (Georgia), Monospace (Courier), and Handwritten (Caveat).
+    4. Bold & Italic button: `[ B I ]` with independent toggle states for bold and italic styling.
+    5. Text Alignment button: `[ ≡ ]` opening `TextAlignmentMenuDialog` with 3-segment pill (Left, Center, Right) and active white indicator.
+    6. Line Height button: `[ ↕≡ ]` (Tooltip: `Line Height`) opening `LineHeightMenuDialog` with uppercase `LINE HEIGHT` header, current value display, slider, `[ - | + ]` stepper, and green `Automatic` switch.
+    7. Vertical divider.
+    8. Text Box Style button: `[ ⟍ ]` (Tooltip: `Text Box Style`) opening `TextBoxStyleMenuDialog` with `[ Presets ]` and `[ Advanced ]` tabs:
+       - Presets: 2x5 grid of 10 curated style swatches (None, Dark slate, Lime green, Peach, White, Coral red, Yellow, Off-white, Navy, Light grey).
+       - Advanced: Background Color picker, Border Color picker, Round Corner stepper (`0 pt Round Corner`), Shadow toggle switch, Border width stepper (`0 pt Border`), and Padding stepper (`10 pt Padding`).
+    9. Favorite / Saved style button: `[ T♡ ]`.
+    10. Pin Text Tool button: `[ 📌 Pin Text Tool ]`.
+- [x] Canvas Text Rendering & Model Persistence:
+  - Stored `fontFamily`, `italicText`, `textAlign`, `lineHeight`, `lineHeightAuto`, `textBoxBgColor`, `textBoxBorderColor`, `textBoxRadius`, `textBoxBorder`, `textBoxPadding`, and `textBoxShadow` in [Notebook](file:///Users/chastedjaziri/Documents/ChatGPT/novi/lib/notebook.dart).
+  - Wired text parameters through [PaperTextEditor](file:///Users/chastedjaziri/Documents/ChatGPT/novi/lib/paper_text_editor.dart) and [DesktopTextField](file:///Users/chastedjaziri/Documents/ChatGPT/novi/lib/desktop_ui.dart), updating decoration container with background color, rounded borders, padding, and soft box shadows.
+- [x] Verification:
+  - `flutter analyze`: clean (0 issues).
+  - `flutter test`: all 29 tests pass across `test/widget_test.dart`, `test/library_ui_test.dart`, and `test/workspace_test.dart`.
+  - Added comprehensive automated test in [test/widget_test.dart](file:///Users/chastedjaziri/Documents/ChatGPT/novi/test/widget_test.dart) covering all 5 popovers, tool selection, font size changes, font family selection, alignment toggles, line height stepper/slider/switch, and text box preset/advanced switches and steppers.
+
 ## Next
-Confirm the new Pages Manager, right-side scroll indicator, smooth sliding scroll physics, and overscroll bounce-back in the running Mac app. Connect a physical tablet and confirm Hand tool appears before using the pen, then disconnect it and confirm the previous writing tool returns.
+Confirm the new Text Tool floating bar, Font Size, Font Family, Alignment, Line Height, and Text Box Style popovers in the running Mac app. Verify custom background colors and borders on typed text on the canvas.
+
