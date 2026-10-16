@@ -579,7 +579,7 @@ class _HoveringContextControlsState extends State<_HoveringContextControls> {
             DesktopIconButton(
               tooltip: 'Reset view',
               onPressed: () => widget.onZoom(0),
-              icon: const Icon(CupertinoIcons.aspectratio, size: 16),
+              icon: const Icon(Icons.aspect_ratio, size: 16),
             ),
           ],
         ),
