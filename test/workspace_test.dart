@@ -74,7 +74,7 @@ void main() {
       expect(ink().strokes, hasLength(1));
       await tester.tap(
         find.ancestor(
-          of: find.text('Highlight'),
+          of: find.byTooltip('Highlight'),
           matching: find.byType(DesktopToolButton),
         ),
       );
@@ -85,7 +85,7 @@ void main() {
       expect(ink().styles[1]['opacity'], 0.3);
       await tester.tap(
         find.ancestor(
-          of: find.text('Erase'),
+          of: find.byTooltip('Erase'),
           matching: find.byType(DesktopToolButton),
         ),
       );
@@ -98,7 +98,7 @@ void main() {
       expect(ink().strokes, hasLength(2));
       await tester.tap(
         find.ancestor(
-          of: find.text('Select'),
+          of: find.byTooltip('Select'),
           matching: find.byType(DesktopToolButton),
         ),
       );
@@ -118,7 +118,7 @@ void main() {
       expect(ink().strokes, hasLength(2));
       await tester.tap(
         find.ancestor(
-          of: find.text('Type'),
+          of: find.byTooltip('Type'),
           matching: find.byType(DesktopToolButton),
         ),
       );
@@ -140,7 +140,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(
         find.ancestor(
-          of: find.text('Hand'),
+          of: find.byTooltip('Hand'),
           matching: find.byType(DesktopToolButton),
         ),
       );
@@ -151,7 +151,7 @@ void main() {
       expect(firstView.value, isNot(priorMatrix));
       await tester.tap(
         find.ancestor(
-          of: find.text('Type'),
+          of: find.byTooltip('Type'),
           matching: find.byType(DesktopToolButton),
         ),
       );
@@ -165,7 +165,7 @@ void main() {
             .widget<WorkspaceToolbar>(find.byType(WorkspaceToolbar))
             .session
             .tool,
-        EditorTool.pen,
+        EditorTool.select,
       );
       expect(
         tester
