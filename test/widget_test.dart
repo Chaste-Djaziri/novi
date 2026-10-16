@@ -599,6 +599,51 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect((tester.getTopLeft(inkCanvasFinder).dy - viewerTop - 24.0).abs(), lessThan(2.0));
+
+    // 6. On zoom: make sure it is aligned center
+    await tester.tap(find.byTooltip('Zoom in'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Zoom in'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Zoom in'));
+    await tester.pumpAndSettle();
+    final zoomedCenter = tester.getCenter(inkCanvasFinder);
+    expect((zoomedCenter.dx - viewerCenter.dx).abs(), lessThan(5.0));
+
+    // 7. When too big out of view: allow left and right scrolling to the edge of the paper
+    final initialZoomedLeft = tester.getTopLeft(inkCanvasFinder).dx;
+    await tester.sendEventToBinding(
+      PointerScrollEvent(
+        position: viewerCenter,
+        scrollDelta: const Offset(200, 0),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(inkCanvasFinder).dx, lessThan(initialZoomedLeft));
+
+    // Scroll to right edge of the paper: right edge sticks to right edge of viewport
+    await tester.sendEventToBinding(
+      PointerScrollEvent(
+        position: viewerCenter,
+        scrollDelta: const Offset(3000, 0),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final viewerRight = tester.getTopRight(viewerFinder).dx;
+    final paperRight = tester.getTopRight(inkCanvasFinder).dx;
+    expect((paperRight - viewerRight).abs(), lessThan(5.0));
+
+    // Scroll to left edge of the paper: left edge sticks to left edge of viewport
+    await tester.sendEventToBinding(
+      PointerScrollEvent(
+        position: viewerCenter,
+        scrollDelta: const Offset(-5000, 0),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final viewerLeft = tester.getTopLeft(viewerFinder).dx;
+    final paperLeft = tester.getTopLeft(inkCanvasFinder).dx;
+    expect((paperLeft - viewerLeft).abs(), lessThan(5.0));
   });
 }
 
