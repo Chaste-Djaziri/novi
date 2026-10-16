@@ -135,14 +135,17 @@ void main() {
       // Click below existing text on the actual paper at its current zoom.
       await tester.tap(find.byKey(const ValueKey('tool-text')));
       await tester.pumpAndSettle();
+      final editor = find.byType(PaperTextEditor).first;
+      final viewport = find.byType(InteractiveViewer);
+      final delta =
+          tester.getTopLeft(editor).dy - tester.getTopLeft(viewport).dy - 24;
       await tester.sendEventToBinding(
-        const PointerScrollEvent(
-          position: Offset(400, 300),
-          scrollDelta: Offset(0, 1004),
+        PointerScrollEvent(
+          position: tester.getCenter(viewport),
+          scrollDelta: Offset(0, delta),
         ),
       );
       await tester.pumpAndSettle();
-      final editor = find.byType(PaperTextEditor).first;
       final scale = tester
           .widget<InteractiveViewer>(find.byType(InteractiveViewer))
           .transformationController!
