@@ -15,22 +15,23 @@
 - [ ] Step 11: Complete hands-on desktop acceptance checks listed below.
 
 ## Current
-Repositioned Select (Lasso) tool to be first on the toolbar line and added anchored Lasso Tool popover:
-- **First on the Line**: Reordered toolbar tools so `EditorTool.select` leads the line (`Select`, `Pen`, `Highlighter`, `Eraser`, `Text`, `Hand`), displaying custom dashed selection rectangle icon with down chevron (`[ ⬚ ˅ ]`) and tooltip `Lasso Selection (V)`.
-- **Eliminated Floating Submenu for Select**: Put aside previous floating options; when `session.tool == EditorTool.select`, `FloatingToolControls` returns `const SizedBox.shrink()` so no floating bar obstructs the document canvas.
-- **Anchored Lasso Tool Dropdown Popover**: Clicking the Select button while already selected (or clicking dropdown) displays an anchored macOS-styled popover beneath the select button with top caret triangle pointer:
-  - Header: Centered bold "Lasso Tool".
-  - Section "Lasso Type": Side-by-side selectable cards for "Rectangular" (dashed rectangle icon) and "Freehand" (dashed freehand squiggle loop icon), switching `session.lassoType`.
-  - Section "Included in Selection": Grouped rounded card with 8 iOS/macOS green toggle switches (`CupertinoSwitch` with `activeTrackColor: Color(0xFF34C759)`):
-    - Handwriting
-    - Images
-    - Shapes
-    - Arrows
-    - Text Boxes
-    - Equations
-    - Tape
-    - Sticky Notes
-- **Automated Verification**: `flutter analyze` clean (0 issues) and all 26 automated tests pass across `test/widget_test.dart`, `test/workspace_test.dart`, and `test/library_ui_test.dart`.
+Implemented Writing tool dropdowns and pixel-precise segment erasing with floating Eraser options:
+- **Writing Tool Modes & Anchored Popovers**:
+  - Consolidated Pen, Pencil, Highlighter, Tape, and Draw Shape into the primary Writing (`EditorTool.pen`) tool floating bar with an active pill capsule and down-chevron dropdown trigger.
+  - **Pen Popover (`PenMenuDialog`)**: Pen Type selection (Fountain, Ballpoint, Brush) and "Draw and Hold for Line" switch.
+  - **Tape Popover (`TapeMenuDialog`)**: Tape preview swatches, "Straight Tape" snap switch, and "Remove All Tape" action.
+  - **Draw Shape Popover (`DrawShapeMenuDialog`)**: "Require Hold to Snap", "Snap to Other Shapes", and "Fill Color" switch. Natural hand-drawing shape recognition fits lines (2 points), circles/ellipses (36 points), and rectangles (5 points), applying semi-transparent interior fills when enabled.
+  - **Color Palette Popover (`ColorPaletteMenuDialog`)**: Curated color swatches with active selection indicators and custom color picker dialog `(+)`.
+- **Eraser Tool Floating Bar & Anchored Popovers**:
+  - Replaced legacy slider with user screenshot layout:
+    - **Eraser Type Pill (`[ ⬭ Standard ˅ ]`)**: Opens `EraserTypeMenuDialog` displaying Precision Eraser, Standard Eraser, and Stroke Eraser cards with descriptive subtitles.
+    - **Tool Options Button (`[ ⊶ ]`)**: Opens `EraserAdvancedSettingsDialog` displaying ERASER FILTER toggles (`Pen`, `Pencil`, `Highlighter`, `Tape`), "Select all", "Clear Page" action, and "Auto-Deselect" switch.
+    - **Size Presets**: 3 concentric circular size buttons (Small, Medium, Large) with active blue indicator ring.
+- **Pixel-Precise Segment Erasing**:
+  - When erasing drawn strokes in Standard and Precision modes, strokes are no longer deleted as whole paths.
+  - Instead, the algorithm densifies stroke points along segments, tests points against the eraser radius, removes the erased points/pixels, and splits the remaining points into continuous sub-strokes with identical styles.
+  - Whole-stroke deletion is preserved when Stroke Eraser mode is selected.
+- **Automated Verification**: `flutter analyze` clean (0 issues) and all 28 automated tests pass across `test/widget_test.dart`, `test/workspace_test.dart`, and `test/library_ui_test.dart`.
 - [x] Configured `EditorTool.select` as initial tool when opening notebooks/documents.
 - [x] Converted top toolbar items and sub-components to icon-only buttons with zero text clutter, passing text names and actions into tooltips.
 - [x] Moved all more controls / tool options out of the top header into `FloatingToolControls`, freeing header vertical space to a clean 44px.
