@@ -1,0 +1,151 @@
+import 'dart:math' as math;
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:novi/features/editor/tools/shape/shape_recognition.dart';
+
+List<List<double>> samples(
+  List<Offset> vertices, {
+  int perEdge = 12,
+  bool closed = true,
+  double noise = 0,
+}) {
+  final output = <List<double>>[];
+  final edges = closed ? vertices.length : vertices.length - 1;
+  for (var edge = 0; edge < edges; edge++) {
+    final a = vertices[edge];
+    final b = vertices[(edge + 1) % vertices.length];
+    for (var step = 0; step < perEdge; step++) {
+      final t = step / perEdge;
+      final wobble = noise * math.sin((edge * perEdge + step) * 2.17);
+      output.add([
+        a.dx + (b.dx - a.dx) * t + wobble,
+        a.dy + (b.dy - a.dy) * t - wobble,
+        0.6,
+      ]);
+    }
+  }
+  final end = closed ? vertices.first : vertices.last;
+  output.add([end.dx, end.dy, 0.6]);
+  return output;
+}
+
+List<Offset> regular(int count, {double phase = 0}) => [
+  for (var i = 0; i < count; i++)
+    Offset(
+      130 + 85 * math.cos(phase + 2 * math.pi * i / count),
+      120 + 70 * math.sin(phase + 2 * math.pi * i / count),
+    ),
+];
+
+void main() {
+  test('rotated polygons keep their number of corners', () {
+    for (final sides in [3, 4, 5, 6, 8]) {
+      for (final phase in [0.0, 0.27, 0.83]) {
+        final result = ShapeRecognition.recognize(
+          samples(regular(sides, phase: phase), noise: 0.7),
+        );
+        expect(result.isClosed, isTrue, reason: '$sides sides, $phase');
+        expect(result.stroke.length, sides + 1, reason: '$sides sides, $phase');
+      }
+    }
+  });
+
+  test('trapezium retains four unequal corners', () {
+    final result = ShapeRecognition.recognize(
+      samples([
+        const Offset(60, 50),
+        const Offset(170, 50),
+        const Offset(220, 160),
+        const Offset(25, 160),
+      ], noise: 0.5),
+    );
+    expect(result.stroke.length, 5);
+  });
+
+  test('polygon recognition is independent of starting edge and direction', () {
+    for (final sides in [3, 4, 6]) {
+      final outline = samples(
+        regular(sides, phase: 0.39),
+        perEdge: 17,
+        noise: 0.9,
+      );
+      final ring = outline.sublist(0, outline.length - 1);
+      for (final shift in [3, 11, 25]) {
+        final shifted = [...ring.skip(shift), ...ring.take(shift)];
+        for (final sequence in [shifted, shifted.reversed.toList()]) {
+          final gesture = [...sequence, sequence.first];
+          final result = ShapeRecognition.recognize(gesture);
+          expect(
+            result.stroke.length,
+            sides + 1,
+            reason: '$sides sides, shift $shift',
+          );
+        }
+      }
+    }
+  });
+
+  test('smooth circles and ellipses remain smooth', () {
+    for (final radii in [(80.0, 80.0), (100.0, 55.0)]) {
+      final outline = [
+        for (var i = 0; i < 96; i++)
+          Offset(
+            150 + radii.$1 * math.cos(i * math.pi / 48),
+            150 + radii.$2 * math.sin(i * math.pi / 48),
+          ),
+      ];
+      final result = ShapeRecognition.recognize(
+        samples(outline, perEdge: 1, noise: 0.4),
+      );
+      expect(result.isClosed, isTrue);
+      expect(result.stroke.length, greaterThan(24));
+    }
+  });
+
+  test('a rotated ellipse fits without becoming a polygon', () {
+    const angle = 0.64;
+    final outline = [
+      for (var i = 0; i < 96; i++)
+        Offset(
+          150 +
+              100 * math.cos(i * math.pi / 48) * math.cos(angle) -
+              52 * math.sin(i * math.pi / 48) * math.sin(angle),
+          150 +
+              100 * math.cos(i * math.pi / 48) * math.sin(angle) +
+              52 * math.sin(i * math.pi / 48) * math.cos(angle),
+        ),
+    ];
+    final result = ShapeRecognition.recognize(
+      samples(outline, perEdge: 1, noise: 0.3),
+    );
+    expect(result.isClosed, isTrue);
+    expect(result.stroke.length, 49);
+  });
+
+  test('lines and open angles snap without closing; curves stay freehand', () {
+    final line = ShapeRecognition.recognize(
+      samples(
+        [const Offset(10, 20), const Offset(210, 30)],
+        closed: false,
+        noise: 0.3,
+      ),
+    );
+    expect(line.stroke.length, 2);
+    final angle = ShapeRecognition.recognize(
+      samples(
+        [const Offset(20, 20), const Offset(100, 150), const Offset(190, 45)],
+        closed: false,
+        noise: 0.3,
+      ),
+    );
+    expect(angle.isClosed, isFalse);
+    expect(angle.stroke.length, 3);
+    final curve = [
+      for (var i = 0; i <= 40; i++)
+        [i * 5.0, 80 + 35 * math.sin(i * math.pi / 20), 0.6],
+    ];
+    final freehand = ShapeRecognition.recognize(curve);
+    expect(freehand.isClosed, isFalse);
+    expect(freehand.stroke.length, curve.length);
+  });
+}
