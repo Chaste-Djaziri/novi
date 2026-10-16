@@ -51,8 +51,26 @@ class PenMenuDialog extends StatefulWidget {
 }
 
 class _PenMenuDialogState extends State<PenMenuDialog> {
+  PenFeature? _featurePage;
+
   @override
   Widget build(BuildContext context) {
+    if (_featurePage != null) {
+      return ToolMenuPopup(
+        targetRect: widget.targetRect,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 180),
+          transitionBuilder: (child, animation) => SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.18, 0),
+              end: Offset.zero,
+            ).animate(animation),
+            child: FadeTransition(opacity: animation, child: child),
+          ),
+          child: _buildFeaturePage(_featurePage!),
+        ),
+      );
+    }
     final screenSize = MediaQuery.of(context).size;
     const cardWidth = 280.0;
     const arrowWidth = 18.0;
@@ -207,32 +225,19 @@ class _PenMenuDialogState extends State<PenMenuDialog> {
                       const SizedBox(height: 8),
                       _buildFeatureRow(
                         'Pen Settings',
-                        () => showPenFeatureMenu(
-                          context,
-                          targetRect: widget.targetRect,
-                          session: widget.session,
-                          feature: PenFeature.settings,
-                          onUpdate: widget.onUpdate,
-                        ),
+                        () =>
+                            setState(() => _featurePage = PenFeature.settings),
                       ),
                       _buildFeatureRow(
                         'Writing Aids',
-                        () => showPenFeatureMenu(
-                          context,
-                          targetRect: widget.targetRect,
-                          session: widget.session,
-                          feature: PenFeature.writingAids,
-                          onUpdate: widget.onUpdate,
+                        () => setState(
+                          () => _featurePage = PenFeature.writingAids,
                         ),
                       ),
                       _buildFeatureRow(
                         'Math Assist',
-                        () => showPenFeatureMenu(
-                          context,
-                          targetRect: widget.targetRect,
-                          session: widget.session,
-                          feature: PenFeature.mathAssist,
-                          onUpdate: widget.onUpdate,
+                        () => setState(
+                          () => _featurePage = PenFeature.mathAssist,
                         ),
                       ),
                     ],
@@ -243,6 +248,124 @@ class _PenMenuDialogState extends State<PenMenuDialog> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildFeaturePage(PenFeature feature) {
+    final title = switch (feature) {
+      PenFeature.settings => 'Pen Settings',
+      PenFeature.writingAids => 'Writing Aids',
+      PenFeature.mathAssist => 'Math Assist',
+    };
+    return Padding(
+      key: ValueKey(feature),
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              IconButton(
+                onPressed: () => setState(() => _featurePage = null),
+                icon: const Icon(
+                  CupertinoIcons.chevron_left,
+                  color: Colors.white,
+                ),
+              ),
+              Expanded(
+                child: Center(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 48),
+            ],
+          ),
+          if (feature == PenFeature.mathAssist) ...[
+            Container(
+              height: 140,
+              decoration: BoxDecoration(
+                color: const Color(0xfff8f5ec),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              alignment: Alignment.center,
+              child: const Text(
+                '(6x − 5 + 3)(2x + 1) = 12x² + 2x − 2',
+                style: TextStyle(color: Colors.black87, fontSize: 14),
+              ),
+            ),
+            _featureToggle(
+              'Suggestions',
+              widget.session.penMathSuggestions,
+              (v) => widget.session.penMathSuggestions = v,
+            ),
+            const Text(
+              'Get suggestions and solutions when you\'re working on math equations.',
+              style: TextStyle(color: Colors.white60, fontSize: 13),
+            ),
+          ] else if (feature == PenFeature.writingAids) ...[
+            _featureToggle(
+              'Check Spelling',
+              widget.session.penSpelling,
+              (v) => widget.session.penSpelling = v,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Recognition Language   Auto Detect',
+              style: TextStyle(color: Colors.white, fontSize: 14),
+            ),
+          ] else ...[
+            _featureToggle(
+              'Reduce Latency',
+              widget.session.penReduceLatency,
+              (v) => widget.session.penReduceLatency = v,
+            ),
+            _featureToggle(
+              'Draw and Hold',
+              widget.session.penHoldForLine,
+              (v) => widget.session.penHoldForLine = v,
+            ),
+            _featureToggle('Pen Gestures', true, (_) {}),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _featureToggle(
+    String label,
+    bool value,
+    ValueChanged<bool> onChanged,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xff2c2c2e),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: SwitchListTile.adaptive(
+          title: Text(
+            label,
+            style: const TextStyle(color: Colors.white, fontSize: 14),
+          ),
+          value: value,
+          onChanged: (next) {
+            onChanged(next);
+            widget.onUpdate();
+            setState(() {});
+          },
+          activeThumbColor: const Color(0xff34c759),
+        ),
+      ),
     );
   }
 
