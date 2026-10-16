@@ -15,7 +15,7 @@
 - [ ] Step 11: Complete hands-on desktop acceptance checks listed below.
 
 ## Current
-The first technical alpha is implemented. A reported native crash on New notebook has been addressed by switching macOS to system SQLite. Native integration checks pass, but the original crash was not reproduced in a fresh test process. Hands-on acceptance remains current; this is not yet a release-quality v0.1.
+Notebook-only development: centered desktop controls, paper-aligned typing with page continuation, mouse/trackpad navigation in every tool, and native macOS tablet monitoring are implemented and verified in automated checks. Future creation types/tools remain visible but disabled. Physical tablet/driver and normal-app hands-on acceptance remain pending.
 
 ## Verification — 2026-10-15
 - `flutter analyze`: no issues.
@@ -386,10 +386,23 @@ The first technical alpha is implemented. A reported native crash on New noteboo
 - [x] Unit and widget test suite: all 20 tests pass (`test/library_ui_test.dart`, `test/widget_test.dart`, `test/workspace_test.dart`).
 - [ ] Hands-on interaction check in the running Mac app.
 
+## Notebook controls, whole-paper typing, and native tablet detection — 2026-10-16
+- [x] Notebook-only creation enforced in the new menu, dialog format choices, and creation callbacks. Future creation options remain visible with Coming later tooltips/disabled semantics. Imports and existing non-notebook documents remain supported.
+- [x] Three toolbar regions: undo/redo/delete at left, tools centered independently, add-page/style/export at right. The context bar stays 52 logical pixels high. Compact icons preserve centering at 960 × 640; lower-priority future controls remain in More Tools.
+- [x] Explicit disabled future controls: Calculator, Shapes, Images, Stickers, Sticky notes, Laser pointer, Recording, Ruler, Equations, Graphing, and Code tools. No nonworking action appears enabled.
+- [x] Shared paper/text metrics in `lib/paper_layout.dart`; natural text spacing follows ruled/dotted/grid row baselines. Large fonts occupy whole multiples of row spacing.
+- [x] Page-wide typing with a consistent 8px side inset. Clicking empty rows creates real blank lines and places the caret there. Existing text retains native caret/selection behavior; selecting text does not pan the canvas.
+- [x] Text wraps across the available page width and continues onto later pages, preserving every character and existing ink. Font and paper/orientation changes reflow overflow. Undo/redo synchronizes all page controllers and remains one operation per composing input/format change.
+- [x] Blank paper shows temporary guides in Type mode only; guides are not serialized into notes or exports.
+- [x] Per-notebook active typing page/focus, tool, view, and undo history survive tab switches. Mouse wheel scrolling works over typing, ink, and margins without enabling Hand or accidentally zooming. Trackpad pan/zoom, Space-drag, middle drag, and keyboard navigation remain supported.
+- [x] Removed fake connect/disconnect controls. macOS `novi/tablets` method and event channels enumerate digitizer hardware at startup and observe IOKit registry attach/removal notifications. Composite interfaces are deduplicated where physical identity is available. No raw input interception, device seizure, Input Monitoring permission, or extra entitlements were added.
+- [x] Hardware connection is separate from pen proximity. Last-device removal hides Hand and restores the previous writing tool. Pen input/hover can reveal Hand with an honest Pen observed / hardware identity unavailable fallback. Status is visible in the footer. Windows/Linux retain mouse navigation and pen-observed fallback, without native hardware enumeration.
+- [x] Fixed a pre-existing native startup ordering problem: fullscreen state is queried only after the window-manager plugin is initialized and a window frame is available.
+- [x] `flutter analyze`: no issues. `flutter test`: all 19 tests pass. Native macOS integration: all 19 tests pass, including initial tablet method/event snapshots, text continuation, native composition protocol, guides, scrolling, and document persistence.
+- [x] Rendered and inspected `build/ui-preview/typing-paper.png`, editor, creation/menu, and minimum-size previews. Typing baselines align to the visible grid and the grayscale desktop theme is preserved.
+- Native integration drives keyboard input deterministically through Flutter's test text channel, avoiding races with the OS IME. Real-language IME, real hardware attach/removal, driver coverage, and Windows/Linux builds still require hands-on verification. Hardware transitions in widget tests are explicitly simulated; the native channel smoke check uses real IOKit enumeration.
+- [ ] Verify physical tablet connection before first pen activity, unplugging, multiple devices, and driver-hidden identities in the normal Mac app.
+- [ ] Verify normal-app row clicking/typing, selection, scrolling, and tab switching, including a real IME.
+
 ## Next
-Perform hands-on visual and drag verification in the rebuilt Mac app. Continue the desktop acceptance checks listed in the checklist above, recording results here.
-
-
-
-
-
+Fully quit/reopen the rebuilt Novi app and review the notebook workflow. Connect a physical tablet and confirm Hand appears before using the pen, then disconnect it and confirm the previous writing tool returns. Record results here before advancing to future creation types or planned toolbar features.
