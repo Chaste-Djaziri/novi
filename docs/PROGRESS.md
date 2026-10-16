@@ -163,6 +163,34 @@ The first technical alpha is implemented. A reported native crash on New noteboo
 - [x] Captured and visually verified visual preview artifact `build/ui-preview/creation.png`.
 - [ ] Hands-on interaction check in the running Mac app.
 
+## Custom cover colors, palettes, and image cover uploads — 2026-10-16
+- [x] Added `coverImage` (optional base64-encoded image string) to `Notebook` model:
+  - Stored in SQLite data column with zero database migration needed.
+  - Encoded into `.novi` and `.novibackup` portable archives; self-contained, offline, account-free, and resistant to macOS sandbox permission loss.
+  - Fully backwards-compatible with existing documents and historical formats.
+- [x] Implemented dedicated desktop `CustomColorPickerDialog`:
+  - Live color swatch preview with light/dark luminance indicator icon.
+  - Hex code text field with automatic `#` prefix, live input parsing, and instant swatch synchronization.
+  - 36-shade curated spectrum palette spanning reds, corals, oranges, yellows, greens, teals, cyans, blues, purples, violets, and earth tones.
+  - Independent Red, Green, and Blue sliders (0–255) with monospace value readouts.
+- [x] Added "Color Palettes" row to `CreateDocumentDialog`:
+  - 12 curated vibrant and classic notebook tones (Merlot, Terracotta, Amber, Forest, Teal, Cobalt, Indigo, Plum, Rose, Espresso, Sage, Midnight).
+  - Interactive "Custom..." swatch card with rainbow gradient badge opening the custom color picker.
+- [x] Added native image cover upload to `CreateDocumentDialog`:
+  - "Upload Image..." capsule button in Cover Styles header and dedicated "IMAGE UPLOAD" dropzone card.
+  - Native file picker (`openFile`) accepting PNG, JPG, JPEG, and WEBP images.
+  - Downsamples large images and encodes them to base64.
+  - When an image is active, displays thumbnail, status badge, "Change Image" button, and "Remove photo" button to revert to color.
+- [x] Updated `DocumentCover`:
+  - Decodes base64 `coverImage` and renders it with `BoxFit.cover`.
+  - Applies subtle dark gradient overlay, spine line, strap shadow, and drop-shadowed white typography for high legibility.
+- [x] Fixed `DesktopSlider` layout by constraining height to 20px.
+- [x] `flutter analyze`: clean (0 issues).
+- [x] Unit and widget test suite: all tests pass (`test/widget_test.dart`, `test/library_ui_test.dart`, `test/workspace_test.dart`).
+- [x] Native macOS integration test suite: all 7 tests pass in a live macOS desktop process (`flutter test -d macos integration_test/notebook_test.dart`).
+- [x] Visual preview artifact regenerated and verified: `build/ui-preview/creation.png`.
+- [ ] Hands-on interaction check in the running Mac app.
+
 ## Next
 Perform hands-on visual and drag verification in the rebuilt Mac app. Continue the desktop acceptance checks listed in the checklist above, recording results here.
 
