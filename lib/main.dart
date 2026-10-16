@@ -1854,6 +1854,8 @@ class _WorkspaceState extends State<Workspace>
                                   pressure: _inkPressure,
                                   eraserRadius: session.tool == EditorTool.eraser ? session.eraserRadius : null)
                               : null,
+                          child: RepaintBoundary(
+                            child: CustomPaint(
                           painter: InkPainter(
                             [
                               ...page.strokes,
@@ -1876,6 +1878,8 @@ class _WorkspaceState extends State<Workspace>
                                 : null,
                           ),
                           size: Size.infinite,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -2742,7 +2746,12 @@ class InkPainter extends CustomPainter {
     this.styles = const [],
     this.selected = const {},
     this.selectionBox,
-  });
+  }) : _fingerprint = Object.hash(
+         color, selectionBox, Object.hashAll(selected),
+         Object.hashAll(strokes.map((stroke) => Object.hashAll(stroke.expand((p) => p)))),
+         Object.hashAll(styles.map((style) => style.toString())),
+       );
+  final int _fingerprint;
   final List<Map<String, dynamic>> styles;
   final Set<int> selected;
   final Rect? selectionBox;
@@ -2837,7 +2846,7 @@ class InkPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant InkPainter oldDelegate) => true;
+  bool shouldRepaint(covariant InkPainter oldDelegate) => _fingerprint != oldDelegate._fingerprint;
 }
 
 class DesktopWindowHeader extends StatelessWidget {
