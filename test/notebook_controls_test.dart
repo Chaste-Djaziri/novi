@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/gestures.dart';
+import 'package:novi/library_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
@@ -132,6 +133,32 @@ void main() {
         expect(calc.onPressed, isNull);
         expect(tester.takeException(), isNull);
       }
+      final dynamic state = tester.state(find.byType(Workspace));
+      await state.create('Whiteboard');
+      await tester.pumpAndSettle();
+      expect(find.byType(CreateDocumentDialog), findsNothing);
+      expect((state.notes as List).length, 1);
+      final futureMenu = tester
+          .widgetList<DesktopPopupMenuButton<String>>(
+            find.byType(DesktopPopupMenuButton<String>),
+          )
+          .firstWhere((menu) => menu.tooltip == 'More Tools');
+      final entries = futureMenu.itemBuilder(
+        tester.element(find.byType(WorkspaceToolbar)),
+      );
+      expect(entries.every((item) => !item.enabled), isTrue);
+      expect(
+        entries.map((item) => item.value),
+        containsAll([
+          'Shapes',
+          'Images',
+          'Recording',
+          'Ruler',
+          'Equations',
+          'Graphing',
+          'Code tools',
+        ]),
+      );
       // Click below existing text on the actual paper at its current zoom.
       await tester.tap(find.byKey(const ValueKey('tool-text')));
       await tester.pumpAndSettle();
@@ -189,9 +216,17 @@ void main() {
         of: editor,
         matching: find.byType(DesktopTextField),
       );
+      await tester.enterText(input, 'Hello notebook');
+      await tester.pumpAndSettle();
+      final beforeSelection = matrix.value.storage[13];
+      await tester.dragFrom(
+        tester.getTopLeft(editor) + Offset(30 * scale, 16 * scale),
+        Offset(90 * scale, 0),
+      );
+      await tester.pumpAndSettle();
+      expect(matrix.value.storage[13], beforeSelection);
       await tester.enterText(input, text);
       await tester.pumpAndSettle();
-      final dynamic state = tester.state(find.byType(Workspace));
       final note = state.current as Notebook;
       expect(note.pages.length, greaterThan(1));
       expect(note.pages.map((p) => p.text).join(), text);
@@ -200,6 +235,18 @@ void main() {
       expect((state.current as Notebook).pages, hasLength(1));
       await tester.tap(find.byTooltip('Redo'));
       await tester.pumpAndSettle();
+      expect((state.current as Notebook).pages.map((p) => p.text).join(), text);
+      final beforeFormatting = (state.current as Notebook).pages.length;
+      state.formatText(size: 32.0);
+      await tester.pumpAndSettle();
+      expect(
+        (state.current as Notebook).pages.length,
+        greaterThanOrEqualTo(beforeFormatting),
+      );
+      expect((state.current as Notebook).pages.map((p) => p.text).join(), text);
+      await tester.tap(find.byTooltip('Undo'));
+      await tester.pumpAndSettle();
+      expect((state.current as Notebook).fontSize, 16);
       expect((state.current as Notebook).pages.map((p) => p.text).join(), text);
       await tester.pumpWidget(const SizedBox());
       await tester.pumpAndSettle();
