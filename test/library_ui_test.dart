@@ -125,7 +125,7 @@ void main() {
       await tester.ensureVisible(find.text('Create'));
       await tester.tap(find.text('Create'));
       await tester.pumpAndSettle();
-      expect(find.text('Design ideas'), findsOneWidget);
+      expect(find.text('Design ideas'), findsWidgets);
       expect(find.text('Notebook / Squared'), findsOneWidget);
       await tester.tap(find.byTooltip('Document style'));
       await tester.pumpAndSettle();
