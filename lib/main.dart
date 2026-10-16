@@ -119,6 +119,10 @@ class _WorkspaceState extends State<Workspace> {
   bool get drawing => session.tool != EditorTool.text;
   bool inLibrary = true;
   bool showSidebar = true;
+  bool hasStylus = false;
+  bool _isPanning = false;
+  Offset? _panStartPos;
+  Matrix4? _panStartMatrix;
   final List<String?> _navHistory = [];
   int _navIndex = -1;
   String status = 'Opening local library…';
@@ -322,6 +326,56 @@ class _WorkspaceState extends State<Workspace> {
       }
       session.view.value = matrix;
     });
+  }
+
+  (double, double) _getCanvasScrollBounds(
+    BoxConstraints constraints,
+    double pageWidth,
+    double pageHeight,
+    double scale,
+  ) {
+    final paperWidth = pageWidth * scale;
+    final hasCover = current?.kind == 'Notebook';
+    final paperCount = current?.pages.length ?? 1;
+    final totalSheets = (hasCover ? 1 : 0) + paperCount;
+    final loaderExtra = (_bottomOverscroll > 0 || _isCreatingPage) ? 72.0 : 0.0;
+    final totalContentHeight =
+        totalSheets * pageHeight + (totalSheets + 1) * 24.0 + loaderExtra;
+    final totalHeight = totalContentHeight * scale;
+
+    final double minX = paperWidth <= constraints.maxWidth
+        ? 0.0
+        : constraints.maxWidth - paperWidth;
+    final double minY = totalHeight <= constraints.maxHeight
+        ? 0.0
+        : constraints.maxHeight - totalHeight;
+    return (minX, minY);
+  }
+
+  void _panCanvas(Offset delta) {
+    if (_lastConstraints == null || current == null) return;
+    final matrix = session.view.value.clone();
+    final scale = matrix.getMaxScaleOnAxis();
+    final pageWidth = current!.landscape ? 980.0 : 760.0;
+    final pageHeight = current!.landscape ? 760.0 : 980.0;
+    final (minX, minY) = _getCanvasScrollBounds(
+      _lastConstraints!,
+      pageWidth,
+      pageHeight,
+      scale,
+    );
+
+    final currentTx = matrix.storage[12];
+    final currentTy = matrix.storage[13];
+    final newTx = (currentTx + delta.dx).clamp(minX, 0.0);
+    final newTy = (currentTy + delta.dy).clamp(minY, 0.0);
+
+    if (currentTx != newTx || currentTy != newTy) {
+      matrix.storage[12] = newTx;
+      matrix.storage[13] = newTy;
+      session.view.value = matrix;
+      setState(() {});
+    }
   }
 
   void _handleCanvasScroll(
@@ -703,8 +757,28 @@ class _WorkspaceState extends State<Workspace> {
               chooseTool(EditorTool.select),
           const SingleActivator(LogicalKeyboardKey.keyT): () =>
               chooseTool(EditorTool.text),
-          const SingleActivator(LogicalKeyboardKey.keyH): () =>
-              chooseTool(EditorTool.hand),
+          const SingleActivator(LogicalKeyboardKey.keyH): () {
+            if (!hasStylus) {
+              setState(() => hasStylus = true);
+            }
+            chooseTool(EditorTool.hand);
+          },
+          const SingleActivator(LogicalKeyboardKey.arrowUp): () =>
+              _panCanvas(const Offset(0, 60)),
+          const SingleActivator(LogicalKeyboardKey.arrowDown): () =>
+              _panCanvas(const Offset(0, -60)),
+          const SingleActivator(LogicalKeyboardKey.arrowLeft): () =>
+              _panCanvas(const Offset(60, 0)),
+          const SingleActivator(LogicalKeyboardKey.arrowRight): () =>
+              _panCanvas(const Offset(-60, 0)),
+          const SingleActivator(LogicalKeyboardKey.pageUp): () =>
+              _panCanvas(const Offset(0, 300)),
+          const SingleActivator(LogicalKeyboardKey.pageDown): () =>
+              _panCanvas(const Offset(0, -300)),
+          const SingleActivator(LogicalKeyboardKey.home): () =>
+              _panCanvas(const Offset(0, 100000)),
+          const SingleActivator(LogicalKeyboardKey.end): () =>
+              _panCanvas(const Offset(0, -100000)),
         },
         const SingleActivator(LogicalKeyboardKey.keyZ, meta: true): () =>
             history(true),
@@ -744,18 +818,32 @@ class _WorkspaceState extends State<Workspace> {
           child: Column(
             children: [
               WorkspaceToolbar(
-              session: session,
-              note: note,
-              onTool: chooseTool,
-              onSettings: () => setState(() {}),
-              onUndo: undo.isEmpty ? null : () => history(true),
-              onRedo: redo.isEmpty ? null : () => history(false),
-              onDelete: session.selection.isEmpty ? null : deleteSelection,
-              onZoom: zoom,
-              onStyle: styleDocument,
-              onFontSize: (v) => formatText(size: v),
-              onBold: () => formatText(bold: !note.boldText),
-            ),
+                session: session,
+                note: note,
+                onTool: (t) {
+                  if (t == EditorTool.hand && !hasStylus) {
+                    setState(() => hasStylus = true);
+                  }
+                  chooseTool(t);
+                },
+                onSettings: () => setState(() {}),
+                onUndo: undo.isEmpty ? null : () => history(true),
+                onRedo: redo.isEmpty ? null : () => history(false),
+                onDelete: session.selection.isEmpty ? null : deleteSelection,
+                onZoom: zoom,
+                onStyle: styleDocument,
+                onFontSize: (v) => formatText(size: v),
+                onBold: () => formatText(bold: !note.boldText),
+                hasStylus: hasStylus,
+                onToggleStylus: () {
+                  setState(() {
+                    hasStylus = !hasStylus;
+                    if (!hasStylus && session.tool == EditorTool.hand) {
+                      chooseTool(EditorTool.pen);
+                    }
+                  });
+                },
+              ),
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -774,6 +862,64 @@ class _WorkspaceState extends State<Workspace> {
                       ? math.max(constraints.maxHeight / scale, totalContentHeight)
                       : totalContentHeight;
                   return Listener(
+                    behavior: HitTestBehavior.translucent,
+                    onPointerDown: (event) {
+                      if (event.kind == PointerDeviceKind.stylus ||
+                          event.kind == PointerDeviceKind.invertedStylus) {
+                        if (!hasStylus) {
+                          setState(() => hasStylus = true);
+                        }
+                      }
+                      final isSpace = HardwareKeyboard.instance
+                          .isLogicalKeyPressed(LogicalKeyboardKey.space);
+                      final isMiddle = (event.buttons & 4) != 0;
+                      if (isSpace || isMiddle) {
+                        _isPanning = true;
+                        _panStartPos = event.position;
+                        _panStartMatrix = session.view.value.clone();
+                      }
+                    },
+                    onPointerMove: (event) {
+                      if (_isPanning &&
+                          _panStartPos != null &&
+                          _panStartMatrix != null) {
+                        final delta = event.position - _panStartPos!;
+                        final matrix = _panStartMatrix!.clone();
+                        final scale = matrix.getMaxScaleOnAxis();
+                        final (minX, minY) = _getCanvasScrollBounds(
+                          constraints,
+                          pageWidth,
+                          pageHeight,
+                          scale,
+                        );
+                        final startTx = _panStartMatrix!.storage[12];
+                        final startTy = _panStartMatrix!.storage[13];
+                        final newTx = (startTx + delta.dx).clamp(minX, 0.0);
+                        final newTy = (startTy + delta.dy).clamp(minY, 0.0);
+                        matrix.storage[12] = newTx;
+                        matrix.storage[13] = newTy;
+                        session.view.value = matrix;
+                        setState(() {});
+                      }
+                    },
+                    onPointerUp: (event) {
+                      if (_isPanning) {
+                        _isPanning = false;
+                        _panStartPos = null;
+                        _panStartMatrix = null;
+                        _snapHorizontalToCenter(constraints, pageWidth);
+                        setState(() {});
+                      }
+                    },
+                    onPointerCancel: (event) {
+                      if (_isPanning) {
+                        _isPanning = false;
+                        _panStartPos = null;
+                        _panStartMatrix = null;
+                        _snapHorizontalToCenter(constraints, pageWidth);
+                        setState(() {});
+                      }
+                    },
                     onPointerSignal: (event) {
                       if (event is PointerScrollEvent) {
                         _handleCanvasScroll(
@@ -801,13 +947,28 @@ class _WorkspaceState extends State<Workspace> {
                     child: SizedBox(
                       width: childWidth,
                       height: childHeight,
-                      child: Align(
-                        alignment: isFittingVertically ? Alignment.center : Alignment.topCenter,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 24),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
+                      child: Listener(
+                        behavior: HitTestBehavior.translucent,
+                        onPointerDown: (event) {
+                          if (event.kind == PointerDeviceKind.stylus ||
+                              event.kind == PointerDeviceKind.invertedStylus) {
+                            if (!hasStylus) {
+                              setState(() => hasStylus = true);
+                            }
+                          }
+                          if (tool != EditorTool.hand && (event.buttons & 1) != 0) {
+                            _isPanning = true;
+                            _panStartPos = event.position;
+                            _panStartMatrix = session.view.value.clone();
+                          }
+                        },
+                        child: Align(
+                          alignment: isFittingVertically ? Alignment.center : Alignment.topCenter,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 24),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
                               if (hasCover) ...[
                                 // Page 1: Notebook Cover
                                 SizedBox(
@@ -853,7 +1014,8 @@ class _WorkspaceState extends State<Workspace> {
                       ),
                     ),
                   ),
-                );
+                ),
+              );
               },
             ),
           ),
@@ -1057,6 +1219,19 @@ class _WorkspaceState extends State<Workspace> {
   }
 
   void pointerDown(PointerDownEvent e, {int pageIndex = 0}) {
+    if (e.kind == PointerDeviceKind.stylus ||
+        e.kind == PointerDeviceKind.invertedStylus) {
+      if (!hasStylus) {
+        setState(() => hasStylus = true);
+      }
+    }
+    // If Space is held or middle button is pressed, don't draw ink (user is panning)
+    final isSpacePressed =
+        HardwareKeyboard.instance.isLogicalKeyPressed(LogicalKeyboardKey.space);
+    final isMiddleButton = (e.buttons & 4) != 0;
+    if (isSpacePressed || isMiddleButton) {
+      return;
+    }
     if (activePointer != null || (e.buttons & 1) == 0) {
       return;
     }
