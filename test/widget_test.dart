@@ -220,518 +220,589 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('custom color picker allows picking any hex color for notebook cover', (tester) async {
-    tester.view.physicalSize = const Size(1200, 800);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    final directory = Directory.systemTemp.createTempSync('novi-color-test');
-    final original = PathProviderPlatform.instance;
-    PathProviderPlatform.instance = TestPaths(directory.path);
-    addTearDown(() {
-      PathProviderPlatform.instance = original;
-      directory.deleteSync(recursive: true);
-    });
+  testWidgets(
+    'custom color picker allows picking any hex color for notebook cover',
+    (tester) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final directory = Directory.systemTemp.createTempSync('novi-color-test');
+      final original = PathProviderPlatform.instance;
+      PathProviderPlatform.instance = TestPaths(directory.path);
+      addTearDown(() {
+        PathProviderPlatform.instance = original;
+        directory.deleteSync(recursive: true);
+      });
 
-    await tester.pumpWidget(const NoviApp());
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 150)),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(const NoviApp());
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
+      await tester.pumpAndSettle();
 
-    // Open New menu and select Notebook
-    await tester.tap(find.text('New'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Notebook').first);
-    await tester.pumpAndSettle();
-    // Enter name
-    await tester.enterText(find.byKey(const Key('document-name')), 'Vibrant Notebook');
-    await tester.pumpAndSettle();
+      // Open New menu and select Notebook
+      await tester.tap(find.text('New'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Notebook').first);
+      await tester.pumpAndSettle();
+      // Enter name
+      await tester.enterText(
+        find.byKey(const Key('document-name')),
+        'Vibrant Notebook',
+      );
+      await tester.pumpAndSettle();
 
-    // Scroll to and tap Custom Color button
-    await tester.ensureVisible(find.byKey(const Key('custom-color-button')));
-    await tester.tap(find.byKey(const Key('custom-color-button')));
-    await tester.pumpAndSettle();
-    expect(find.byType(CustomColorPickerDialog), findsOneWidget);
+      // Scroll to and tap Custom Color button
+      await tester.ensureVisible(find.byKey(const Key('custom-color-button')));
+      await tester.tap(find.byKey(const Key('custom-color-button')));
+      await tester.pumpAndSettle();
+      expect(find.byType(CustomColorPickerDialog), findsOneWidget);
 
-    // Enter custom hex color
-    await tester.enterText(find.byKey(const Key('custom-hex-field')), 'FF5733');
-    await tester.pumpAndSettle();
+      // Enter custom hex color
+      await tester.enterText(
+        find.byKey(const Key('custom-hex-field')),
+        'FF5733',
+      );
+      await tester.pumpAndSettle();
 
-    // Confirm color selection
-    await tester.tap(find.text('Done'));
-    await tester.pumpAndSettle();
-    expect(find.byType(CustomColorPickerDialog), findsNothing);
+      // Confirm color selection
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+      expect(find.byType(CustomColorPickerDialog), findsNothing);
 
-    // Create document
-    await tester.ensureVisible(find.text('Create'));
-    await tester.tap(find.text('Create'));
-    await tester.pumpAndSettle();
+      // Create document
+      await tester.ensureVisible(find.text('Create'));
+      await tester.tap(find.text('Create'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Vibrant Notebook'), findsWidgets);
+      expect(find.text('Vibrant Notebook'), findsWidgets);
 
-    // Verify in SQLite storage
-    final store = LibraryStore('${directory.path}/novi.sqlite');
-    final saved = store.load().firstWhere((n) => n.title == 'Vibrant Notebook');
-    expect(saved.cover, 0xffff5733);
-    expect(saved.coverImage, isNull);
-    store.close();
-  });
+      // Verify in SQLite storage
+      final store = LibraryStore('${directory.path}/novi.sqlite');
+      final saved = store.load().firstWhere(
+        (n) => n.title == 'Vibrant Notebook',
+      );
+      expect(saved.cover, 0xffff5733);
+      expect(saved.coverImage, isNull);
+      store.close();
+    },
+  );
 
-  testWidgets('notebook with image cover renders in DocumentCover and survives portable format', (tester) async {
-    const samplePng =
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
-    final note = Notebook(
-      id: 'img-note',
-      title: 'Art Journal',
-      cover: 0xff255492,
-      coverImage: samplePng,
-    );
+  testWidgets(
+    'notebook with image cover renders in DocumentCover and survives portable format',
+    (tester) async {
+      const samplePng =
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+      final note = Notebook(
+        id: 'img-note',
+        title: 'Art Journal',
+        cover: 0xff255492,
+        coverImage: samplePng,
+      );
 
-    // Verify DocumentCover widget renders without throwing
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 200,
-            height: 260,
-            child: DocumentCover(note),
+      // Verify DocumentCover widget renders without throwing
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(width: 200, height: 260, child: DocumentCover(note)),
           ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Art Journal'), findsOneWidget);
-    expect(find.byType(Image), findsOneWidget);
-
-    // Verify survives export / import round trip
-    final encoded = encodePortable([note], backup: false);
-    final decoded = decodePortable(encoded, backup: false).single;
-    expect(decoded.coverImage, samplePng);
-    expect(decoded.cover, 0xff255492);
-    expect(decoded.title, 'Art Journal');
-  });
-
-  testWidgets('home button appears on notebook write page right before route buttons and returns to library', (tester) async {
-    tester.view.physicalSize = const Size(1200, 800);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    final directory = Directory.systemTemp.createTempSync('novi-home-test');
-    final original = PathProviderPlatform.instance;
-    PathProviderPlatform.instance = TestPaths(directory.path);
-    addTearDown(() {
-      PathProviderPlatform.instance = original;
-      directory.deleteSync(recursive: true);
-    });
-
-    await tester.pumpWidget(const NoviApp());
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 150)),
-    );
-    await tester.pumpAndSettle();
-
-    // In library: Home button is not displayed in the window header
-    expect(find.byKey(const Key('home-button')), findsNothing);
-
-    // Open New menu and create a notebook
-    await tester.tap(find.text('New'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Notebook').first);
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key('document-name')), 'Home Test Notebook');
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Create'));
-    await tester.tap(find.text('Create'));
-    await tester.pumpAndSettle();
-
-    // Now on notebook write page: Home button is present
-    expect(find.byKey(const Key('home-button')), findsOneWidget);
-    expect(find.byTooltip('Home'), findsOneWidget);
-
-    // Tap Home button to navigate back to documents library
-    await tester.tap(find.byKey(const Key('home-button')));
-    await tester.pumpAndSettle();
-
-    // Back in library: Documents view is visible, and Home button is gone
-    expect(find.text('Documents'), findsWidgets);
-    expect(find.byKey(const Key('home-button')), findsNothing);
-  });
-
-  testWidgets('when document opened and is in tab preserve it open until specifically closed by the user in tab', (tester) async {
-    tester.view.physicalSize = const Size(1200, 800);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    final directory = Directory.systemTemp.createTempSync('novi-tab-test');
-    final original = PathProviderPlatform.instance;
-    PathProviderPlatform.instance = TestPaths(directory.path);
-    addTearDown(() {
-      PathProviderPlatform.instance = original;
-      directory.deleteSync(recursive: true);
-    });
-
-    await tester.pumpWidget(const NoviApp());
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 150)),
-    );
-    await tester.pumpAndSettle();
-
-    // Create first notebook 'Doc Alpha'
-    await tester.tap(find.text('New'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Notebook').first);
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key('document-name')), 'Doc Alpha');
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Create'));
-    await tester.tap(find.text('Create'));
-    await tester.pumpAndSettle();
-
-    // 'Doc Alpha' is in tab
-    expect(find.byTooltip('Close tab Doc Alpha'), findsOneWidget);
-
-    // Go Home (back to library)
-    await tester.tap(find.byKey(const Key('home-button')));
-    await tester.pumpAndSettle();
-
-    // In library: 'Doc Alpha' tab is PRESERVED open in the tab bar
-    expect(find.byTooltip('Close tab Doc Alpha'), findsOneWidget);
-
-    // Create second notebook 'Doc Beta'
-    await tester.tap(find.text('New'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Notebook').first);
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key('document-name')), 'Doc Beta');
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Create'));
-    await tester.tap(find.text('Create'));
-    await tester.pumpAndSettle();
-
-    // Both tabs are open
-    expect(find.byTooltip('Close tab Doc Alpha'), findsOneWidget);
-    expect(find.byTooltip('Close tab Doc Beta'), findsOneWidget);
-
-    // Go Home again
-    await tester.tap(find.byKey(const Key('home-button')));
-    await tester.pumpAndSettle();
-
-    // Both tabs remain preserved while browsing the library
-    expect(find.byTooltip('Close tab Doc Alpha'), findsOneWidget);
-    expect(find.byTooltip('Close tab Doc Beta'), findsOneWidget);
-
-    // Click 'Doc Alpha' tab to switch to it
-    await tester.tap(find.text('Doc Alpha').first);
-    await tester.pumpAndSettle();
-
-    // We are back in 'Doc Alpha'
-    expect(find.byKey(const Key('home-button')), findsOneWidget);
-
-    // Close only 'Doc Alpha' tab using its 'x' button
-    await tester.tap(find.byTooltip('Close tab Doc Alpha'));
-    await tester.pumpAndSettle();
-
-    // 'Doc Alpha' tab is now closed, but 'Doc Beta' tab remains preserved!
-    expect(find.byTooltip('Close tab Doc Alpha'), findsNothing);
-    expect(find.byTooltip('Close tab Doc Beta'), findsOneWidget);
-
-    // Close 'Doc Beta' tab
-    await tester.tap(find.byTooltip('Close tab Doc Beta'));
-    await tester.pumpAndSettle();
-
-    // All tabs closed -> back in library, no tabs open
-    expect(find.byTooltip('Close tab Doc Beta'), findsNothing);
-  });
-
-  testWidgets('folder and 3 dots actions stay pinned to the right end of the top bar with or without tabs', (tester) async {
-    tester.view.physicalSize = const Size(1200, 800);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    final directory = Directory.systemTemp.createTempSync('novi-topbar-test');
-    final original = PathProviderPlatform.instance;
-    PathProviderPlatform.instance = TestPaths(directory.path);
-    addTearDown(() {
-      PathProviderPlatform.instance = original;
-      directory.deleteSync(recursive: true);
-    });
-
-    await tester.pumpWidget(const NoviApp());
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 150)),
-    );
-    await tester.pumpAndSettle();
-
-    final menuFinder = find.byTooltip('Import, export and backup');
-    final folderFinder = find.byTooltip('Open document');
-
-    // Without tabs open in library
-    final menuRightNoTab = tester.getTopRight(menuFinder).dx;
-    final folderRightNoTab = tester.getTopRight(folderFinder).dx;
-    expect(menuRightNoTab, greaterThan(1150));
-    expect(folderRightNoTab, lessThan(menuRightNoTab));
-
-    // Open a notebook so tabs are active
-    await tester.tap(find.text('New'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Notebook').first);
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key('document-name')), 'Pinned Doc');
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Create'));
-    await tester.tap(find.text('Create'));
-    await tester.pumpAndSettle();
-
-    // With a tab open in the top bar: verify menu and folder remain pinned flush to the right end!
-    final menuRightWithTab = tester.getTopRight(menuFinder).dx;
-    final folderRightWithTab = tester.getTopRight(folderFinder).dx;
-    expect(menuRightWithTab, greaterThan(1150));
-    expect((menuRightWithTab - menuRightNoTab).abs(), lessThan(5.0));
-    expect((folderRightWithTab - folderRightNoTab).abs(), lessThan(5.0));
-  });
-
-  testWidgets('notebook paper centers itself in viewport and on scroll sticks to top and bottom', (tester) async {
-    tester.view.physicalSize = const Size(1200, 800);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    final directory = Directory.systemTemp.createTempSync('novi-center-test');
-    final original = PathProviderPlatform.instance;
-    PathProviderPlatform.instance = TestPaths(directory.path);
-    addTearDown(() {
-      PathProviderPlatform.instance = original;
-      directory.deleteSync(recursive: true);
-    });
-
-    await tester.pumpWidget(const NoviApp());
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 150)),
-    );
-    await tester.pumpAndSettle();
-
-    // Create a portrait notebook
-    await tester.tap(find.text('New'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Notebook').first);
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key('document-name')), 'Centered Paper Doc');
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Create'));
-    await tester.tap(find.text('Create'));
-    await tester.pumpAndSettle();
-
-    final viewerFinder = find.byType(InteractiveViewer);
-    final inkCanvasFinder = find.byWidgetPredicate(
-      (w) => w is CustomPaint && w.painter is InkPainter,
-    );
-    final coverFinder = find.byWidgetPredicate(
-      (w) => w is SizedBox && w.key is ValueKey<String> && (w.key! as ValueKey<String>).value.startsWith('cover-page-'),
-    );
-
-    // 1. Verify cover (Page 1) and paper (Page 2) are centered horizontally in the viewport
-    final viewerCenter = tester.getCenter(viewerFinder);
-    final coverCenter = tester.getCenter(coverFinder);
-    final inkCenter = tester.getCenter(inkCanvasFinder);
-    expect((coverCenter.dx - viewerCenter.dx).abs(), lessThan(2.0));
-    expect((inkCenter.dx - viewerCenter.dx).abs(), lessThan(2.0));
-
-    // Initially at top: top of cover (Page 1) has 24px gap below viewport top
-    final initialTop = tester.getTopLeft(coverFinder).dy;
-    final viewerTop = tester.getTopLeft(viewerFinder).dy;
-    expect((initialTop - viewerTop - 24.0).abs(), lessThan(2.0));
-
-    // Paper (Page 2) is directly under cover with a 24px gap
-    final paperTop = tester.getTopLeft(inkCanvasFinder).dy;
-    final coverBottom = tester.getBottomLeft(coverFinder).dy;
-    expect((paperTop - coverBottom - 24.0).abs(), lessThan(2.0));
-
-    // 2. Scrolling left or right MUST always keep paper centered horizontally!
-    final initialIv = tester.widget<InteractiveViewer>(viewerFinder);
-    expect(initialIv.panAxis, PanAxis.vertical);
-    expect(initialIv.boundaryMargin.horizontal, 0.0);
-
-    await tester.sendEventToBinding(
-      PointerScrollEvent(
-        position: viewerCenter,
-        scrollDelta: const Offset(500, 0),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect((tester.getCenter(inkCanvasFinder).dx - viewerCenter.dx).abs(), lessThan(2.0));
-
-    await tester.sendEventToBinding(
-      PointerScrollEvent(
-        position: viewerCenter,
-        scrollDelta: const Offset(-800, 0),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect((tester.getCenter(inkCanvasFinder).dx - viewerCenter.dx).abs(), lessThan(2.0));
-
-    // 3. Scroll down by mouse wheel / trackpad gesture
-    await tester.sendEventToBinding(
-      PointerScrollEvent(
-        position: viewerCenter,
-        scrollDelta: const Offset(0, 200),
-      ),
-    );
-    await tester.pumpAndSettle();
-    final midScrollTop = tester.getTopLeft(coverFinder).dy;
-    expect(midScrollTop, lessThan(initialTop));
-
-    // 4. Scroll all the way to the bottom: paper bottom leaves 24px gap above viewport bottom
-    await tester.sendEventToBinding(
-      PointerScrollEvent(
-        position: viewerCenter,
-        scrollDelta: const Offset(0, 3000),
-      ),
-    );
-    await tester.pumpAndSettle();
-    final bottomReached = tester.getBottomLeft(inkCanvasFinder).dy;
-    final viewerBottom = tester.getBottomLeft(viewerFinder).dy;
-    expect((viewerBottom - bottomReached - 24.0).abs(), lessThan(2.0));
-
-    // Scrolling down slightly at bottom overscrolls slightly within bounds
-    await tester.sendEventToBinding(
-      PointerScrollEvent(
-        position: viewerCenter,
-        scrollDelta: const Offset(0, 30),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect((viewerBottom - tester.getBottomLeft(inkCanvasFinder).dy - 24.0).abs(), lessThan(10.0));
-
-    // 5. Scroll all the way to the top: cover top leaves 24px gap below viewport top
-    await tester.sendEventToBinding(
-      PointerScrollEvent(
-        position: viewerCenter,
-        scrollDelta: const Offset(0, -5000),
-      ),
-    );
-    await tester.pumpAndSettle();
-    final topReached = tester.getTopLeft(coverFinder).dy;
-    expect((topReached - viewerTop - 24.0).abs(), lessThan(2.0));
-
-    // Scrolling up further still sticks to top gap (cannot scroll past top)
-    await tester.sendEventToBinding(
-      PointerScrollEvent(
-        position: viewerCenter,
-        scrollDelta: const Offset(0, -1000),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect((tester.getTopLeft(coverFinder).dy - viewerTop - 24.0).abs(), lessThan(2.0));
-
-    // 6. On zoom: make sure it is aligned center
-    await tester.tap(find.byTooltip('Zoom in'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Zoom in'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Zoom in'));
-    await tester.pumpAndSettle();
-    final zoomedCenter = tester.getCenter(inkCanvasFinder);
-    expect((zoomedCenter.dx - viewerCenter.dx).abs(), lessThan(5.0));
-
-    final zoomedIv = tester.widget<InteractiveViewer>(viewerFinder);
-    expect(zoomedIv.panAxis, PanAxis.free);
-    expect(zoomedIv.boundaryMargin.horizontal, 0.0);
-
-    // 7. When too big out of view: allow left and right scrolling to the edge of the paper
-    final initialZoomedLeft = tester.getTopLeft(inkCanvasFinder).dx;
-    await tester.sendEventToBinding(
-      PointerScrollEvent(
-        position: viewerCenter,
-        scrollDelta: const Offset(200, 0),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(tester.getTopLeft(inkCanvasFinder).dx, lessThan(initialZoomedLeft));
-
-    // Scroll to right edge of the paper: right edge sticks to right edge of viewport
-    await tester.sendEventToBinding(
-      PointerScrollEvent(
-        position: viewerCenter,
-        scrollDelta: const Offset(3000, 0),
-      ),
-    );
-    await tester.pumpAndSettle();
-    final viewerRight = tester.getTopRight(viewerFinder).dx;
-    final paperRight = tester.getTopRight(inkCanvasFinder).dx;
-    expect((paperRight - viewerRight).abs(), lessThan(5.0));
-
-    // Scrolling right further cannot scroll past the right edge
-    await tester.sendEventToBinding(
-      PointerScrollEvent(
-        position: viewerCenter,
-        scrollDelta: const Offset(1000, 0),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect((tester.getTopRight(inkCanvasFinder).dx - viewerRight).abs(), lessThan(5.0));
-
-    // Scroll to left edge of the paper: left edge sticks to left edge of viewport
-    await tester.sendEventToBinding(
-      PointerScrollEvent(
-        position: viewerCenter,
-        scrollDelta: const Offset(-5000, 0),
-      ),
-    );
-    await tester.pumpAndSettle();
-    final viewerLeft = tester.getTopLeft(viewerFinder).dx;
-    final paperLeft = tester.getTopLeft(inkCanvasFinder).dx;
-    expect((paperLeft - viewerLeft).abs(), lessThan(5.0));
-
-    // Scrolling left further cannot scroll past the left edge
-    await tester.sendEventToBinding(
-      PointerScrollEvent(
-        position: viewerCenter,
-        scrollDelta: const Offset(-1000, 0),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect((tester.getTopLeft(inkCanvasFinder).dx - viewerLeft).abs(), lessThan(5.0));
-
-    // 8. Allow zooming out the page to small size even smaller than the viewport,
-    // and keep paper centered on side scroll when smaller than viewport
-    for (var i = 0; i < 8; i++) {
-      await tester.tap(find.byTooltip('Zoom out'));
+      );
       await tester.pumpAndSettle();
-    }
-    final smallIv = tester.widget<InteractiveViewer>(viewerFinder);
-    final smallScale = smallIv.transformationController!.value.getMaxScaleOnAxis();
-    expect(smallScale, lessThan(0.5));
-    expect(smallIv.panAxis, PanAxis.vertical);
+      expect(find.text('Art Journal'), findsOneWidget);
+      expect(find.byType(Image), findsOneWidget);
 
-    // Verify paper is centered horizontally when zoomed out small
-    final smallCenter = tester.getCenter(inkCanvasFinder);
-    expect((smallCenter.dx - viewerCenter.dx).abs(), lessThan(5.0));
+      // Verify survives export / import round trip
+      final encoded = encodePortable([note], backup: false);
+      final decoded = decodePortable(encoded, backup: false).single;
+      expect(decoded.coverImage, samplePng);
+      expect(decoded.cover, 0xff255492);
+      expect(decoded.title, 'Art Journal');
+    },
+  );
 
-    // Side scroll attempts in both directions keep the paper centered
-    await tester.sendEventToBinding(
-      PointerScrollEvent(
-        position: viewerCenter,
-        scrollDelta: const Offset(600, 0),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect((tester.getCenter(inkCanvasFinder).dx - viewerCenter.dx).abs(), lessThan(5.0));
+  testWidgets(
+    'home button appears on notebook write page right before route buttons and returns to library',
+    (tester) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final directory = Directory.systemTemp.createTempSync('novi-home-test');
+      final original = PathProviderPlatform.instance;
+      PathProviderPlatform.instance = TestPaths(directory.path);
+      addTearDown(() {
+        PathProviderPlatform.instance = original;
+        directory.deleteSync(recursive: true);
+      });
 
-    await tester.sendEventToBinding(
-      PointerScrollEvent(
-        position: viewerCenter,
-        scrollDelta: const Offset(-800, 0),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect((tester.getCenter(inkCanvasFinder).dx - viewerCenter.dx).abs(), lessThan(5.0));
+      await tester.pumpWidget(const NoviApp());
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
+      await tester.pumpAndSettle();
 
-    // Reset view returns back to 100% and centered
-    await tester.tap(find.text('Reset view'));
-    await tester.pumpAndSettle();
-    expect(smallIv.transformationController!.value.getMaxScaleOnAxis(), 1.0);
-    expect((tester.getCenter(inkCanvasFinder).dx - viewerCenter.dx).abs(), lessThan(2.0));
-  });
+      // In library: Home button is not displayed in the window header
+      expect(find.byKey(const Key('home-button')), findsNothing);
+
+      // Open New menu and create a notebook
+      await tester.tap(find.text('New'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Notebook').first);
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('document-name')),
+        'Home Test Notebook',
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Create'));
+      await tester.tap(find.text('Create'));
+      await tester.pumpAndSettle();
+
+      // Now on notebook write page: Home button is present
+      expect(find.byKey(const Key('home-button')), findsOneWidget);
+      expect(find.byTooltip('Home'), findsOneWidget);
+
+      // Tap Home button to navigate back to documents library
+      await tester.tap(find.byKey(const Key('home-button')));
+      await tester.pumpAndSettle();
+
+      // Back in library: Documents view is visible, and Home button is gone
+      expect(find.text('Documents'), findsWidgets);
+      expect(find.byKey(const Key('home-button')), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'when document opened and is in tab preserve it open until specifically closed by the user in tab',
+    (tester) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final directory = Directory.systemTemp.createTempSync('novi-tab-test');
+      final original = PathProviderPlatform.instance;
+      PathProviderPlatform.instance = TestPaths(directory.path);
+      addTearDown(() {
+        PathProviderPlatform.instance = original;
+        directory.deleteSync(recursive: true);
+      });
+
+      await tester.pumpWidget(const NoviApp());
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
+      await tester.pumpAndSettle();
+
+      // Create first notebook 'Doc Alpha'
+      await tester.tap(find.text('New'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Notebook').first);
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('document-name')),
+        'Doc Alpha',
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Create'));
+      await tester.tap(find.text('Create'));
+      await tester.pumpAndSettle();
+
+      // 'Doc Alpha' is in tab
+      expect(find.byTooltip('Close tab Doc Alpha'), findsOneWidget);
+
+      // Go Home (back to library)
+      await tester.tap(find.byKey(const Key('home-button')));
+      await tester.pumpAndSettle();
+
+      // In library: 'Doc Alpha' tab is PRESERVED open in the tab bar
+      expect(find.byTooltip('Close tab Doc Alpha'), findsOneWidget);
+
+      // Create second notebook 'Doc Beta'
+      await tester.tap(find.text('New'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Notebook').first);
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('document-name')),
+        'Doc Beta',
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Create'));
+      await tester.tap(find.text('Create'));
+      await tester.pumpAndSettle();
+
+      // Both tabs are open
+      expect(find.byTooltip('Close tab Doc Alpha'), findsOneWidget);
+      expect(find.byTooltip('Close tab Doc Beta'), findsOneWidget);
+
+      // Go Home again
+      await tester.tap(find.byKey(const Key('home-button')));
+      await tester.pumpAndSettle();
+
+      // Both tabs remain preserved while browsing the library
+      expect(find.byTooltip('Close tab Doc Alpha'), findsOneWidget);
+      expect(find.byTooltip('Close tab Doc Beta'), findsOneWidget);
+
+      // Click 'Doc Alpha' tab to switch to it
+      await tester.tap(find.text('Doc Alpha').first);
+      await tester.pumpAndSettle();
+
+      // We are back in 'Doc Alpha'
+      expect(find.byKey(const Key('home-button')), findsOneWidget);
+
+      // Close only 'Doc Alpha' tab using its 'x' button
+      await tester.tap(find.byTooltip('Close tab Doc Alpha'));
+      await tester.pumpAndSettle();
+
+      // 'Doc Alpha' tab is now closed, but 'Doc Beta' tab remains preserved!
+      expect(find.byTooltip('Close tab Doc Alpha'), findsNothing);
+      expect(find.byTooltip('Close tab Doc Beta'), findsOneWidget);
+
+      // Close 'Doc Beta' tab
+      await tester.tap(find.byTooltip('Close tab Doc Beta'));
+      await tester.pumpAndSettle();
+
+      // All tabs closed -> back in library, no tabs open
+      expect(find.byTooltip('Close tab Doc Beta'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'folder and 3 dots actions stay pinned to the right end of the top bar with or without tabs',
+    (tester) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final directory = Directory.systemTemp.createTempSync('novi-topbar-test');
+      final original = PathProviderPlatform.instance;
+      PathProviderPlatform.instance = TestPaths(directory.path);
+      addTearDown(() {
+        PathProviderPlatform.instance = original;
+        directory.deleteSync(recursive: true);
+      });
+
+      await tester.pumpWidget(const NoviApp());
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
+      await tester.pumpAndSettle();
+
+      final menuFinder = find.byTooltip('Import, export and backup');
+      final folderFinder = find.byTooltip('Open document');
+
+      // Without tabs open in library
+      final menuRightNoTab = tester.getTopRight(menuFinder).dx;
+      final folderRightNoTab = tester.getTopRight(folderFinder).dx;
+      expect(menuRightNoTab, greaterThan(1150));
+      expect(folderRightNoTab, lessThan(menuRightNoTab));
+
+      // Open a notebook so tabs are active
+      await tester.tap(find.text('New'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Notebook').first);
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('document-name')),
+        'Pinned Doc',
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Create'));
+      await tester.tap(find.text('Create'));
+      await tester.pumpAndSettle();
+
+      // With a tab open in the top bar: verify menu and folder remain pinned flush to the right end!
+      final menuRightWithTab = tester.getTopRight(menuFinder).dx;
+      final folderRightWithTab = tester.getTopRight(folderFinder).dx;
+      expect(menuRightWithTab, greaterThan(1150));
+      expect((menuRightWithTab - menuRightNoTab).abs(), lessThan(5.0));
+      expect((folderRightWithTab - folderRightNoTab).abs(), lessThan(5.0));
+    },
+  );
+
+  testWidgets(
+    'notebook paper centers itself in viewport and on scroll sticks to top and bottom',
+    (tester) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final directory = Directory.systemTemp.createTempSync('novi-center-test');
+      final original = PathProviderPlatform.instance;
+      PathProviderPlatform.instance = TestPaths(directory.path);
+      addTearDown(() {
+        PathProviderPlatform.instance = original;
+        directory.deleteSync(recursive: true);
+      });
+
+      await tester.pumpWidget(const NoviApp());
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
+      await tester.pumpAndSettle();
+
+      // Create a portrait notebook
+      await tester.tap(find.text('New'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Notebook').first);
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('document-name')),
+        'Centered Paper Doc',
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Create'));
+      await tester.tap(find.text('Create'));
+      await tester.pumpAndSettle();
+
+      final viewerFinder = find.byType(InteractiveViewer);
+      final inkCanvasFinder = find.byWidgetPredicate(
+        (w) => w is CustomPaint && w.painter is InkPainter,
+      );
+      final coverFinder = find.byWidgetPredicate(
+        (w) =>
+            w is SizedBox &&
+            w.key is ValueKey<String> &&
+            (w.key! as ValueKey<String>).value.startsWith('cover-page-'),
+      );
+
+      // 1. Verify cover (Page 1) and paper (Page 2) are centered horizontally in the viewport
+      final viewerCenter = tester.getCenter(viewerFinder);
+      final coverCenter = tester.getCenter(coverFinder);
+      final inkCenter = tester.getCenter(inkCanvasFinder);
+      expect((coverCenter.dx - viewerCenter.dx).abs(), lessThan(2.0));
+      expect((inkCenter.dx - viewerCenter.dx).abs(), lessThan(2.0));
+
+      // Initially at top: top of cover (Page 1) has 24px gap below viewport top
+      final initialTop = tester.getTopLeft(coverFinder).dy;
+      final viewerTop = tester.getTopLeft(viewerFinder).dy;
+      expect((initialTop - viewerTop - 24.0).abs(), lessThan(2.0));
+
+      // Paper (Page 2) is directly under cover with a 24px gap
+      final paperTop = tester.getTopLeft(inkCanvasFinder).dy;
+      final coverBottom = tester.getBottomLeft(coverFinder).dy;
+      expect((paperTop - coverBottom - 24.0).abs(), lessThan(2.0));
+
+      // 2. Scrolling left or right MUST always keep paper centered horizontally!
+      final initialIv = tester.widget<InteractiveViewer>(viewerFinder);
+      expect(initialIv.panAxis, PanAxis.vertical);
+      expect(initialIv.boundaryMargin.horizontal, 0.0);
+
+      await tester.sendEventToBinding(
+        PointerScrollEvent(
+          position: viewerCenter,
+          scrollDelta: const Offset(500, 0),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        (tester.getCenter(inkCanvasFinder).dx - viewerCenter.dx).abs(),
+        lessThan(2.0),
+      );
+
+      await tester.sendEventToBinding(
+        PointerScrollEvent(
+          position: viewerCenter,
+          scrollDelta: const Offset(-800, 0),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        (tester.getCenter(inkCanvasFinder).dx - viewerCenter.dx).abs(),
+        lessThan(2.0),
+      );
+
+      // 3. Scroll down by mouse wheel / trackpad gesture
+      await tester.sendEventToBinding(
+        PointerScrollEvent(
+          position: viewerCenter,
+          scrollDelta: const Offset(0, 200),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final midScrollTop = tester.getTopLeft(coverFinder).dy;
+      expect(midScrollTop, lessThan(initialTop));
+
+      // 4. Scroll all the way to the bottom: paper bottom leaves 24px gap above viewport bottom
+      await tester.sendEventToBinding(
+        PointerScrollEvent(
+          position: viewerCenter,
+          scrollDelta: const Offset(0, 3000),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final bottomReached = tester.getBottomLeft(inkCanvasFinder).dy;
+      final viewerBottom = tester.getBottomLeft(viewerFinder).dy;
+      expect((viewerBottom - bottomReached - 24.0).abs(), lessThan(2.0));
+
+      // Scrolling down slightly at bottom overscrolls slightly within bounds
+      await tester.sendEventToBinding(
+        PointerScrollEvent(
+          position: viewerCenter,
+          scrollDelta: const Offset(0, 30),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        (viewerBottom - tester.getBottomLeft(inkCanvasFinder).dy - 24.0).abs(),
+        lessThan(10.0),
+      );
+
+      // 5. Scroll all the way to the top: cover top leaves 24px gap below viewport top
+      await tester.sendEventToBinding(
+        PointerScrollEvent(
+          position: viewerCenter,
+          scrollDelta: const Offset(0, -5000),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final topReached = tester.getTopLeft(coverFinder).dy;
+      expect((topReached - viewerTop - 24.0).abs(), lessThan(2.0));
+
+      // Scrolling up further still sticks to top gap (cannot scroll past top)
+      await tester.sendEventToBinding(
+        PointerScrollEvent(
+          position: viewerCenter,
+          scrollDelta: const Offset(0, -1000),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        (tester.getTopLeft(coverFinder).dy - viewerTop - 24.0).abs(),
+        lessThan(2.0),
+      );
+
+      // 6. On zoom: make sure it is aligned center
+      await tester.tap(find.byTooltip('Zoom in'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Zoom in'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Zoom in'));
+      await tester.pumpAndSettle();
+      final zoomedCenter = tester.getCenter(inkCanvasFinder);
+      expect((zoomedCenter.dx - viewerCenter.dx).abs(), lessThan(5.0));
+
+      final zoomedIv = tester.widget<InteractiveViewer>(viewerFinder);
+      expect(zoomedIv.panAxis, PanAxis.free);
+      expect(zoomedIv.boundaryMargin.horizontal, 0.0);
+
+      // 7. When too big out of view: allow left and right scrolling to the edge of the paper
+      final initialZoomedLeft = tester.getTopLeft(inkCanvasFinder).dx;
+      await tester.sendEventToBinding(
+        PointerScrollEvent(
+          position: viewerCenter,
+          scrollDelta: const Offset(200, 0),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester.getTopLeft(inkCanvasFinder).dx,
+        lessThan(initialZoomedLeft),
+      );
+
+      // Scroll to right edge of the paper: right edge sticks to right edge of viewport
+      await tester.sendEventToBinding(
+        PointerScrollEvent(
+          position: viewerCenter,
+          scrollDelta: const Offset(3000, 0),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final viewerRight = tester.getTopRight(viewerFinder).dx;
+      final paperRight = tester.getTopRight(inkCanvasFinder).dx;
+      expect((paperRight - viewerRight).abs(), lessThan(5.0));
+
+      // Scrolling right further cannot scroll past the right edge
+      await tester.sendEventToBinding(
+        PointerScrollEvent(
+          position: viewerCenter,
+          scrollDelta: const Offset(1000, 0),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        (tester.getTopRight(inkCanvasFinder).dx - viewerRight).abs(),
+        lessThan(5.0),
+      );
+
+      // Scroll to left edge of the paper: left edge sticks to left edge of viewport
+      await tester.sendEventToBinding(
+        PointerScrollEvent(
+          position: viewerCenter,
+          scrollDelta: const Offset(-5000, 0),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final viewerLeft = tester.getTopLeft(viewerFinder).dx;
+      final paperLeft = tester.getTopLeft(inkCanvasFinder).dx;
+      expect((paperLeft - viewerLeft).abs(), lessThan(5.0));
+
+      // Scrolling left further cannot scroll past the left edge
+      await tester.sendEventToBinding(
+        PointerScrollEvent(
+          position: viewerCenter,
+          scrollDelta: const Offset(-1000, 0),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        (tester.getTopLeft(inkCanvasFinder).dx - viewerLeft).abs(),
+        lessThan(5.0),
+      );
+
+      // 8. Allow zooming out the page to small size even smaller than the viewport,
+      // and keep paper centered on side scroll when smaller than viewport
+      for (var i = 0; i < 8; i++) {
+        await tester.tap(find.byTooltip('Zoom out'));
+        await tester.pumpAndSettle();
+      }
+      final smallIv = tester.widget<InteractiveViewer>(viewerFinder);
+      final smallScale = smallIv.transformationController!.value
+          .getMaxScaleOnAxis();
+      expect(smallScale, lessThan(0.5));
+      expect(smallIv.panAxis, PanAxis.vertical);
+
+      // Verify paper is centered horizontally when zoomed out small
+      final smallCenter = tester.getCenter(inkCanvasFinder);
+      expect((smallCenter.dx - viewerCenter.dx).abs(), lessThan(5.0));
+
+      // Side scroll attempts in both directions keep the paper centered
+      await tester.sendEventToBinding(
+        PointerScrollEvent(
+          position: viewerCenter,
+          scrollDelta: const Offset(600, 0),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        (tester.getCenter(inkCanvasFinder).dx - viewerCenter.dx).abs(),
+        lessThan(5.0),
+      );
+
+      await tester.sendEventToBinding(
+        PointerScrollEvent(
+          position: viewerCenter,
+          scrollDelta: const Offset(-800, 0),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        (tester.getCenter(inkCanvasFinder).dx - viewerCenter.dx).abs(),
+        lessThan(5.0),
+      );
+
+      // Reset view returns back to 100% and centered
+      await tester.tap(find.text('Reset view'));
+      await tester.pumpAndSettle();
+      expect(smallIv.transformationController!.value.getMaxScaleOnAxis(), 1.0);
+      expect(
+        (tester.getCenter(inkCanvasFinder).dx - viewerCenter.dx).abs(),
+        lessThan(2.0),
+      );
+    },
+  );
 
   testWidgets(
     'once on bottom on scroll shows loader, and scrolling past threshold creates new page',
@@ -846,7 +917,9 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      final directory = Directory.systemTemp.createTempSync('novi-scroll-test-');
+      final directory = Directory.systemTemp.createTempSync(
+        'novi-scroll-test-',
+      );
       final original = PathProviderPlatform.instance;
       PathProviderPlatform.instance = TestPaths(directory.path);
       addTearDown(() {
@@ -915,10 +988,9 @@ void main() {
       final pageDownTop = tester.getTopLeft(coverFinder).dy;
       expect(pageDownTop, lessThan(arrowScrolledTop));
 
-      // 5. Connect stylus via the stylus toggle button (or stylus pointer event)
-      final stylusConnectFinder = find.byTooltip('Connect stylus / pen');
-      expect(stylusConnectFinder, findsOneWidget);
-      await tester.tap(stylusConnectFinder);
+      // Native attach notification exposes Hand without a pen event.
+      expect(find.byTooltip('Connect stylus / pen'), findsNothing);
+      setTabletHardware(tester, ['test-tablet']);
       await tester.pumpAndSettle();
 
       // Hand tool is now REVEALED and visible in the toolbar!
@@ -930,7 +1002,7 @@ void main() {
       expect(find.textContaining('· hand'), findsOneWidget);
 
       // Disconnect stylus: Hand tool hides again and tool switches to pen
-      await tester.tap(find.byTooltip('Stylus connected (click to disconnect)'));
+      setTabletHardware(tester, []);
       await tester.pumpAndSettle();
       expect(handFinder, findsNothing);
       expect(find.textContaining('· pen'), findsOneWidget);
@@ -944,10 +1016,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       await tester.sendEventToBinding(
-        PointerUpEvent(
-          kind: PointerDeviceKind.stylus,
-          position: viewerCenter,
-        ),
+        PointerUpEvent(kind: PointerDeviceKind.stylus, position: viewerCenter),
       );
       await tester.pumpAndSettle();
 
@@ -967,7 +1036,9 @@ void main() {
       debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
       addTearDown(() => debugDefaultTargetPlatformOverride = null);
 
-      final directory = Directory.systemTemp.createTempSync('novi-fullscreen-test-');
+      final directory = Directory.systemTemp.createTempSync(
+        'novi-fullscreen-test-',
+      );
       final original = PathProviderPlatform.instance;
       PathProviderPlatform.instance = TestPaths(directory.path);
       addTearDown(() {
@@ -1004,11 +1075,7 @@ void main() {
 
       // 1. Render DesktopWindowHeader in normal windowed mode (isFullScreen: false)
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: buildHeader(isFullScreen: false),
-          ),
-        ),
+        MaterialApp(home: Scaffold(body: buildHeader(isFullScreen: false))),
       );
       await tester.pumpAndSettle();
 
@@ -1021,11 +1088,7 @@ void main() {
 
       // 2. Render DesktopWindowHeader in full screen mode (isFullScreen: true)
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: buildHeader(isFullScreen: true),
-          ),
-        ),
+        MaterialApp(home: Scaffold(body: buildHeader(isFullScreen: true))),
       );
       await tester.pumpAndSettle();
 
@@ -1043,5 +1106,3 @@ void main() {
     },
   );
 }
-
-
