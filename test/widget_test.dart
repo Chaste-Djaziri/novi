@@ -234,7 +234,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Notebook').first);
     await tester.pumpAndSettle();
-    expect(find.byType(CreateDocumentDialog), findsOneWidget);
+    // Enter name
+    await tester.enterText(find.byKey(const Key('document-name')), 'Vibrant Notebook');
+    await tester.pumpAndSettle();
 
     // Scroll to and tap Custom Color button
     await tester.ensureVisible(find.byKey(const Key('custom-color-button')));
@@ -251,8 +253,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(CustomColorPickerDialog), findsNothing);
 
-    // Enter name and create document
-    await tester.enterText(find.byKey(const Key('document-name')), 'Vibrant Notebook');
+    // Create document
     await tester.ensureVisible(find.text('Create'));
     await tester.tap(find.text('Create'));
     await tester.pumpAndSettle();
