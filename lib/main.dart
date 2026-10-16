@@ -148,6 +148,14 @@ class _WorkspaceState extends State<Workspace>
   void initState() {
     super.initState();
     windowManager.addListener(this);
+    _overscrollBounceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _smoothScrollController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 220),
+    );
     tablets.addListener(_tabletsChanged);
     tablets.start();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -349,7 +357,13 @@ class _WorkspaceState extends State<Workspace>
   double _bottomOverscroll = 0.0;
   bool _isCreatingPage = false;
   Timer? _overscrollResetTimer;
-  static const double _createPageThreshold = 100.0;
+  static const double _createPageThreshold = 180.0;
+  AnimationController? _overscrollBounceController;
+  Animation<double>? _overscrollBounceAnimation;
+  AnimationController? _smoothScrollController;
+  Animation<double>? _smoothScrollAnimation;
+  Offset _lastPanDelta = Offset.zero;
+  DateTime? _lastPanTime;
   int activeStrokePageIndex = 0;
 
   void zoom(double factor) {
@@ -885,6 +899,8 @@ class _WorkspaceState extends State<Workspace>
     tablets.removeListener(_tabletsChanged);
     tablets.dispose();
     _overscrollResetTimer?.cancel();
+    _overscrollBounceController?.dispose();
+    _smoothScrollController?.dispose();
     for (final editor in sessions.values) {
       editor.dispose();
     }
