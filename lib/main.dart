@@ -309,22 +309,16 @@ class _WorkspaceState extends State<Workspace> {
   ) {
     final matrix = session.view.value.clone();
     final scale = matrix.getMaxScaleOnAxis();
-    final currentTx = matrix.storage[12];
     final currentTy = matrix.storage[13];
 
     final effectiveWidth = math.max(constraints.maxWidth, pageWidth);
-    final effectiveHeight = math.max(constraints.maxHeight, pageHeight);
+    final effectiveHeight = math.max(constraints.maxHeight, pageHeight + 48);
 
     final totalWidth = effectiveWidth * scale;
     final totalHeight = effectiveHeight * scale;
 
-    final double minX, maxX;
-    if (totalWidth <= constraints.maxWidth) {
-      minX = maxX = (constraints.maxWidth - totalWidth) / 2;
-    } else {
-      minX = constraints.maxWidth - totalWidth;
-      maxX = 0.0;
-    }
+    // Always stick to horizontal center when scrolling left or right
+    final centeredTx = (constraints.maxWidth - totalWidth) / 2;
 
     final double minY, maxY;
     if (totalHeight <= constraints.maxHeight) {
@@ -334,11 +328,10 @@ class _WorkspaceState extends State<Workspace> {
       maxY = 0.0;
     }
 
-    final newTx = (currentTx - event.scrollDelta.dx).clamp(minX, maxX);
     final newTy = (currentTy - event.scrollDelta.dy).clamp(minY, maxY);
 
-    if (newTx != currentTx || newTy != currentTy) {
-      matrix.storage[12] = newTx;
+    if (matrix.storage[12] != centeredTx || currentTy != newTy) {
+      matrix.storage[12] = centeredTx;
       matrix.storage[13] = newTy;
       session.view.value = matrix;
     }
@@ -667,12 +660,14 @@ class _WorkspaceState extends State<Workspace> {
                     onInteractionEnd: (_) => setState(() {}),
                     child: SizedBox(
                       width: math.max(constraints.maxWidth, pageWidth),
-                      height: math.max(constraints.maxHeight, pageHeight),
+                      height: math.max(constraints.maxHeight, pageHeight + 48),
                       child: Align(
                         alignment: Alignment.center,
-                        child: SizedBox(
-                          width: pageWidth,
-                          height: pageHeight,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 24),
+                          child: SizedBox(
+                            width: pageWidth,
+                            height: pageHeight,
                           child: DecoratedBox(
                             decoration: BoxDecoration(
                               boxShadow: [
@@ -776,6 +771,7 @@ class _WorkspaceState extends State<Workspace> {
               ),
             ),
           ),
+        ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
               child: Row(
