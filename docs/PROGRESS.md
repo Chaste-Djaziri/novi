@@ -348,8 +348,34 @@ The first technical alpha is implemented. A reported native crash on New noteboo
 - [x] Unit and widget test suite: all 18 tests pass (`test/library_ui_test.dart`, `test/widget_test.dart`, `test/workspace_test.dart`).
 - [ ] Hands-on interaction check in the running Mac app.
 
+## PC mouse and keyboard scrolling & stylus-conditional Hand tool — 2026-10-16
+- [x] PC mouse and keyboard scrolling without Hand tool:
+  - Enabled mouse wheel and trackpad smooth continuous scrolling without needing to switch to the Hand tool.
+  - Implemented Spacebar + drag canvas panning: holding Spacebar turns cursor into a pan gesture without drawing ink strokes.
+  - Implemented middle mouse click drag: pressing and dragging with middle button pans the canvas directly.
+  - Implemented background margin drag panning: clicking and dragging empty canvas background margins outside paper sheets translates the view directly.
+  - Implemented keyboard pan shortcuts in `CallbackShortcuts`: Arrow keys (Up, Down, Left, Right) pan by 60px increments, PageUp/PageDown pan by 300px increments, and Home/End scroll to the top or bottom of the document.
+- [x] Stylus-conditional Hand tool visibility:
+  - When using PC with mouse and keyboard normally (no stylus connected), the Hand tool button is hidden from `WorkspaceToolbar`.
+  - When a stylus pointer event (`PointerDeviceKind.stylus` or `invertedStylus`) is detected, the Hand tool is automatically revealed in the toolbar.
+  - Added a stylus connect/disconnect toggle button in the toolbar with status tooltips (`Connect stylus / pen` / `Stylus connected (click to disconnect)`).
+  - Pressing keyboard shortcut 'H' reveals the Hand tool and selects it.
+  - Disconnecting stylus switches active tool back to pen if Hand was currently selected.
+- [x] Test coverage:
+  - Updated `test/workspace_test.dart` to connect stylus before selecting Hand tool.
+  - Added test in `test/widget_test.dart` verifying:
+    - Hand tool is initially hidden with mouse/keyboard.
+    - View can scroll via mouse wheel, arrow keys, and PageDown without Hand tool.
+    - Connecting stylus via toggle button reveals Hand tool.
+    - Selecting Hand tool, then disconnecting stylus re-hides Hand and selects pen.
+    - Sending stylus pointer event automatically detects stylus and reveals Hand tool.
+- [x] `flutter analyze`: clean (0 issues).
+- [x] Unit and widget test suite: all 19 tests pass (`test/library_ui_test.dart`, `test/widget_test.dart`, `test/workspace_test.dart`).
+- [ ] Hands-on interaction check in the running Mac app.
+
 ## Next
 Perform hands-on visual and drag verification in the rebuilt Mac app. Continue the desktop acceptance checks listed in the checklist above, recording results here.
+
 
 
 
