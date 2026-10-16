@@ -567,6 +567,9 @@ Confirm material feel and pressure with a physical tablet in the normal Mac app.
 - [x] Verified analyzer, popup rendering, and dialog boundary tests after the pencil preview update.
 - [x] Corrected the active pencil toolbar callback to open `showPencilMenu` instead of routing to the pen popup.
 - [x] Verified analyzer and the writing-tool integration test after correcting pencil dispatch.
+- [x] Extended pen and pencil Draw and Hold completion to recognize closed loops plus open lines, L/angle gestures, and simple arrow-like two-segment strokes; open gestures retain their endpoints.
+- [x] Verified analyzer and ink/workspace tests after the recognition update.
+- [ ] Add live held-stroke shape preview and resize/move interaction before pointer release.
 - [ ] Finish reducing legacy editor files and add broader painter comparison coverage.
 
 
