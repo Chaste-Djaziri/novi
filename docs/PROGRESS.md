@@ -329,6 +329,24 @@ The first technical alpha is implemented. A reported native crash on New noteboo
 - [x] Unit and widget test suite: all 17 tests pass.
 - [ ] Hands-on interaction check in the running Mac app.
 
+## Bottom overscroll interactive loader and page creation — 2026-10-16
+- [x] Multi-page data architecture:
+  - Added `NotebookPage` to `lib/notebook.dart` and migrated `Notebook` to support `List<NotebookPage> pages` with backward-compatible getters and setters for `text`, `strokes`, and `inkStyles`.
+  - Added multi-page controller management in `EditorSession` (`lib/workspace_tools.dart`).
+- [x] Interactive bottom overscroll loader & threshold page creation:
+  - In `_handleCanvasScroll`, detects when the user scrolls downward while already at the bottom of the document and accumulates `_bottomOverscroll`.
+  - Provides physical rubber-band resistance easing (`overscrollShift = math.min(50.0, _bottomOverscroll * 0.25)`).
+  - Renders `_PageCreationLoader` below the last paper page with an animated circular progress indicator showing the exact pull percentage (`Scroll to add page X%`).
+  - Upon reaching the threshold (`>= 100.0`), invokes `_createNextPage` to append a new page to the notebook, save to SQLite, take an undo snapshot, and update status (`Page X created`).
+  - Upward scrolling recovers smoothly by consuming overscroll before scrolling up.
+  - An idle timer resets sub-threshold overscroll back to 0.0 with a gentle snap-back.
+  - Page indicator in the bottom bar dynamically updates (`Page X of Y`).
+- [x] Test coverage:
+  - Added test in `test/widget_test.dart` verifying that scrolling past bottom renders the loader with progress, reaching threshold creates a new page with a 24px gap, page indicator reflects new page count, and undo restores previous state.
+- [x] `flutter analyze`: clean (0 issues).
+- [x] Unit and widget test suite: all 18 tests pass (`test/library_ui_test.dart`, `test/widget_test.dart`, `test/workspace_test.dart`).
+- [ ] Hands-on interaction check in the running Mac app.
+
 ## Next
 Perform hands-on visual and drag verification in the rebuilt Mac app. Continue the desktop acceptance checks listed in the checklist above, recording results here.
 
