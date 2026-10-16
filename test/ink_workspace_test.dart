@@ -110,11 +110,13 @@ void main() {
         translation.storage[13] += 400 - target.dy;
         session.view.value = translation;
         await tester.pump();
+        await mouse.moveTo(const Offset(490, 390));
         await mouse.moveTo(const Offset(500, 400));
         await tester.pump();
         final painter = tester.widget<CustomPaint>(papers.at(page)).foregroundPainter! as InkFootprintPainter;
-        expect(painter.position.dx, closeTo(200, 0.1));
-        expect(painter.position.dy, closeTo(200, 0.1));
+        final expected = box.globalToLocal(const Offset(500, 400));
+        expect(painter.position.dx, closeTo(expected.dx, 0.1));
+        expect(painter.position.dy, closeTo(expected.dy, 0.1));
         expect(painter.material.width, closeTo(7 * 22 / 3, 0.001));
         workspace.chooseTool(EditorTool.eraser);
         await tester.pump();
