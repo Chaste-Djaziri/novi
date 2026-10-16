@@ -522,12 +522,31 @@ void main() {
     final inkCenter = tester.getCenter(inkCanvasFinder);
     expect((inkCenter.dx - viewerCenter.dx).abs(), lessThan(2.0));
 
-    // Initially at top: top of paper sticks to top of the viewport
+    // Initially at top: top of paper has 24px gap below viewport top
     final initialTop = tester.getTopLeft(inkCanvasFinder).dy;
     final viewerTop = tester.getTopLeft(viewerFinder).dy;
-    expect((initialTop - viewerTop).abs(), lessThan(2.0));
+    expect((initialTop - viewerTop - 24.0).abs(), lessThan(2.0));
 
-    // 2. Scroll down by mouse wheel / trackpad gesture
+    // 2. Scrolling left or right MUST always keep paper centered horizontally!
+    await tester.sendEventToBinding(
+      PointerScrollEvent(
+        position: viewerCenter,
+        scrollDelta: const Offset(500, 0),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect((tester.getCenter(inkCanvasFinder).dx - viewerCenter.dx).abs(), lessThan(2.0));
+
+    await tester.sendEventToBinding(
+      PointerScrollEvent(
+        position: viewerCenter,
+        scrollDelta: const Offset(-800, 0),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect((tester.getCenter(inkCanvasFinder).dx - viewerCenter.dx).abs(), lessThan(2.0));
+
+    // 3. Scroll down by mouse wheel / trackpad gesture
     await tester.sendEventToBinding(
       PointerScrollEvent(
         position: viewerCenter,
@@ -538,7 +557,7 @@ void main() {
     final midScrollTop = tester.getTopLeft(inkCanvasFinder).dy;
     expect(midScrollTop, lessThan(initialTop));
 
-    // 3. Scroll all the way to the bottom: paper bottom sticks to viewport bottom
+    // 4. Scroll all the way to the bottom: paper bottom leaves 24px gap above viewport bottom
     await tester.sendEventToBinding(
       PointerScrollEvent(
         position: viewerCenter,
@@ -548,9 +567,9 @@ void main() {
     await tester.pumpAndSettle();
     final bottomReached = tester.getBottomLeft(inkCanvasFinder).dy;
     final viewerBottom = tester.getBottomLeft(viewerFinder).dy;
-    expect((bottomReached - viewerBottom).abs(), lessThan(2.0));
+    expect((viewerBottom - bottomReached - 24.0).abs(), lessThan(2.0));
 
-    // Scrolling down further still sticks to bottom (cannot scroll past bottom)
+    // Scrolling down further still sticks to bottom gap (cannot scroll past bottom)
     await tester.sendEventToBinding(
       PointerScrollEvent(
         position: viewerCenter,
@@ -558,9 +577,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect((tester.getBottomLeft(inkCanvasFinder).dy - viewerBottom).abs(), lessThan(2.0));
+    expect((viewerBottom - tester.getBottomLeft(inkCanvasFinder).dy - 24.0).abs(), lessThan(2.0));
 
-    // 4. Scroll all the way to the top: paper top sticks to viewport top
+    // 5. Scroll all the way to the top: paper top leaves 24px gap below viewport top
     await tester.sendEventToBinding(
       PointerScrollEvent(
         position: viewerCenter,
@@ -569,9 +588,9 @@ void main() {
     );
     await tester.pumpAndSettle();
     final topReached = tester.getTopLeft(inkCanvasFinder).dy;
-    expect((topReached - viewerTop).abs(), lessThan(2.0));
+    expect((topReached - viewerTop - 24.0).abs(), lessThan(2.0));
 
-    // Scrolling up further still sticks to top (cannot scroll past top)
+    // Scrolling up further still sticks to top gap (cannot scroll past top)
     await tester.sendEventToBinding(
       PointerScrollEvent(
         position: viewerCenter,
@@ -579,7 +598,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect((tester.getTopLeft(inkCanvasFinder).dy - viewerTop).abs(), lessThan(2.0));
+    expect((tester.getTopLeft(inkCanvasFinder).dy - viewerTop - 24.0).abs(), lessThan(2.0));
   });
 }
 
