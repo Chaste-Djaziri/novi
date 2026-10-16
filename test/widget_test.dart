@@ -7,6 +7,7 @@ import 'dart:typed_data';
 import 'package:archive/archive.dart';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:novi/main.dart';
@@ -479,6 +480,106 @@ void main() {
     expect(menuRightWithTab, greaterThan(1150));
     expect((menuRightWithTab - menuRightNoTab).abs(), lessThan(5.0));
     expect((folderRightWithTab - folderRightNoTab).abs(), lessThan(5.0));
+  });
+
+  testWidgets('notebook paper centers itself in viewport and on scroll sticks to top and bottom', (tester) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final directory = Directory.systemTemp.createTempSync('novi-center-test');
+    final original = PathProviderPlatform.instance;
+    PathProviderPlatform.instance = TestPaths(directory.path);
+    addTearDown(() {
+      PathProviderPlatform.instance = original;
+      directory.deleteSync(recursive: true);
+    });
+
+    await tester.pumpWidget(const NoviApp());
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 150)),
+    );
+    await tester.pumpAndSettle();
+
+    // Create a portrait notebook
+    await tester.tap(find.text('New'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Notebook').first);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('document-name')), 'Centered Paper Doc');
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Create'));
+    await tester.tap(find.text('Create'));
+    await tester.pumpAndSettle();
+
+    final viewerFinder = find.byType(InteractiveViewer);
+    final inkCanvasFinder = find.byWidgetPredicate(
+      (w) => w is CustomPaint && w.painter is InkPainter,
+    );
+
+    // 1. Verify paper is centered horizontally in the viewport
+    final viewerCenter = tester.getCenter(viewerFinder);
+    final inkCenter = tester.getCenter(inkCanvasFinder);
+    expect((inkCenter.dx - viewerCenter.dx).abs(), lessThan(2.0));
+
+    // Initially at top: top of paper sticks to top of the viewport
+    final initialTop = tester.getTopLeft(inkCanvasFinder).dy;
+    final viewerTop = tester.getTopLeft(viewerFinder).dy;
+    expect((initialTop - viewerTop).abs(), lessThan(2.0));
+
+    // 2. Scroll down by mouse wheel / trackpad gesture
+    await tester.sendEventToBinding(
+      PointerScrollEvent(
+        position: viewerCenter,
+        scrollDelta: const Offset(0, 200),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final midScrollTop = tester.getTopLeft(inkCanvasFinder).dy;
+    expect(midScrollTop, lessThan(initialTop));
+
+    // 3. Scroll all the way to the bottom: paper bottom sticks to viewport bottom
+    await tester.sendEventToBinding(
+      PointerScrollEvent(
+        position: viewerCenter,
+        scrollDelta: const Offset(0, 3000),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final bottomReached = tester.getBottomLeft(inkCanvasFinder).dy;
+    final viewerBottom = tester.getBottomLeft(viewerFinder).dy;
+    expect((bottomReached - viewerBottom).abs(), lessThan(2.0));
+
+    // Scrolling down further still sticks to bottom (cannot scroll past bottom)
+    await tester.sendEventToBinding(
+      PointerScrollEvent(
+        position: viewerCenter,
+        scrollDelta: const Offset(0, 1000),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect((tester.getBottomLeft(inkCanvasFinder).dy - viewerBottom).abs(), lessThan(2.0));
+
+    // 4. Scroll all the way to the top: paper top sticks to viewport top
+    await tester.sendEventToBinding(
+      PointerScrollEvent(
+        position: viewerCenter,
+        scrollDelta: const Offset(0, -5000),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final topReached = tester.getTopLeft(inkCanvasFinder).dy;
+    expect((topReached - viewerTop).abs(), lessThan(2.0));
+
+    // Scrolling up further still sticks to top (cannot scroll past top)
+    await tester.sendEventToBinding(
+      PointerScrollEvent(
+        position: viewerCenter,
+        scrollDelta: const Offset(0, -1000),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect((tester.getTopLeft(inkCanvasFinder).dy - viewerTop).abs(), lessThan(2.0));
   });
 }
 
