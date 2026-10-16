@@ -8,6 +8,7 @@ class TabletConnection extends ChangeNotifier {
   static const methods = MethodChannel('novi/tablets');
   static const events = EventChannel('novi/tablets/events');
   StreamSubscription<dynamic>? _subscription;
+  bool _closed = false;
   bool available = false;
   Set<String> deviceIds = {};
   bool penObserved = false;
@@ -32,16 +33,18 @@ class TabletConnection extends ChangeNotifier {
     try {
       apply(await methods.invokeMethod<dynamic>('getState'));
     } on PlatformException {
+      if (_closed) return;
       available = false;
       notifyListeners();
     } on MissingPluginException {
+      if (_closed) return;
       available = false;
       notifyListeners();
     }
   }
 
   void apply(dynamic value) {
-    if (value is! Map) return;
+    if (_closed || value is! Map) return;
     final wasConnected = connected;
     available = value['available'] == true;
     deviceIds = ((value['devices'] as List?) ?? [])
@@ -52,6 +55,7 @@ class TabletConnection extends ChangeNotifier {
   }
 
   void observePen() {
+    if (_closed) return;
     if (!penObserved) {
       penObserved = true;
       notifyListeners();
@@ -60,6 +64,7 @@ class TabletConnection extends ChangeNotifier {
 
   @override
   void dispose() {
+    _closed = true;
     _subscription?.cancel();
     super.dispose();
   }
