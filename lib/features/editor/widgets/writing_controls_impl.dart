@@ -48,7 +48,7 @@ extension FloatingToolControlsWritingtoolbar on FloatingToolControlsState {
           ),
           onTap: () {
             if (session.writingMode == WritingMode.pencil) {
-              showPenMenu(
+              showPencilMenu(
                 context,
                 targetRect: _rectForKey(_pencilModeKey),
                 session: session,
