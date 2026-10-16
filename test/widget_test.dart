@@ -161,7 +161,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(
       find.ancestor(
-        of: find.text('Type'),
+        of: find.byTooltip('Type'),
         matching: find.byType(DesktopToolButton),
       ),
     );
@@ -176,7 +176,7 @@ void main() {
     expect(find.text('Hello Novi'), findsOneWidget);
     await tester.tap(
       find.ancestor(
-        of: find.text('Draw'),
+        of: find.byTooltip('Draw'),
         matching: find.byType(DesktopToolButton),
       ),
     );
@@ -802,7 +802,7 @@ void main() {
       );
 
       // Reset view returns back to 100% and centered
-      await tester.tap(find.text('Reset view'));
+      await tester.tap(find.byTooltip('Reset view'));
       await tester.pumpAndSettle();
       expect(smallIv.transformationController!.value.getMaxScaleOnAxis(), 1.0);
       expect(
@@ -956,7 +956,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final handFinder = find.ancestor(
-        of: find.text('Hand'),
+        of: find.byTooltip('Hand'),
         matching: find.byType(DesktopToolButton),
       );
 
@@ -1009,11 +1009,11 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.textContaining('· hand'), findsOneWidget);
 
-      // Disconnect stylus: Hand tool hides again and tool switches to pen
+      // Disconnect stylus: Hand tool hides again and tool switches to previousTool (select)
       setTabletHardware(tester, []);
       await tester.pumpAndSettle();
       expect(handFinder, findsNothing);
-      expect(find.textContaining('· pen'), findsOneWidget);
+      expect(find.textContaining('· select'), findsOneWidget);
 
       // 6. Connecting stylus via actual Stylus Pointer event automatically reveals Hand tool!
       await tester.sendEventToBinding(
