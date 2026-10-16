@@ -448,6 +448,48 @@ class _WorkspaceState extends State<Workspace>
     }
   }
 
+  void _startBounceBack(
+    BoxConstraints constraints,
+    double pageWidth,
+    double pageHeight,
+  ) {
+    if (_bottomOverscroll <= 0 || _isCreatingPage) return;
+    _overscrollResetTimer?.cancel();
+    _overscrollBounceController?.stop();
+
+    final startVal = _bottomOverscroll;
+    final curve = CurvedAnimation(
+      parent: _overscrollBounceController!,
+      curve: Curves.easeOutBack,
+    );
+    _overscrollBounceAnimation = Tween<double>(begin: startVal, end: 0.0)
+        .animate(curve)
+      ..addListener(() {
+        if (!mounted || current == null) return;
+        setState(() {
+          _bottomOverscroll = _overscrollBounceAnimation!.value;
+          final matrix = session.view.value.clone();
+          final scale = matrix.getMaxScaleOnAxis();
+          final hasCover = current?.kind == 'Notebook';
+          final paperCount = current?.pages.length ?? 1;
+          final totalSheets = (hasCover ? 1 : 0) + paperCount;
+          final loaderExtra = (_bottomOverscroll > 0) ? 96.0 : 0.0;
+          final totalContentHeight = totalSheets * pageHeight +
+              (totalSheets + 1) * 24.0 +
+              loaderExtra;
+          final totalHeight = totalContentHeight * scale;
+          final minY = totalHeight <= constraints.maxHeight
+              ? 0.0
+              : constraints.maxHeight - totalHeight;
+          final overscrollShift = math.min(130.0, _bottomOverscroll * 0.55);
+          matrix.storage[13] =
+              (minY - overscrollShift).clamp(minY - 140.0, 0.0);
+          session.view.value = matrix;
+        });
+      });
+    _overscrollBounceController!.forward(from: 0.0);
+  }
+
   void _handleScrollDelta(
     Offset scrollDelta,
     BoxConstraints constraints,
@@ -464,17 +506,15 @@ class _WorkspaceState extends State<Workspace>
     final hasCover = current?.kind == 'Notebook';
     final paperCount = current?.pages.length ?? 1;
     final totalSheets = (hasCover ? 1 : 0) + paperCount;
-    final loaderExtra = (_bottomOverscroll > 0 || _isCreatingPage) ? 72.0 : 0.0;
+    final loaderExtra = (_bottomOverscroll > 0 || _isCreatingPage) ? 96.0 : 0.0;
     final totalContentHeight =
         totalSheets * pageHeight + (totalSheets + 1) * 24.0 + loaderExtra;
     final totalHeight = totalContentHeight * scale;
 
     final double minX, maxX;
     if (paperWidth <= constraints.maxWidth) {
-      // Don't allow side scrolls when paper fits in view; keep centered
       minX = maxX = 0.0;
     } else {
-      // When zoomed out of viewport, allow scroll only to the edges of the paper, not past it
       maxX = 0.0;
       minX = constraints.maxWidth - paperWidth;
     }
@@ -494,19 +534,16 @@ class _WorkspaceState extends State<Workspace>
         currentTy <= minY + 1.0 || _bottomOverscroll > 0;
     if (atOrPastBottom && scrollDelta.dy > 0) {
       // User is at or past the bottom and scrolling further down to add page!
+      _smoothScrollController?.stop();
+      _overscrollBounceController?.stop();
+      _overscrollResetTimer?.cancel();
       _bottomOverscroll += scrollDelta.dy;
-      final overscrollShift = math.min(50.0, _bottomOverscroll * 0.25);
+      final overscrollShift = math.min(130.0, _bottomOverscroll * 0.55);
       newTy = minY - overscrollShift;
 
-      _overscrollResetTimer?.cancel();
-      _overscrollResetTimer = Timer(const Duration(milliseconds: 400), () {
+      _overscrollResetTimer = Timer(const Duration(milliseconds: 350), () {
         if (mounted && _bottomOverscroll > 0 && !_isCreatingPage) {
-          setState(() {
-            _bottomOverscroll = 0.0;
-            final m = session.view.value.clone();
-            m.storage[13] = m.storage[13].clamp(minY, 0.0);
-            session.view.value = m;
-          });
+          _startBounceBack(constraints, pageWidth, pageHeight);
         }
       });
 
@@ -514,27 +551,58 @@ class _WorkspaceState extends State<Workspace>
         _createNextPage(constraints, pageWidth, pageHeight);
         return;
       }
+      matrix.storage[12] = newTx;
+      matrix.storage[13] = newTy;
+      session.view.value = matrix;
       setState(() {});
     } else if (scrollDelta.dy < 0 && _bottomOverscroll > 0) {
+      _smoothScrollController?.stop();
+      _overscrollBounceController?.stop();
+      _overscrollResetTimer?.cancel();
       if (_bottomOverscroll + scrollDelta.dy >= 0) {
         _bottomOverscroll += scrollDelta.dy;
-        final overscrollShift = math.min(50.0, _bottomOverscroll * 0.25);
+        final overscrollShift = math.min(130.0, _bottomOverscroll * 0.55);
         newTy = minY - overscrollShift;
       } else {
         final remainingDelta = scrollDelta.dy + _bottomOverscroll;
         _bottomOverscroll = 0.0;
         newTy = (minY - remainingDelta).clamp(minY, maxY);
       }
-      setState(() {});
-    } else {
-      _bottomOverscroll = 0.0;
-      newTy = (currentTy - scrollDelta.dy).clamp(minY, maxY);
-    }
-
-    if (currentTx != newTx || currentTy != newTy) {
       matrix.storage[12] = newTx;
       matrix.storage[13] = newTy;
       session.view.value = matrix;
+      setState(() {});
+    } else {
+      _bottomOverscroll = 0.0;
+      final targetTy = (currentTy - scrollDelta.dy).clamp(minY, maxY);
+      if (scrollDelta.dy.abs() < 12.0) {
+        newTy = targetTy;
+        if (currentTx != newTx || currentTy != newTy) {
+          matrix.storage[12] = newTx;
+          matrix.storage[13] = newTy;
+          session.view.value = matrix;
+          setState(() {});
+        }
+      } else {
+        // Smooth slide interpolation for larger scroll jumps (e.g. mouse wheel)
+        _overscrollBounceController?.stop();
+        final startTy = currentTy;
+        final curve = CurvedAnimation(
+          parent: _smoothScrollController!,
+          curve: Curves.easeOutCubic,
+        );
+        _smoothScrollAnimation = Tween<double>(begin: startTy, end: targetTy)
+            .animate(curve)
+          ..addListener(() {
+            if (!mounted || current == null) return;
+            final m = session.view.value.clone();
+            m.storage[12] = newTx;
+            m.storage[13] = _smoothScrollAnimation!.value;
+            session.view.value = m;
+            setState(() {});
+          });
+        _smoothScrollController!.forward(from: 0.0);
+      }
     }
   }
 
@@ -1225,13 +1293,19 @@ class _WorkspaceState extends State<Workspace>
                           setState(() {});
                         }
                       },
-                      onPointerPanZoomStart: (_) => _pinchScale = 1,
+                      onPointerPanZoomStart: (_) {
+                        _pinchScale = 1;
+                        _lastPanDelta = Offset.zero;
+                        _lastPanTime = DateTime.now();
+                      },
                       onPointerPanZoomUpdate: (event) {
                         if (event.scale != _pinchScale) {
                           zoom(event.scale / _pinchScale);
                         }
                         _pinchScale = event.scale;
                         if (event.panDelta != Offset.zero) {
+                          _lastPanDelta = event.panDelta;
+                          _lastPanTime = DateTime.now();
                           final scrollDelta = Offset(
                             -event.panDelta.dx,
                             -event.panDelta.dy,
@@ -1248,40 +1322,21 @@ class _WorkspaceState extends State<Workspace>
                         _pinchScale = 1;
                         _snapHorizontalToCenter(constraints, pageWidth);
                         if (_bottomOverscroll > 0 && !_isCreatingPage) {
-                          _overscrollResetTimer?.cancel();
-                          _overscrollResetTimer = Timer(
-                            const Duration(milliseconds: 300),
-                            () {
-                              if (mounted &&
-                                  _bottomOverscroll > 0 &&
-                                  !_isCreatingPage) {
-                                setState(() {
-                                  _bottomOverscroll = 0.0;
-                                  final m = session.view.value.clone();
-                                  final scale = m.getMaxScaleOnAxis();
-                                  final hasCover = current?.kind == 'Notebook';
-                                  final paperCount = current?.pages.length ?? 1;
-                                  final totalSheets =
-                                      (hasCover ? 1 : 0) + paperCount;
-                                  final totalContentHeight = totalSheets *
-                                          pageHeight +
-                                      (totalSheets + 1) * 24.0;
-                                  final totalHeight =
-                                      totalContentHeight * scale;
-                                  final minY = totalHeight <=
-                                          constraints.maxHeight
-                                      ? 0.0
-                                      : constraints.maxHeight - totalHeight;
-                                  m.storage[13] = m.storage[13].clamp(
-                                    minY,
-                                    0.0,
-                                  );
-                                  session.view.value = m;
-                                });
-                              }
-                            },
+                          _startBounceBack(constraints, pageWidth, pageHeight);
+                        } else if (_lastPanDelta != Offset.zero &&
+                            _lastPanTime != null &&
+                            DateTime.now().difference(_lastPanTime!).inMilliseconds < 100 &&
+                            _lastPanDelta.dy.abs() > 3.0) {
+                          final scrollDelta = Offset(0, -_lastPanDelta.dy * 8.0);
+                          _handleScrollDelta(
+                            scrollDelta,
+                            constraints,
+                            pageWidth,
+                            pageHeight,
                           );
                         }
+                        _lastPanDelta = Offset.zero;
+                        _lastPanTime = null;
                         setState(() {});
                       },
                       onPointerSignal: (event) {
