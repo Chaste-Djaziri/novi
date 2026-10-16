@@ -1,3 +1,5 @@
+import 'package:novi/main.dart';
+import 'package:novi/tablet_connection.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -15,4 +17,12 @@ void initializeDesktopWidgetTests() {
           },
         );
   }
+}
+
+void setTabletHardware(WidgetTester tester, List<String> devices) {
+  final dynamic workspace = tester.state(find.byType(Workspace));
+  (workspace.tablets as TabletConnection).apply({
+    'available': true,
+    'devices': devices,
+  });
 }
