@@ -2373,8 +2373,8 @@ class _WorkspaceState extends State<Workspace>
             ((finalStyle['kind'] == 'pen' && finalStyle['holdForLine'] == true) ||
                 (finalStyle['kind'] == 'pencil' &&
                     finalStyle['drawAndHold'] == true));
-        if (((finalStyle['kind'] == 'tape' && finalStyle['straight'] == true) ||
-            (finalStyle['kind'] == 'pen' && finalStyle['holdForLine'] == true && _inkHeld)) &&
+        if (finalStyle['kind'] == 'tape' &&
+            finalStyle['straight'] == true &&
             finalStroke.length > 1) {
           finalStroke = [
             finalStroke.first,
