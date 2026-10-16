@@ -247,6 +247,21 @@ The first technical alpha is implemented. A reported native crash on New noteboo
 - [x] Regenerated visual preview artifact `build/ui-preview/editor.png` and visually verified the centered sheet layout.
 - [ ] Hands-on interaction check in the running Mac app.
 
+## Horizontal center lock on scroll and vertical gaps — 2026-10-16
+- [x] Locked horizontal position strictly to the viewport center in `lib/main.dart`:
+  - When scrolling left or right via trackpad or mouse wheel gestures, `matrix.storage[12]` is continuously pinned to `centeredTx = (constraints.maxWidth - totalWidth) / 2`.
+  - Prevents horizontal drift or sideways wobbling during scrolling, ensuring the sheet of paper always remains centered.
+- [x] Configured 24px vertical breathing room above and below the paper:
+  - Wrapped the sheet in `Padding(padding: const EdgeInsets.symmetric(vertical: 24))`, extending canvas height to `pageHeight + 48`.
+  - When scrolled to the top, the paper stops with a clear 24px gap below the top toolbar.
+  - When scrolled to the bottom, the paper stops with a clear 24px gap above the bottom bar.
+  - When the paper fits inside the viewport, it stays centered with equal gaps on all sides.
+- [x] Updated automated widget test in `test/widget_test.dart` to verify horizontal lock under large left/right scroll deltas and exact 24px top/bottom gaps.
+- [x] `flutter analyze`: clean (0 issues).
+- [x] Unit and widget test suite: all 17 tests pass (`test/library_ui_test.dart`, `test/widget_test.dart`, `test/workspace_test.dart`).
+- [x] Regenerated visual preview artifact `build/ui-preview/editor.png` and verified 24px gaps and centered alignment.
+- [ ] Hands-on interaction check in the running Mac app.
+
 ## Next
 Perform hands-on visual and drag verification in the rebuilt Mac app. Continue the desktop acceptance checks listed in the checklist above, recording results here.
 
