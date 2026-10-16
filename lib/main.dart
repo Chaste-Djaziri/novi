@@ -8,6 +8,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:forui/forui.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:path_provider/path_provider.dart';
@@ -298,6 +299,49 @@ class _WorkspaceState extends State<Workspace> {
         session.view.value = matrix;
       }
     });
+  }
+
+  void _handleCanvasScroll(
+    PointerScrollEvent event,
+    BoxConstraints constraints,
+    double pageWidth,
+    double pageHeight,
+  ) {
+    final matrix = session.view.value.clone();
+    final scale = matrix.getMaxScaleOnAxis();
+    final currentTx = matrix.storage[12];
+    final currentTy = matrix.storage[13];
+
+    final effectiveWidth = math.max(constraints.maxWidth, pageWidth);
+    final effectiveHeight = math.max(constraints.maxHeight, pageHeight);
+
+    final totalWidth = effectiveWidth * scale;
+    final totalHeight = effectiveHeight * scale;
+
+    final double minX, maxX;
+    if (totalWidth <= constraints.maxWidth) {
+      minX = maxX = (constraints.maxWidth - totalWidth) / 2;
+    } else {
+      minX = constraints.maxWidth - totalWidth;
+      maxX = 0.0;
+    }
+
+    final double minY, maxY;
+    if (totalHeight <= constraints.maxHeight) {
+      minY = maxY = (constraints.maxHeight - totalHeight) / 2;
+    } else {
+      minY = constraints.maxHeight - totalHeight;
+      maxY = 0.0;
+    }
+
+    final newTx = (currentTx - event.scrollDelta.dx).clamp(minX, maxX);
+    final newTy = (currentTy - event.scrollDelta.dy).clamp(minY, maxY);
+
+    if (newTx != currentTx || newTy != currentTy) {
+      matrix.storage[12] = newTx;
+      matrix.storage[13] = newTy;
+      session.view.value = matrix;
+    }
   }
 
   void formatText({double? size, bool? bold}) {
@@ -600,29 +644,48 @@ class _WorkspaceState extends State<Workspace> {
             ),
             Expanded(
               child: LayoutBuilder(
-                builder: (context, constraints) => InteractiveViewer(
-                  key: ValueKey('view-${note.id}'),
-                  transformationController: session.view,
-                  constrained: false,
-                  minScale: 0.25,
-                  maxScale: 3,
-                  boundaryMargin: const EdgeInsets.all(500),
-                  panEnabled: tool == EditorTool.hand,
-                  scaleEnabled: tool == EditorTool.hand,
-                  onInteractionEnd: (_) => setState(() {}),
-                  child: SizedBox(
-                    width: math.max(constraints.maxWidth, pageWidth + 48),
-                    height: math.max(constraints.maxHeight, pageHeight + 48),
-                    child: Align(
-                      alignment: Alignment.topCenter,
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
+                builder: (context, constraints) => Listener(
+                  onPointerSignal: (event) {
+                    if (event is PointerScrollEvent) {
+                      _handleCanvasScroll(
+                        event,
+                        constraints,
+                        pageWidth,
+                        pageHeight,
+                      );
+                    }
+                  },
+                  child: InteractiveViewer(
+                    key: ValueKey('view-${note.id}'),
+                    transformationController: session.view,
+                    constrained: false,
+                    minScale: 0.25,
+                    maxScale: 3,
+                    boundaryMargin: const EdgeInsets.symmetric(horizontal: 100),
+                    panEnabled: tool == EditorTool.hand,
+                    scaleEnabled: tool == EditorTool.hand,
+                    onInteractionEnd: (_) => setState(() {}),
+                    child: SizedBox(
+                      width: math.max(constraints.maxWidth, pageWidth),
+                      height: math.max(constraints.maxHeight, pageHeight),
+                      child: Align(
+                        alignment: Alignment.center,
                         child: SizedBox(
                           width: pageWidth,
                           height: pageHeight,
-                          child: ClipRect(
-                            child: CustomPaint(
-                              painter: PaperPainter(note.paper, note.tone),
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.35),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: ClipRect(
+                              child: CustomPaint(
+                                painter: PaperPainter(note.paper, note.tone),
                               child: Stack(
                                 children: [
                                   Positioned(
@@ -712,6 +775,7 @@ class _WorkspaceState extends State<Workspace> {
                 ),
               ),
             ),
+          ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
               child: Row(
