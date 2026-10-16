@@ -232,6 +232,21 @@ The first technical alpha is implemented. A reported native crash on New noteboo
 - [x] Regenerated visual preview artifact `build/ui-preview/editor.png` and visually verified that the folder and 3-dots buttons sit flush against the far right edge of the top bar above the content panel.
 - [ ] Hands-on interaction check in the running Mac app.
 
+## Center notebook paper in viewport and stick to top/bottom on scroll — 2026-10-16
+- [x] Replaced top-pinned canvas alignment with centered viewport layout in `lib/main.dart`:
+  - Positioned the paper inside `SizedBox(width: math.max(constraints.maxWidth, pageWidth), height: math.max(constraints.maxHeight, pageHeight))` with `Align(alignment: Alignment.center)`.
+  - Added subtle realistic drop shadow around the paper sheet (`BoxShadow(color: Colors.black38, blurRadius: 16, offset: Offset(0, 4))`) with clean anti-aliased clipping.
+  - When the paper fits inside the viewport (or when zoomed out), it automatically centers itself both horizontally and vertically.
+- [x] Implemented scroll clamping to stick to top and bottom bounds:
+  - Added `Listener` handling `PointerScrollEvent` on the canvas viewport, allowing smooth vertical/horizontal scrolling via trackpad or mouse wheel across all editor tools (pen, highlighter, eraser, select, text, and hand).
+  - Clamped vertical scroll offsets strictly between `constraints.maxHeight - totalHeight` (bottom limit) and `0.0` (top limit).
+  - Pinned `boundaryMargin` vertical limits so the paper sticks flush to the top and bottom of the viewport without drifting into empty space.
+- [x] Added automated widget test `notebook paper centers itself in viewport and on scroll sticks to top and bottom` in `test/widget_test.dart`.
+- [x] `flutter analyze`: clean (0 issues).
+- [x] Unit and widget test suite: all 17 tests pass (`test/library_ui_test.dart`, `test/widget_test.dart`, `test/workspace_test.dart`).
+- [x] Regenerated visual preview artifact `build/ui-preview/editor.png` and visually verified the centered sheet layout.
+- [ ] Hands-on interaction check in the running Mac app.
+
 ## Next
 Perform hands-on visual and drag verification in the rebuilt Mac app. Continue the desktop acceptance checks listed in the checklist above, recording results here.
 
