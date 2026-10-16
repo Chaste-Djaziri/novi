@@ -404,5 +404,32 @@ Notebook-only development: centered desktop controls, paper-aligned typing with 
 - [ ] Verify physical tablet connection before first pen activity, unplugging, multiple devices, and driver-hidden identities in the normal Mac app.
 - [ ] Verify normal-app row clicking/typing, selection, scrolling, and tab switching, including a real IME.
 
+## Content Page Manager, Canvas Scroll Indicator, Smooth Sliding & Bounce Physics — 2026-10-16
+- [x] Content Page Manager (Collapsible/Expandable Sidebar):
+  - Created [PagesSidebar](file:///Users/chastedjaziri/Documents/ChatGPT/novi/lib/pages_sidebar.dart) matching the user reference screenshot with header (`···` menu, `Pages` title, `✕` close button), view tabs (Thumbnails, Outline, Bookmarks), filter dropdown (`All Pages ⌵` / `Bookmarked`), and page count indicator.
+  - Implemented 2-column page thumbnail cards: Miniature Cover card for Page 1, Miniature Paper card with real ink and typed text previews for Page 2+, active page blue highlight ring, and bookmark ribbon toggling.
+  - Implemented dashed outline card with `+` icon to add new pages directly from the sidebar.
+  - Tapping a thumbnail card smoothly jumps/scrolls the viewport directly to that page.
+  - Integrated sidebar collapse/expand toggle button in the header bar and workspace toolbar (`toolbar-toggle-pages`).
+- [x] Canvas Scroll Indicator:
+  - Added [CanvasScrollIndicator](file:///Users/chastedjaziri/Documents/ChatGPT/novi/lib/main.dart) pinned to the right edge of the editor canvas viewport.
+  - Dynamically computes thumb height and position based on content-to-viewport ratio and matrix transformation.
+  - Supports clicking and dragging the thumb vertically to scroll through documents smoothly with hover animations.
+- [x] Trackpad & Mouse Smooth Sliding Physics:
+  - Fixed rigid "per-pixel" jumping by introducing an interpolation controller (`_smoothScrollController`) with `Curves.easeOutCubic` over 220ms for discrete wheel jumps.
+  - Trackpad two-finger continuous pan zoom delivers responsive 1:1 finger tracking.
+  - On trackpad release, momentum fling calculates velocity based on delta and time delta for natural macOS sliding feel.
+- [x] Expanded Overscroll & Rubber-Band Bounce-Back Animation:
+  - Expanded bottom overscroll pull distance to 130px shift with a spacious 180.0 threshold for page creation (`_createPageThreshold = 180.0`).
+  - Added rubber-band bounce-back animation (`_overscrollBounceController`) using `Curves.easeOutBack` when pulling is released or paused before reaching the threshold.
+- [x] Verification:
+  - `flutter analyze`: clean (0 issues).
+  - `flutter test`: all 23 tests pass across `test/widget_test.dart`, `test/library_ui_test.dart`, and `test/workspace_test.dart`.
+  - Added dedicated automated tests for:
+    - Trackpad two-finger scroll overscroll page creation.
+    - Trackpad overscroll release before threshold triggering smooth bounce-back animation.
+    - Canvas scroll indicator rendering on right edge and drag-to-scroll functionality.
+    - Content Page Manager collapse/open, thumbnail navigation, bookmarks, and adding pages.
+
 ## Next
-Fully quit/reopen the rebuilt Novi app and review the notebook workflow. Connect a physical tablet and confirm Hand appears before using the pen, then disconnect it and confirm the previous writing tool returns. Record results here before advancing to future creation types or planned toolbar features.
+Confirm the new Pages Manager, right-side scroll indicator, smooth sliding scroll physics, and overscroll bounce-back in the running Mac app. Connect a physical tablet and confirm Hand tool appears before using the pen, then disconnect it and confirm the previous writing tool returns.
