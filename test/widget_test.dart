@@ -347,5 +347,92 @@ void main() {
     expect(find.text('Documents'), findsWidgets);
     expect(find.byKey(const Key('home-button')), findsNothing);
   });
+
+  testWidgets('when document opened and is in tab preserve it open until specifically closed by the user in tab', (tester) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final directory = Directory.systemTemp.createTempSync('novi-tab-test');
+    final original = PathProviderPlatform.instance;
+    PathProviderPlatform.instance = TestPaths(directory.path);
+    addTearDown(() {
+      PathProviderPlatform.instance = original;
+      directory.deleteSync(recursive: true);
+    });
+
+    await tester.pumpWidget(const NoviApp());
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 150)),
+    );
+    await tester.pumpAndSettle();
+
+    // Create first notebook 'Doc Alpha'
+    await tester.tap(find.text('New'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Notebook').first);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('document-name')), 'Doc Alpha');
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Create'));
+    await tester.tap(find.text('Create'));
+    await tester.pumpAndSettle();
+
+    // 'Doc Alpha' is in tab
+    expect(find.text('Doc Alpha'), findsOneWidget);
+
+    // Go Home (back to library)
+    await tester.tap(find.byKey(const Key('home-button')));
+    await tester.pumpAndSettle();
+
+    // In library: 'Doc Alpha' tab is PRESERVED open in the tab bar
+    expect(find.byTooltip('Close tab Doc Alpha'), findsOneWidget);
+
+    // Create second notebook 'Doc Beta'
+    await tester.tap(find.text('New'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Notebook').first);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('document-name')), 'Doc Beta');
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Create'));
+    await tester.tap(find.text('Create'));
+    await tester.pumpAndSettle();
+
+    // Both tabs are open
+    expect(find.byTooltip('Close tab Doc Alpha'), findsOneWidget);
+    expect(find.byTooltip('Close tab Doc Beta'), findsOneWidget);
+
+    // Go Home again
+    await tester.tap(find.byKey(const Key('home-button')));
+    await tester.pumpAndSettle();
+
+    // Both tabs remain preserved while browsing the library
+    expect(find.byTooltip('Close tab Doc Alpha'), findsOneWidget);
+    expect(find.byTooltip('Close tab Doc Beta'), findsOneWidget);
+
+    // Click 'Doc Alpha' tab to switch to it
+    await tester.tap(find.text('Doc Alpha').first);
+    await tester.pumpAndSettle();
+
+    // We are back in 'Doc Alpha'
+    expect(find.byKey(const Key('home-button')), findsOneWidget);
+
+    // Close only 'Doc Alpha' tab using its 'x' button
+    await tester.tap(find.byTooltip('Close tab Doc Alpha'));
+    await tester.pumpAndSettle();
+
+    // 'Doc Alpha' tab is now closed, but 'Doc Beta' tab remains preserved!
+    expect(find.byTooltip('Close tab Doc Alpha'), findsNothing);
+    expect(find.byTooltip('Close tab Doc Beta'), findsOneWidget);
+
+    // Close 'Doc Beta' tab
+    await tester.tap(find.byTooltip('Close tab Doc Beta'));
+    await tester.pumpAndSettle();
+
+    // All tabs closed -> back in library, no tabs open
+    expect(find.byTooltip('Close tab Doc Beta'), findsNothing);
+  });
 }
+
 
