@@ -899,8 +899,9 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
                 onBold: () => formatText(bold: !note.boldText),
                 hasStylus: hasStylus,
                 onAddPage: () {
-                  if (_lastConstraints != null)
+                  if (_lastConstraints != null) {
                     _createNextPage(_lastConstraints!, pageWidth, pageHeight);
+                  }
                 },
                 onExport: () => transfer('export'),
               ),
@@ -993,8 +994,9 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
                       },
                       onPointerPanZoomStart: (_) => _pinchScale = 1,
                       onPointerPanZoomUpdate: (event) {
-                        if (event.scale != _pinchScale)
+                        if (event.scale != _pinchScale) {
                           zoom(event.scale / _pinchScale);
+                        }
                         _pinchScale = event.scale;
                         _panCanvas(event.panDelta);
                       },
