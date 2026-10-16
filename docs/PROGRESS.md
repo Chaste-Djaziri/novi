@@ -341,6 +341,7 @@ The first technical alpha is implemented. A reported native crash on New noteboo
   - Upward scrolling recovers smoothly by consuming overscroll before scrolling up.
   - An idle timer resets sub-threshold overscroll back to 0.0 with a gentle snap-back.
   - Page indicator in the bottom bar dynamically updates (`Page X of Y`).
+  - Hardened `Notebook.pages` with a lazy-initialization getter backed by `_pages` to guarantee null-safety during hot reload on long-running processes.
 - [x] Test coverage:
   - Added test in `test/widget_test.dart` verifying that scrolling past bottom renders the loader with progress, reaching threshold creates a new page with a 24px gap, page indicator reflects new page count, and undo restores previous state.
 - [x] `flutter analyze`: clean (0 issues).
