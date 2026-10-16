@@ -45,6 +45,7 @@ class EditorSession {
   final List<Notebook> undo = [];
   final List<Notebook> redo = [];
   final Set<int> selection = {};
+  final Set<int> composingPages = {};
   EditorTool tool;
   EditorTool previousTool = EditorTool.pen;
   double width = 3;
