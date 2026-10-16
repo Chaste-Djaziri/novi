@@ -959,8 +959,9 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
                       behavior: HitTestBehavior.translucent,
                       onPointerHover: (event) {
                         if (event.kind == PointerDeviceKind.stylus ||
-                            event.kind == PointerDeviceKind.invertedStylus)
+                            event.kind == PointerDeviceKind.invertedStylus) {
                           tablets.observePen();
+                        }
                       },
                       onPointerDown: (event) {
                         if (event.kind == PointerDeviceKind.stylus ||
