@@ -557,6 +557,8 @@ Confirm material feel and pressure with a physical tablet in the normal Mac app.
 - [x] Refactored the pencil menu to use the shared shell and added focused popup rendering coverage.
 - [x] Updated pencil settings to match the two-level design: Reduce Latency on the main page, Draw and Hold navigation, and a dedicated submenu with Snap to Other Shapes.
 - [x] Verified analyzer, dialog boundary, and reusable popup tests after the pencil settings redesign.
+- [x] Added pen feature menus for Pen Settings, Writing Aids, and Math Assist, including working spelling, latency, gesture, and math suggestion toggles.
+- [x] Added a Math Assist equation preview and separate feature-menu boundary coverage; `flutter analyze` and dialog tests pass.
 - [ ] Finish reducing legacy editor files and add broader painter comparison coverage.
 
 
