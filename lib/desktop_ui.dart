@@ -164,15 +164,17 @@ class DesktopPopupMenuButton<T> extends StatelessWidget {
     required this.tooltip,
     required this.onSelected,
     required this.itemBuilder,
+    this.icon = CupertinoIcons.ellipsis,
   });
   final String tooltip;
   final ValueChanged<T> onSelected;
   final List<DesktopMenuItem<T>> Function(BuildContext) itemBuilder;
+  final IconData icon;
   @override
   Widget build(BuildContext context) => Tooltip(
     message: tooltip,
     child: mac.MacosPulldownButton(
-      icon: CupertinoIcons.ellipsis,
+      icon: icon,
       items: itemBuilder(context)
           .map(
             (item) => mac.MacosPulldownMenuItem(
