@@ -573,6 +573,8 @@ Confirm material feel and pressure with a physical tablet in the normal Mac app.
 - [x] Verified analyzer and shape-recognition integration coverage after the ordering fix.
 - [x] Prioritized closed-loop detection ahead of line and corner fitting so imperfect circles and other loops are not classified as open strokes.
 - [x] Verified analyzer and shape-recognition integration coverage after reordering recognizer stages.
+- [x] Added polygon classification before ellipse fitting: edge-aligned loops become rectangles/squares, while remaining angular loops become triangles instead of circles.
+- [x] Verified analyzer and shape-recognition integration coverage after polygon classification changes.
 - [ ] Add live held-stroke shape preview and resize/move interaction before pointer release.
 - [ ] Finish reducing legacy editor files and add broader painter comparison coverage.
 
