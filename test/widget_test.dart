@@ -177,7 +177,7 @@ void main() {
     expect(find.text('Hello Novi'), findsOneWidget);
     await tester.tap(
       find.ancestor(
-        of: find.byTooltip('Draw'),
+        of: find.byTooltip('Writing (W)'),
         matching: find.byType(DesktopToolButton),
       ),
     );
@@ -1672,8 +1672,7 @@ void main() {
 
       // 3. Tooltips are configured for tools with Lasso Selection (V) for select
       expect(find.byTooltip('Lasso Selection (V)'), findsOneWidget);
-      expect(find.byTooltip('Draw'), findsOneWidget);
-      expect(find.byTooltip('Highlight'), findsOneWidget);
+      expect(find.byTooltip('Writing (W)'), findsOneWidget);
       expect(find.byTooltip('Erase'), findsOneWidget);
       expect(find.byTooltip('Type'), findsOneWidget);
 
@@ -1722,9 +1721,18 @@ void main() {
 
       final contextControlsFinder = find.byKey(const Key('context-controls'));
       expect(contextControlsFinder, findsOneWidget);
-      expect(find.byTooltip('Automatic ink contrast'), findsOneWidget);
-      expect(find.byTooltip('Ink shade 1'), findsOneWidget);
-      expect(find.byTooltip('Ink shade 4'), findsOneWidget);
+      expect(find.byTooltip('Pen'), findsOneWidget);
+      expect(find.byTooltip('Pencil'), findsOneWidget);
+      expect(find.byTooltip('Highlighter'), findsOneWidget);
+      expect(find.byTooltip('Tape (A)'), findsOneWidget);
+      expect(find.byTooltip('Draw Shape (D)'), findsOneWidget);
+      expect(find.byTooltip('Thin stroke (2px)'), findsOneWidget);
+      expect(find.byTooltip('Medium stroke (4px)'), findsOneWidget);
+      expect(find.byTooltip('Thick stroke (7px)'), findsOneWidget);
+      expect(find.byTooltip('Red ink'), findsOneWidget);
+      expect(find.byTooltip('Blue ink'), findsOneWidget);
+      expect(find.byTooltip('Select ink color'), findsOneWidget);
+      expect(find.byTooltip('Custom color...'), findsOneWidget);
       expect(find.byTooltip('Zoom in'), findsOneWidget);
       expect(find.byTooltip('Zoom out'), findsOneWidget);
       expect(find.byTooltip('Reset view'), findsOneWidget);
@@ -1746,6 +1754,214 @@ void main() {
       );
       expect(floatingState.dragOffset.dx, greaterThan(0));
       expect(floatingState.dragOffset.dy, greaterThan(0));
+    },
+  );
+
+  testWidgets(
+    'writing tool modes, popovers (Draw Shape, Tape, Pen, Color) and shape recognition',
+    (tester) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final directory = Directory.systemTemp.createTempSync('novi-writing-test');
+      final original = PathProviderPlatform.instance;
+      PathProviderPlatform.instance = TestPaths(directory.path);
+      addTearDown(() {
+        PathProviderPlatform.instance = original;
+        directory.deleteSync(recursive: true);
+      });
+
+      final dbPath = '${directory.path}/novi.sqlite';
+      final seed = LibraryStore(dbPath);
+      seed.save(Notebook(id: 'w1', title: 'Writing Test Doc'));
+      seed.close();
+
+      await tester.pumpWidget(const NoviApp());
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Writing Test Doc').first);
+      await tester.pumpAndSettle();
+
+      // Scroll down to bring content page 1 into view
+      await tester.sendEventToBinding(
+        const PointerScrollEvent(
+          position: Offset(400, 300),
+          scrollDelta: Offset(0, 1100),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Switch to writing pen tool
+      await tester.tap(find.byTooltip('Writing (W)'));
+      await tester.pumpAndSettle();
+
+      // Open Pen popover
+      await tester.tap(find.byTooltip('Pen'));
+      await tester.pumpAndSettle();
+      expect(find.byType(PenMenuDialog), findsOneWidget);
+      expect(find.text('Pen Type'), findsOneWidget);
+      expect(find.text('Fountain'), findsOneWidget);
+      expect(find.text('Ballpoint'), findsOneWidget);
+      expect(find.text('Brush'), findsOneWidget);
+      expect(find.text('Draw and Hold for Line'), findsOneWidget);
+
+      // Dismiss popover
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+      expect(find.byType(PenMenuDialog), findsNothing);
+
+      // Switch to Tape mode and open Tape popover
+      await tester.tap(find.byTooltip('Tape (A)'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Tape (A)'));
+      await tester.pumpAndSettle();
+      expect(find.byType(TapeMenuDialog), findsOneWidget);
+      expect(find.text('hide  '), findsNWidgets(2));
+      expect(find.text('Straight Tape'), findsOneWidget);
+      expect(find.text('Remove All Tape'), findsOneWidget);
+
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+
+      // Switch to Draw Shape mode and open Draw Shape popover
+      await tester.tap(find.byTooltip('Draw Shape (D)'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Draw Shape (D)'));
+      await tester.pumpAndSettle();
+      expect(find.byType(DrawShapeMenuDialog), findsOneWidget);
+      expect(find.text('Require Hold to Snap'), findsOneWidget);
+      expect(find.text('Snap to Other Shapes'), findsOneWidget);
+      expect(find.text('Fill Color'), findsOneWidget);
+
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+
+      // Draw Shape natural recognition: draw a straight line
+      final inkFinder = find.byWidgetPredicate(
+        (w) => w is CustomPaint && w.painter is InkPainter,
+      );
+      InkPainter ink() =>
+          tester.widget<CustomPaint>(inkFinder).painter! as InkPainter;
+      Offset point(double x, double y) =>
+          tester.getTopLeft(inkFinder) + Offset(x, y);
+
+      await tester.dragFrom(point(100, 200), const Offset(200, 0));
+      await tester.pumpAndSettle();
+      expect(ink().strokes, hasLength(1));
+      // Snapped to straight line (2 points)
+      expect(ink().strokes.first, hasLength(2));
+    },
+  );
+
+  testWidgets(
+    'eraser tool floating bar, Eraser Type and Advanced Settings popovers, and pixel-precise segment erasing',
+    (tester) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final directory = Directory.systemTemp.createTempSync('novi-eraser-test');
+      final original = PathProviderPlatform.instance;
+      PathProviderPlatform.instance = TestPaths(directory.path);
+      addTearDown(() {
+        PathProviderPlatform.instance = original;
+        directory.deleteSync(recursive: true);
+      });
+
+      final dbPath = '${directory.path}/novi.sqlite';
+      final seed = LibraryStore(dbPath);
+      seed.save(Notebook(id: 'e1', title: 'Eraser Test Doc'));
+      seed.close();
+
+      await tester.pumpWidget(const NoviApp());
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Eraser Test Doc').first);
+      await tester.pumpAndSettle();
+
+      // Scroll down to bring content page 1 into view
+      await tester.sendEventToBinding(
+        const PointerScrollEvent(
+          position: Offset(400, 300),
+          scrollDelta: Offset(0, 1100),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Switch to Writing and draw a continuous line across
+      await tester.tap(find.byTooltip('Writing (W)'));
+      await tester.pumpAndSettle();
+
+      final inkFinder = find.byWidgetPredicate(
+        (w) => w is CustomPaint && w.painter is InkPainter,
+      );
+      InkPainter ink() =>
+          tester.widget<CustomPaint>(inkFinder).painter! as InkPainter;
+      Offset point(double x, double y) =>
+          tester.getTopLeft(inkFinder) + Offset(x, y);
+
+      // Draw a line from (100, 150) to (300, 150)
+      await tester.dragFrom(point(100, 150), const Offset(200, 0));
+      await tester.pumpAndSettle();
+      expect(ink().strokes, hasLength(1));
+
+      // Switch to Eraser tool
+      await tester.tap(find.byTooltip('Erase'));
+      await tester.pumpAndSettle();
+
+      // Verify eraser floating controls
+      expect(find.byTooltip('Eraser Type'), findsOneWidget);
+      expect(find.byTooltip('Tool Options'), findsOneWidget);
+      expect(find.byTooltip('Small eraser'), findsOneWidget);
+      expect(find.byTooltip('Medium eraser'), findsOneWidget);
+      expect(find.byTooltip('Large eraser'), findsOneWidget);
+
+      // Open Eraser Type popover
+      await tester.tap(find.byTooltip('Eraser Type'));
+      await tester.pumpAndSettle();
+      expect(find.byType(EraserTypeMenuDialog), findsOneWidget);
+      expect(find.text('Precision\nEraser'), findsOneWidget);
+      expect(find.text('Standard\nEraser'), findsOneWidget);
+      expect(find.text('Stroke\nEraser'), findsOneWidget);
+
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+
+      // Open Tool Options / Advanced Settings popover
+      await tester.tap(find.byTooltip('Tool Options'));
+      await tester.pumpAndSettle();
+      expect(find.byType(EraserAdvancedSettingsDialog), findsOneWidget);
+      expect(find.text('ERASER FILTER'), findsOneWidget);
+      expect(find.text('Clear Page'), findsOneWidget);
+      expect(find.text('Auto-Deselect'), findsOneWidget);
+
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+
+      // Erase across the MIDDLE of the line at (200, 150) with small eraser
+      await tester.tap(find.byTooltip('Small eraser'));
+      await tester.pumpAndSettle();
+
+      await tester.tapAt(point(200, 150));
+      await tester.pumpAndSettle();
+
+      // CRITICAL VERIFICATION:
+      // The line was NOT deleted as a whole; instead, only the exact pixels at the midpoint
+      // were erased, leaving the line split into 2 remaining segments!
+      expect(ink().strokes, hasLength(2));
+      // Segment 1 is on the left
+      expect(ink().strokes[0].last[0], lessThan(200));
+      // Segment 2 is on the right
+      expect(ink().strokes[1].first[0], greaterThan(200));
     },
   );
 }

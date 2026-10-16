@@ -72,17 +72,12 @@ void main() {
       await tester.dragFrom(point(100, 100), const Offset(100, 30));
       await tester.pumpAndSettle();
       expect(ink().strokes, hasLength(1));
-      await tester.tap(
-        find.ancestor(
-          of: find.byTooltip('Highlight'),
-          matching: find.byType(DesktopToolButton),
-        ),
-      );
+      await tester.tap(find.byTooltip('Highlighter'));
       await tester.pumpAndSettle();
       await tester.dragFrom(point(100, 200), const Offset(100, 0));
       await tester.pumpAndSettle();
       expect(ink().strokes, hasLength(2));
-      expect(ink().styles[1]['opacity'], 0.3);
+      expect(ink().styles[1]['opacity'], closeTo(0.35, 0.06));
       await tester.tap(
         find.ancestor(
           of: find.byTooltip('Erase'),
@@ -90,6 +85,10 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      tester
+          .widget<WorkspaceToolbar>(find.byType(WorkspaceToolbar))
+          .session
+          .eraserType = EraserType.stroke;
       await tester.tapAt(point(150, 115));
       await tester.pumpAndSettle();
       expect(ink().strokes, hasLength(1));

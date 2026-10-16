@@ -1154,10 +1154,25 @@ class _WorkspaceState extends State<Workspace>
     return CallbackShortcuts(
       bindings: {
         if (tool != EditorTool.text) ...{
-          const SingleActivator(LogicalKeyboardKey.keyP): () =>
-              chooseTool(EditorTool.pen),
-          const SingleActivator(LogicalKeyboardKey.keyB): () =>
-              chooseTool(EditorTool.highlighter),
+          const SingleActivator(LogicalKeyboardKey.keyW): () {
+            chooseTool(EditorTool.pen);
+          },
+          const SingleActivator(LogicalKeyboardKey.keyP): () {
+            chooseTool(EditorTool.pen);
+            setState(() => session.writingMode = WritingMode.pen);
+          },
+          const SingleActivator(LogicalKeyboardKey.keyB): () {
+            chooseTool(EditorTool.pen);
+            setState(() => session.writingMode = WritingMode.highlighter);
+          },
+          const SingleActivator(LogicalKeyboardKey.keyA): () {
+            chooseTool(EditorTool.pen);
+            setState(() => session.writingMode = WritingMode.tape);
+          },
+          const SingleActivator(LogicalKeyboardKey.keyD): () {
+            chooseTool(EditorTool.pen);
+            setState(() => session.writingMode = WritingMode.drawShape);
+          },
           const SingleActivator(LogicalKeyboardKey.keyE): () =>
               chooseTool(EditorTool.eraser),
           const SingleActivator(LogicalKeyboardKey.keyV): () =>
@@ -1613,6 +1628,9 @@ class _WorkspaceState extends State<Workspace>
                             onDelete: session.selection.isEmpty
                                 ? null
                                 : deleteSelection,
+                            onClearPage: clearActivePageInk,
+                            onRemoveAllTape: removeAllTape,
+                            onOpenCustomColor: _showCustomColorPicker,
                           ),
                         ),
                       ),
@@ -1952,11 +1970,43 @@ class _WorkspaceState extends State<Workspace>
     } else {
       snapshot();
       normalizeStyles();
+      final isHighlighter = session.tool == EditorTool.highlighter ||
+          (session.tool == EditorTool.pen &&
+              session.writingMode == WritingMode.highlighter);
+      final isTape = session.tool == EditorTool.pen &&
+          session.writingMode == WritingMode.tape;
+      final isShape = session.tool == EditorTool.pen &&
+          session.writingMode == WritingMode.drawShape;
+      final isPencil = session.tool == EditorTool.pen &&
+          session.writingMode == WritingMode.pencil;
+
+      final strokeKind = isTape
+          ? 'tape'
+          : isHighlighter
+              ? 'highlighter'
+              : isPencil
+                  ? 'pencil'
+                  : isShape
+                      ? 'shape'
+                      : 'pen';
+
+      final strokeWidth = isTape
+          ? 22.0
+          : isHighlighter
+              ? session.width * 4.0
+              : session.width;
+
+      final strokeOpacity = isHighlighter
+          ? 0.35
+          : isTape
+              ? 0.95
+              : 1.0;
+
       activeStyle = {
-        'width':
-            session.width * (session.tool == EditorTool.highlighter ? 5 : 1),
+        'kind': strokeKind,
+        'width': strokeWidth,
         'color': session.color,
-        'opacity': session.tool == EditorTool.highlighter ? 0.3 : 1.0,
+        'opacity': strokeOpacity,
       };
       setState(
         () => activeStroke = [
@@ -2009,46 +2059,214 @@ class _WorkspaceState extends State<Workspace>
     final targetIndex = pageIndex ?? activeStrokePageIndex;
     if (current == null || targetIndex >= current!.pages.length) return;
     final page = current!.pages[targetIndex];
-    final radius = session.width * 3;
-    final hits = <int>[];
-    for (var i = 0; i < page.strokes.length; i++) {
-      final stroke = page.strokes[i];
-      if (stroke.any(
-        (p) => (Offset(p[0], p[1]) - position).distance <= radius,
-      )) {
-        hits.add(i);
-        continue;
+    final radius = session.width.clamp(4.0, 60.0);
+    normalizeStyles();
+
+    bool canEraseStyle(Map<String, dynamic> style) {
+      final kind = style['kind'] as String?;
+      final opacity = (style['opacity'] as num?)?.toDouble() ?? 1.0;
+      if (kind == 'tape') {
+        return session.eraserFilters['Tape'] ?? true;
       }
-      for (var j = 1; j < stroke.length; j++) {
-        final a = Offset(stroke[j - 1][0], stroke[j - 1][1]);
-        final b = Offset(stroke[j][0], stroke[j][1]);
-        final line = b - a;
-        final t = line.distanceSquared == 0
-            ? 0.0
-            : (((position - a).dx * line.dx + (position - a).dy * line.dy) /
-                      line.distanceSquared)
-                  .clamp(0.0, 1.0);
-        if ((position - (a + line * t)).distance <= radius) {
+      if (kind == 'highlighter' || opacity < 1.0) {
+        return session.eraserFilters['Highlighter'] ?? true;
+      }
+      if (kind == 'pencil') {
+        return session.eraserFilters['Pencil'] ?? true;
+      }
+      return session.eraserFilters['Pen'] ?? true;
+    }
+
+    if (session.eraserType == EraserType.stroke) {
+      final hits = <int>[];
+      for (var i = 0; i < page.strokes.length; i++) {
+        if (i < page.inkStyles.length && !canEraseStyle(page.inkStyles[i])) {
+          continue;
+        }
+        final stroke = page.strokes[i];
+        if (stroke.any(
+          (p) => (Offset(p[0], p[1]) - position).distance <= radius,
+        )) {
           hits.add(i);
-          break;
+          continue;
+        }
+        for (var j = 1; j < stroke.length; j++) {
+          final a = Offset(stroke[j - 1][0], stroke[j - 1][1]);
+          final b = Offset(stroke[j][0], stroke[j][1]);
+          final line = b - a;
+          final t = line.distanceSquared == 0
+              ? 0.0
+              : (((position - a).dx * line.dx + (position - a).dy * line.dy) /
+                        line.distanceSquared)
+                    .clamp(0.0, 1.0);
+          if ((position - (a + line * t)).distance <= radius) {
+            hits.add(i);
+            break;
+          }
         }
       }
-    }
-    if (hits.isEmpty) {
+      if (hits.isEmpty) return;
+      setState(() {
+        if (!editedGesture) {
+          snapshot();
+          editedGesture = true;
+        }
+        for (final i in hits.reversed) {
+          page.strokes.removeAt(i);
+          page.inkStyles.removeAt(i);
+        }
+        save();
+      });
       return;
     }
-    setState(() {
-      if (!editedGesture) {
-        snapshot();
-        editedGesture = true;
+
+    // Precision & Standard: slice only the exact pixels/points within radius!
+    bool anyModified = false;
+    final newStrokes = <List<List<double>>>[];
+    final newStyles = <Map<String, dynamic>>[];
+
+    for (var i = 0; i < page.strokes.length; i++) {
+      final stroke = page.strokes[i];
+      final style =
+          i < page.inkStyles.length ? page.inkStyles[i] : <String, dynamic>{};
+      if (!canEraseStyle(style) || stroke.isEmpty) {
+        newStrokes.add(stroke);
+        newStyles.add(style);
+        continue;
       }
+
+      double minX = stroke[0][0], maxX = stroke[0][0];
+      double minY = stroke[0][1], maxY = stroke[0][1];
+      for (final p in stroke) {
+        if (p[0] < minX) minX = p[0];
+        if (p[0] > maxX) maxX = p[0];
+        if (p[1] < minY) minY = p[1];
+        if (p[1] > maxY) maxY = p[1];
+      }
+      final bbox =
+          Rect.fromLTRB(minX, minY, maxX, maxY).inflate(radius + 4.0);
+      if (!bbox.contains(position)) {
+        newStrokes.add(stroke);
+        newStyles.add(style);
+        continue;
+      }
+
+      // Densify points along stroke segments so fast swipes don't skip
+      final dense = <List<double>>[];
+      for (var j = 0; j < stroke.length; j++) {
+        final p1 = stroke[j];
+        if (j == 0) {
+          dense.add(p1);
+        } else {
+          final p0 = stroke[j - 1];
+          final dist =
+              (Offset(p1[0], p1[1]) - Offset(p0[0], p0[1])).distance;
+          final step = math.max(1.8, radius / 2.5);
+          if (dist > step) {
+            final count = (dist / step).ceil();
+            for (var k = 1; k < count; k++) {
+              final t = k / count;
+              dense.add([
+                p0[0] + (p1[0] - p0[0]) * t,
+                p0[1] + (p1[1] - p0[1]) * t,
+                p0[2] + (p1[2] - p0[2]) * t,
+              ]);
+            }
+          }
+          dense.add(p1);
+        }
+      }
+
+      final segments = <List<List<double>>>[];
+      List<List<double>> currentSegment = [];
+      bool strokeHit = false;
+
+      for (final p in dense) {
+        final isInside = (Offset(p[0], p[1]) - position).distance <= radius;
+        if (isInside) {
+          strokeHit = true;
+          if (currentSegment.isNotEmpty) {
+            segments.add(currentSegment);
+            currentSegment = [];
+          }
+        } else {
+          currentSegment.add(p);
+        }
+      }
+      if (currentSegment.isNotEmpty) {
+        segments.add(currentSegment);
+      }
+
+      if (strokeHit) {
+        anyModified = true;
+        for (final seg in segments) {
+          if (seg.isNotEmpty) {
+            newStrokes.add(seg);
+            newStyles.add(Map<String, dynamic>.from(style));
+          }
+        }
+      } else {
+        newStrokes.add(stroke);
+        newStyles.add(style);
+      }
+    }
+
+    if (anyModified) {
+      setState(() {
+        if (!editedGesture) {
+          snapshot();
+          editedGesture = true;
+        }
+        page.strokes
+          ..clear()
+          ..addAll(newStrokes);
+        page.inkStyles
+          ..clear()
+          ..addAll(newStyles);
+        save();
+      });
+    }
+  }
+
+  void clearActivePageInk() {
+    final page = _activePage;
+    if (page.strokes.isEmpty) return;
+    snapshot();
+    setState(() {
+      page.strokes.clear();
+      page.inkStyles.clear();
+      session.selection.clear();
+      save();
+    });
+  }
+
+  void removeAllTape() {
+    final page = _activePage;
+    snapshot();
+    setState(() {
       normalizeStyles();
-      for (final i in hits.reversed) {
-        page.strokes.removeAt(i);
-        page.inkStyles.removeAt(i);
+      for (var i = page.strokes.length - 1; i >= 0; i--) {
+        if (i < page.inkStyles.length && page.inkStyles[i]['kind'] == 'tape') {
+          page.strokes.removeAt(i);
+          page.inkStyles.removeAt(i);
+        }
       }
       save();
     });
+  }
+
+  Future<void> _showCustomColorPicker() async {
+    final selected = await showDialog<Color>(
+      context: context,
+      builder: (ctx) => CustomColorPickerDialog(
+        initialColor: session.color ?? 0xff151515,
+      ),
+    );
+    if (selected != null) {
+      setState(() {
+        session.color = selected.toARGB32();
+      });
+    }
   }
 
   void deleteSelection() {
@@ -2078,8 +2296,28 @@ class _WorkspaceState extends State<Workspace>
     final page = _activePage;
     setState(() {
       if (activeStroke != null) {
-        page.strokes.add(activeStroke!);
-        page.inkStyles.add(activeStyle!);
+        var finalStroke = activeStroke!;
+        var finalStyle = Map<String, dynamic>.from(activeStyle!);
+
+        if (session.writingMode == WritingMode.tape &&
+            session.tapeStraight &&
+            finalStroke.length > 1) {
+          finalStroke = [
+            finalStroke.first,
+            finalStroke.last,
+          ];
+        } else if (session.writingMode == WritingMode.drawShape &&
+            finalStroke.length >= 2) {
+          final recognized = _recognizeAndFitShape(finalStroke, session);
+          finalStroke = recognized.stroke;
+          if (recognized.isClosed && session.shapeFillColor) {
+            finalStyle['fill'] = true;
+            finalStyle['fillColor'] = session.color;
+          }
+        }
+
+        page.strokes.add(finalStroke);
+        page.inkStyles.add(finalStyle);
         save();
       } else if (session.tool == EditorTool.select &&
           !movingSelection &&
@@ -2091,6 +2329,9 @@ class _WorkspaceState extends State<Workspace>
             session.selection.add(i);
           }
         }
+      } else if (session.tool == EditorTool.eraser &&
+          session.eraserAutoDeselect) {
+        session.tool = session.previousTool;
       } else if (editedGesture) {
         save();
       }
@@ -2101,6 +2342,118 @@ class _WorkspaceState extends State<Workspace>
       gestureStart = null;
     });
   }
+}
+
+class _RecognizedShape {
+  const _RecognizedShape({required this.stroke, required this.isClosed});
+  final List<List<double>> stroke;
+  final bool isClosed;
+}
+
+_RecognizedShape _recognizeAndFitShape(
+  List<List<double>> stroke,
+  EditorSession session,
+) {
+  if (stroke.length < 2) {
+    return _RecognizedShape(stroke: stroke, isClosed: false);
+  }
+
+  final first = stroke.first;
+  final last = stroke.last;
+  final endDist =
+      (Offset(last[0], last[1]) - Offset(first[0], first[1])).distance;
+
+  double minX = stroke[0][0], maxX = stroke[0][0];
+  double minY = stroke[0][1], maxY = stroke[0][1];
+  double totalLength = 0;
+  for (var i = 0; i < stroke.length; i++) {
+    final x = stroke[i][0];
+    final y = stroke[i][1];
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+    if (i > 0) {
+      totalLength +=
+          (Offset(x, y) - Offset(stroke[i - 1][0], stroke[i - 1][1])).distance;
+    }
+  }
+
+  final width = maxX - minX;
+  final height = maxY - minY;
+  final maxDim = math.max(width, height);
+
+  // 1. Straight Line Check
+  if (totalLength > 0 && (endDist / totalLength) >= 0.82) {
+    double maxDev = 0;
+    final lineVec = Offset(last[0] - first[0], last[1] - first[1]);
+    final lenSq = lineVec.distanceSquared;
+    for (final p in stroke) {
+      if (lenSq > 0) {
+        final t = (((p[0] - first[0]) * lineVec.dx +
+                    (p[1] - first[1]) * lineVec.dy) /
+                lenSq)
+            .clamp(0.0, 1.0);
+        final proj =
+            Offset(first[0] + lineVec.dx * t, first[1] + lineVec.dy * t);
+        final dev = (Offset(p[0], p[1]) - proj).distance;
+        if (dev > maxDev) maxDev = dev;
+      }
+    }
+    if (maxDev < math.max(16.0, totalLength * 0.15)) {
+      return _RecognizedShape(
+        stroke: [
+          [first[0], first[1], first[2]],
+          [last[0], last[1], last[2]],
+        ],
+        isClosed: false,
+      );
+    }
+  }
+
+  // 2. Closed Loop Checks
+  final isLoop = endDist <= math.max(36.0, maxDim * 0.35);
+
+  if (isLoop && width > 15 && height > 15) {
+    final cx = (minX + maxX) / 2;
+    final cy = (minY + maxY) / 2;
+    final rx = width / 2;
+    final ry = height / 2;
+
+    double sumDistFromEllipse = 0;
+    for (final p in stroke) {
+      final dx = (p[0] - cx) / (rx == 0 ? 1 : rx);
+      final dy = (p[1] - cy) / (ry == 0 ? 1 : ry);
+      final d = (math.sqrt(dx * dx + dy * dy) - 1.0).abs();
+      sumDistFromEllipse += d;
+    }
+    final avgEllipseErr = sumDistFromEllipse / stroke.length;
+
+    if (avgEllipseErr < 0.28) {
+      const count = 36;
+      final ellipsePoints = <List<double>>[];
+      for (var i = 0; i <= count; i++) {
+        final theta = (i / count) * 2 * math.pi;
+        ellipsePoints.add([
+          cx + rx * math.cos(theta),
+          cy + ry * math.sin(theta),
+          first[2],
+        ]);
+      }
+      return _RecognizedShape(stroke: ellipsePoints, isClosed: true);
+    }
+
+    final rectPoints = <List<double>>[
+      [minX, minY, first[2]],
+      [maxX, minY, first[2]],
+      [maxX, maxY, first[2]],
+      [minX, maxY, first[2]],
+      [minX, minY, first[2]],
+    ];
+    return _RecognizedShape(stroke: rectPoints, isClosed: true);
+  }
+
+  return _RecognizedShape(stroke: stroke, isClosed: false);
 }
 
 class _PageCreationLoader extends StatelessWidget {
@@ -2343,9 +2696,28 @@ class InkPainter extends CustomPainter {
           Paint()..color = Colors.white.withValues(alpha: opacity),
         );
       }
+      if (style['fill'] == true && stroke.length >= 3) {
+        final fillPath = Path();
+        fillPath.moveTo(stroke[0][0], stroke[0][1]);
+        for (var i = 1; i < stroke.length; i++) {
+          fillPath.lineTo(stroke[i][0], stroke[i][1]);
+        }
+        fillPath.close();
+        final fillColor = style['fillColor'] is int
+            ? Color(style['fillColor'] as int)
+            : strokeColor;
+        canvas.drawPath(
+          fillPath,
+          Paint()
+            ..color = fillColor.withValues(alpha: 0.22)
+            ..style = PaintingStyle.fill,
+        );
+      }
+      final isTape = style['kind'] == 'tape';
       final paint = Paint()
         ..color = strokeColor
-        ..strokeCap = StrokeCap.round;
+        ..strokeCap = isTape ? StrokeCap.square : StrokeCap.round
+        ..strokeJoin = isTape ? StrokeJoin.miter : StrokeJoin.round;
       for (var i = 0; i < stroke.length; i++) {
         final p = stroke[i];
         paint.strokeWidth = width * (0.5 + 0.5 * p[2].clamp(0, 1));
