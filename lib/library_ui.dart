@@ -114,8 +114,8 @@ class DocumentCover extends StatelessWidget {
     final foreground = hasImage
         ? Colors.white
         : (Color(note.cover).computeLuminance() > 0.45
-            ? Colors.black87
-            : Colors.white);
+              ? Colors.black87
+              : Colors.white);
     return Container(
       decoration: BoxDecoration(
         color: Color(note.cover),
@@ -452,9 +452,7 @@ class _LibraryViewState extends State<LibraryView> {
                       ),
                     ),
                     const Expanded(
-                      child: DragToMoveArea(
-                        child: SizedBox(height: 32),
-                      ),
+                      child: DragToMoveArea(child: SizedBox(height: 32)),
                     ),
                     DesktopButton.icon(
                       onPressed: widget.enabled
@@ -599,14 +597,16 @@ class _LibraryViewState extends State<LibraryView> {
                                                 ? CupertinoIcons.star_fill
                                                 : CupertinoIcons.star,
                                             size: 18,
-                                            color: (n.coverImage != null &&
+                                            color:
+                                                (n.coverImage != null &&
                                                     n.coverImage!.isNotEmpty)
                                                 ? Colors.white70
-                                                : (Color(n.cover)
-                                                            .computeLuminance() >
-                                                        0.45
-                                                    ? Colors.black87
-                                                    : Colors.white70),
+                                                : (Color(
+                                                            n.cover,
+                                                          ).computeLuminance() >
+                                                          0.45
+                                                      ? Colors.black87
+                                                      : Colors.white70),
                                           ),
                                         ),
                                       ),
@@ -723,8 +723,9 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
   @override
   void initState() {
     super.initState();
-    final chosenKind = widget.initialKind ?? 'Notebook';
-    draft = widget.existing?.copy() ??
+    const chosenKind = 'Notebook';
+    draft =
+        widget.existing?.copy() ??
         Notebook(
           id: newId(),
           title: '',
@@ -743,6 +744,7 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
   }
 
   void _submit() {
+    if (widget.existing == null && draft.kind != 'Notebook') return;
     draft.title = name.text.trim().isEmpty
         ? 'Untitled ${draft.kind.toLowerCase()}'
         : name.text.trim();
@@ -776,7 +778,8 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
     0xff634832 => 'Espresso',
     0xff4a5d3f => 'Sage',
     0xff162032 => 'Midnight',
-    _ => '#${(color & 0xffffff).toRadixString(16).padLeft(6, '0').toUpperCase()}',
+    _ =>
+      '#${(color & 0xffffff).toRadixString(16).padLeft(6, '0').toUpperCase()}',
   };
 
   Future<void> _pickCoverImage() async {
@@ -794,8 +797,9 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
       try {
         final codec = await ui.instantiateImageCodec(bytes, targetWidth: 800);
         final frame = await codec.getNextFrame();
-        final byteData =
-            await frame.image.toByteData(format: ui.ImageByteFormat.png);
+        final byteData = await frame.image.toByteData(
+          format: ui.ImageByteFormat.png,
+        );
         frame.image.dispose();
         if (byteData != null) {
           base64Str = base64Encode(byteData.buffer.asUint8List());
@@ -837,8 +841,9 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final titleLabel =
-        widget.existing == null ? 'New Notebook' : 'Document Style';
+    final titleLabel = widget.existing == null
+        ? 'New Notebook'
+        : 'Document Style';
     final actionLabel = widget.existing == null ? 'Create' : 'Save style';
 
     return DesktopDialog(
@@ -896,9 +901,8 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(
-                              0xff007aff,
-                            ).withValues(alpha: 0.4),
+                            color: const Color(0xff007aff)
+                                .withValues(alpha: 0.4),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -1023,12 +1027,11 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
                                       size: 18,
                                       color: draft.coverImage != null
                                           ? Colors.white
-                                          : (Color(
-                                                    draft.cover,
-                                                  ).computeLuminance() >
-                                                  0.45
-                                              ? Colors.black87
-                                              : Colors.white),
+                                          : (Color(draft.cover)
+                                                        .computeLuminance() >
+                                                    0.45
+                                                ? Colors.black87
+                                                : Colors.white),
                                     ),
                                     const Spacer(),
                                     Text(
@@ -1042,12 +1045,11 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
                                         fontWeight: FontWeight.bold,
                                         color: draft.coverImage != null
                                             ? Colors.white
-                                            : (Color(
-                                                      draft.cover,
-                                                    ).computeLuminance() >
-                                                    0.45
-                                                ? Colors.black87
-                                                : Colors.white),
+                                            : (Color(draft.cover)
+                                                          .computeLuminance() >
+                                                      0.45
+                                                  ? Colors.black87
+                                                  : Colors.white),
                                         shadows: draft.coverImage != null
                                             ? const [
                                                 Shadow(
@@ -1165,19 +1167,22 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
                                       alignment: Alignment.centerRight,
                                       child: DesktopPopupButton<String>(
                                         value: draft.kind,
-                                        items: documentKinds
-                                            .map(
-                                              (v) => DesktopMenuItem(
-                                                value: v,
-                                                child: Text(
-                                                  v,
-                                                  style: const TextStyle(
-                                                    fontSize: 12,
+                                        items:
+                                            (widget.existing == null
+                                                    ? ['Notebook']
+                                                    : [draft.kind])
+                                                .map(
+                                                  (v) => DesktopMenuItem(
+                                                    value: v,
+                                                    child: Text(
+                                                      v,
+                                                      style: const TextStyle(
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
                                                   ),
-                                                ),
-                                              ),
-                                            )
-                                            .toList(),
+                                                )
+                                                .toList(),
                                         onChanged: (v) => setState(() {
                                           draft.kind = v!;
                                           if (v == 'Whiteboard') {
@@ -1891,7 +1896,8 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
 
   Widget _buildColorPaletteRow() {
     final colors = vibrantCoverColors.take(6).toList();
-    final isCustomSelected = draft.coverImage == null &&
+    final isCustomSelected =
+        draft.coverImage == null &&
         !coverColors.contains(draft.cover) &&
         !vibrantCoverColors.contains(draft.cover);
     return Column(
@@ -2332,10 +2338,7 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
                   SizedBox(height: 4),
                   Text(
                     'Your uploaded image is active for this notebook and saved locally.',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 11.5,
-                    ),
+                    style: TextStyle(color: Colors.grey, fontSize: 11.5),
                   ),
                 ],
               ),
@@ -2411,10 +2414,7 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
                   SizedBox(height: 3),
                   Text(
                     'Select any PNG, JPG, or WEBP image to embed directly in this notebook.',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 11.5,
-                    ),
+                    style: TextStyle(color: Colors.grey, fontSize: 11.5),
                   ),
                 ],
               ),
@@ -2614,190 +2614,191 @@ class _CustomColorPickerDialogState extends State<CustomColorPickerDialog> {
                     ),
                   ),
                   GestureDetector(
-                  onTap: () => Navigator.pop(context, currentColor),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xff007aff),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Text(
-                      'Done',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
+                    onTap: () => Navigator.pop(context, currentColor),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 6,
                       ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xff222226),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white12),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: currentColor,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.white24, width: 1.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: currentColor.withValues(alpha: 0.35),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Icon(
-                        isDark
-                            ? CupertinoIcons.moon_fill
-                            : CupertinoIcons.sun_max_fill,
-                        size: 16,
-                        color: isDark ? Colors.white70 : Colors.black87,
+                      decoration: BoxDecoration(
+                        color: const Color(0xff007aff),
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'HEX COLOR CODE',
-                          style: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.8,
-                          ),
+                      child: const Text(
+                        'Done',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
                         ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Text(
-                              '#',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: DesktopTextField(
-                                key: const Key('custom-hex-field'),
-                                controller: hexController,
-                                onChanged: _onHexChanged,
-                                placeholder: '3A86FF',
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'SPECTRUM PALETTE',
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.8,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 7,
-              runSpacing: 7,
-              children: curatedSpectrum.map((color) {
-                final isSelected = currentColor.toARGB32() == color.toARGB32();
-                return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      currentColor = color;
-                      red = (color.r * 255).round().clamp(0, 255);
-                      green = (color.g * 255).round().clamp(0, 255);
-                      blue = (color.b * 255).round().clamp(0, 255);
-                      hexController.text = _colorToHex(color);
-                    });
-                  },
-                  child: Container(
-                    width: 27,
-                    height: 27,
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: isSelected
-                            ? Colors.white
-                            : Colors.white.withValues(alpha: 0.15),
-                        width: isSelected ? 2 : 0.8,
+              const SizedBox(height: 18),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xff222226),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white12),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: currentColor,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white24, width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: currentColor.withValues(alpha: 0.35),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                      boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                color: color.withValues(alpha: 0.6),
-                                blurRadius: 6,
+                      child: Center(
+                        child: Icon(
+                          isDark
+                              ? CupertinoIcons.moon_fill
+                              : CupertinoIcons.sun_max_fill,
+                          size: 16,
+                          color: isDark ? Colors.white70 : Colors.black87,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'HEX COLOR CODE',
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Text(
+                                '#',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ]
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: DesktopTextField(
+                                  key: const Key('custom-hex-field'),
+                                  controller: hexController,
+                                  onChanged: _onHexChanged,
+                                  placeholder: '3A86FF',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'SPECTRUM PALETTE',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 7,
+                runSpacing: 7,
+                children: curatedSpectrum.map((color) {
+                  final isSelected =
+                      currentColor.toARGB32() == color.toARGB32();
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        currentColor = color;
+                        red = (color.r * 255).round().clamp(0, 255);
+                        green = (color.g * 255).round().clamp(0, 255);
+                        blue = (color.b * 255).round().clamp(0, 255);
+                        hexController.text = _colorToHex(color);
+                      });
+                    },
+                    child: Container(
+                      width: 27,
+                      height: 27,
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: isSelected
+                              ? Colors.white
+                              : Colors.white.withValues(alpha: 0.15),
+                          width: isSelected ? 2 : 0.8,
+                        ),
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: color.withValues(alpha: 0.6),
+                                  blurRadius: 6,
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: isSelected
+                          ? Icon(
+                              CupertinoIcons.checkmark,
+                              size: 14,
+                              color: color.computeLuminance() > 0.45
+                                  ? Colors.black87
+                                  : Colors.white,
+                            )
                           : null,
                     ),
-                    child: isSelected
-                        ? Icon(
-                            CupertinoIcons.checkmark,
-                            size: 14,
-                            color: color.computeLuminance() > 0.45
-                                ? Colors.black87
-                                : Colors.white,
-                          )
-                        : null,
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              'RGB ADJUSTMENT',
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.8,
+                  );
+                }).toList(),
               ),
-            ),
-            const SizedBox(height: 6),
-            _buildRgbSlider('Red', red, const Color(0xffef4444), (v) {
-              _updateFromRgb(v.round(), green, blue);
-            }),
-            _buildRgbSlider('Green', green, const Color(0xff22c55e), (v) {
-              _updateFromRgb(red, v.round(), blue);
-            }),
-            _buildRgbSlider('Blue', blue, const Color(0xff3b82f6), (v) {
-              _updateFromRgb(red, green, v.round());
-            }),
-          ],
+              const SizedBox(height: 18),
+              const Text(
+                'RGB ADJUSTMENT',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const SizedBox(height: 6),
+              _buildRgbSlider('Red', red, const Color(0xffef4444), (v) {
+                _updateFromRgb(v.round(), green, blue);
+              }),
+              _buildRgbSlider('Green', green, const Color(0xff22c55e), (v) {
+                _updateFromRgb(red, v.round(), blue);
+              }),
+              _buildRgbSlider('Blue', blue, const Color(0xff3b82f6), (v) {
+                _updateFromRgb(red, green, v.round());
+              }),
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
   }
 
   Widget _buildRgbSlider(
@@ -2882,11 +2883,7 @@ class NewPillButton extends StatelessWidget {
             child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  CupertinoIcons.plus,
-                  size: 14,
-                  color: Colors.white,
-                ),
+                Icon(CupertinoIcons.plus, size: 14, color: Colors.white),
                 SizedBox(width: 5),
                 Text(
                   'New',
@@ -2931,16 +2928,10 @@ Future<void> showNewDocumentMenu(
     transitionDuration: const Duration(milliseconds: 140),
     transitionBuilder: (context, animation, secondaryAnimation, child) {
       return FadeTransition(
-        opacity: CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOutQuad,
-        ),
+        opacity: CurvedAnimation(parent: animation, curve: Curves.easeOutQuad),
         child: ScaleTransition(
           scale: Tween<double>(begin: 0.95, end: 1.0).animate(
-            CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOutCubic,
-            ),
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
           ),
           alignment: Alignment.topCenter,
           child: child,
@@ -2971,10 +2962,14 @@ class _NewDocumentMenuDialog extends StatelessWidget {
     const arrowHeight = 9.0;
 
     final buttonCenterX = targetRect.left + (targetRect.width / 2);
-    final cardLeft = (buttonCenterX - (cardWidth / 2))
-        .clamp(12.0, screenSize.width - cardWidth - 12.0);
-    final arrowLeft = (buttonCenterX - cardLeft - (arrowWidth / 2))
-        .clamp(16.0, cardWidth - 16.0 - arrowWidth);
+    final cardLeft = (buttonCenterX - (cardWidth / 2)).clamp(
+      12.0,
+      screenSize.width - cardWidth - 12.0,
+    );
+    final arrowLeft = (buttonCenterX - cardLeft - (arrowWidth / 2)).clamp(
+      16.0,
+      cardWidth - 16.0 - arrowWidth,
+    );
 
     final cardTop = targetRect.bottom + 8.0;
 
@@ -3047,7 +3042,7 @@ class _NewDocumentMenuDialog extends StatelessWidget {
                             child: _NewTopTile(
                               title: 'Whiteboard',
                               icon: CupertinoIcons.rectangle_grid_2x2,
-                              badge: 'NEW',
+                              badge: 'Later',
                               onTap: () {
                                 Navigator.of(context).pop();
                                 onCreateKind('Whiteboard');
@@ -3059,7 +3054,7 @@ class _NewDocumentMenuDialog extends StatelessWidget {
                             child: _NewTopTile(
                               title: 'Text Doc',
                               icon: CupertinoIcons.doc_text,
-                              badge: 'NEW',
+                              badge: 'Later',
                               onTap: () {
                                 Navigator.of(context).pop();
                                 onCreateKind('Text document');
@@ -3196,7 +3191,7 @@ class _NewDocumentMenuDialog extends StatelessWidget {
                           child: const Icon(
                             CupertinoIcons.lock_fill,
                             size: 11,
-                            color: Color(0xffdcd66b),
+                            color: Color(0xffaaaaaa),
                           ),
                         ),
                         onTap: () {
@@ -3219,10 +3214,7 @@ class _NewDocumentMenuDialog extends StatelessWidget {
 }
 
 class _PopoverArrowPainter extends CustomPainter {
-  const _PopoverArrowPainter({
-    required this.color,
-    required this.borderColor,
-  });
+  const _PopoverArrowPainter({required this.color, required this.borderColor});
 
   final Color color;
   final Color borderColor;
@@ -3278,72 +3270,76 @@ class _NewTopTileState extends State<_NewTopTile> {
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => hovering = true),
-      onExit: (_) => setState(() => hovering = false),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          height: 82,
-          decoration: BoxDecoration(
-            color: hovering
-                ? const Color(0xff36363a)
-                : const Color(0xff2c2c2e),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: hovering ? 0.12 : 0.06),
-              width: 0.8,
-            ),
-          ),
-          child: Stack(
-            children: [
-              Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(widget.icon, size: 24, color: Colors.white),
-                    const SizedBox(height: 7),
-                    Text(
-                      widget.title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
+    return _creationTile(
+      MouseRegion(
+        onEnter: (_) => setState(() => hovering = true),
+        onExit: (_) => setState(() => hovering = false),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            height: 82,
+            decoration: BoxDecoration(
+              color: hovering
+                  ? const Color(0xff36363a)
+                  : const Color(0xff2c2c2e),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: hovering ? 0.12 : 0.06),
+                width: 0.8,
               ),
-              if (widget.badge != null)
-                Positioned(
-                  top: 6,
-                  right: 6,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 5,
-                      vertical: 1.5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xff3f4015),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      widget.badge!,
-                      style: const TextStyle(
-                        color: Color(0xffdcd66b),
-                        fontSize: 8.5,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.3,
+            ),
+            child: Stack(
+              children: [
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(widget.icon, size: 24, color: Colors.white),
+                      const SizedBox(height: 7),
+                      Text(
+                        widget.title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (widget.badge != null)
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 1.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xff353535),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        widget.badge!,
+                        style: const TextStyle(
+                          color: Color(0xffaaaaaa),
+                          fontSize: 8.5,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.3,
+                        ),
                       ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
+      widget.title == 'Notebook',
+      widget.title,
     );
   }
 }
@@ -3370,57 +3366,61 @@ class _NewMidTileState extends State<_NewMidTile> {
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => hovering = true),
-      onExit: (_) => setState(() => hovering = false),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          height: 72,
-          decoration: BoxDecoration(
-            color: hovering
-                ? const Color(0xff36363a)
-                : const Color(0xff2c2c2e),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: hovering ? 0.12 : 0.06),
-              width: 0.8,
-            ),
-          ),
-          alignment: Alignment.center,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (widget.hasSparkle)
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(widget.icon, size: 21, color: Colors.white),
-                    const SizedBox(width: 3),
-                    const Icon(
-                      CupertinoIcons.sparkles,
-                      size: 11,
-                      color: Color(0xffe8e878),
-                    ),
-                  ],
-                )
-              else
-                Icon(widget.icon, size: 21, color: Colors.white),
-              const SizedBox(height: 6),
-              Text(
-                widget.title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
+    return _creationTile(
+      MouseRegion(
+        onEnter: (_) => setState(() => hovering = true),
+        onExit: (_) => setState(() => hovering = false),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            height: 72,
+            decoration: BoxDecoration(
+              color: hovering
+                  ? const Color(0xff36363a)
+                  : const Color(0xff2c2c2e),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: hovering ? 0.12 : 0.06),
+                width: 0.8,
               ),
-            ],
+            ),
+            alignment: Alignment.center,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.hasSparkle)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(widget.icon, size: 21, color: Colors.white),
+                      const SizedBox(width: 3),
+                      const Icon(
+                        CupertinoIcons.sparkles,
+                        size: 11,
+                        color: Color(0xffe8e878),
+                      ),
+                    ],
+                  )
+                else
+                  Icon(widget.icon, size: 21, color: Colors.white),
+                const SizedBox(height: 6),
+                Text(
+                  widget.title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
+      widget.title == 'Import',
+      widget.title,
     );
   }
 }
@@ -3445,32 +3445,36 @@ class _NewListTileState extends State<_NewListTile> {
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => hovering = true),
-      onExit: (_) => setState(() => hovering = false),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: widget.onTap,
-        child: Container(
-          height: 44,
-          color: hovering ? const Color(0xff36363a) : Colors.transparent,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          child: Row(
-            children: [
-              Icon(widget.icon, size: 19, color: Colors.white),
-              const SizedBox(width: 13),
-              Text(
-                widget.title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
+    return _creationTile(
+      MouseRegion(
+        onEnter: (_) => setState(() => hovering = true),
+        onExit: (_) => setState(() => hovering = false),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onTap,
+          child: Container(
+            height: 44,
+            color: hovering ? const Color(0xff36363a) : Colors.transparent,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Row(
+              children: [
+                Icon(widget.icon, size: 19, color: Colors.white),
+                const SizedBox(width: 13),
+                Text(
+                  widget.title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
+      false,
+      widget.title,
     );
   }
 }
@@ -3497,46 +3501,62 @@ class _NewStandaloneButtonState extends State<_NewStandaloneButton> {
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => hovering = true),
-      onExit: (_) => setState(() => hovering = false),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          height: 46,
-          decoration: BoxDecoration(
-            color: hovering
-                ? const Color(0xff36363a)
-                : const Color(0xff2c2c2e),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: hovering ? 0.12 : 0.06),
-              width: 0.8,
+    return _creationTile(
+      MouseRegion(
+        onEnter: (_) => setState(() => hovering = true),
+        onExit: (_) => setState(() => hovering = false),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            height: 46,
+            decoration: BoxDecoration(
+              color: hovering
+                  ? const Color(0xff36363a)
+                  : const Color(0xff2c2c2e),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: hovering ? 0.12 : 0.06),
+                width: 0.8,
+              ),
             ),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          child: Row(
-            children: [
-              Icon(widget.icon, size: 19, color: Colors.white),
-              const SizedBox(width: 13),
-              Expanded(
-                child: Text(
-                  widget.title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w500,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Row(
+              children: [
+                Icon(widget.icon, size: 19, color: Colors.white),
+                const SizedBox(width: 13),
+                Expanded(
+                  child: Text(
+                    widget.title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
-              ),
-              if (widget.trailing != null) widget.trailing!,
-            ],
+                if (widget.trailing != null) widget.trailing!,
+              ],
+            ),
           ),
         ),
       ),
+      false,
+      widget.title,
     );
   }
 }
 
+Widget _creationTile(Widget child, bool enabled, String title) => Tooltip(
+  message: enabled ? title : '$title — Coming later',
+  child: Semantics(
+    enabled: enabled,
+    button: true,
+    label: enabled ? title : '$title — Coming later',
+    child: Opacity(
+      opacity: enabled ? 1 : 0.4,
+      child: IgnorePointer(ignoring: !enabled, child: child),
+    ),
+  ),
+);
