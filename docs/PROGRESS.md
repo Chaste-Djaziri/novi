@@ -15,11 +15,13 @@
 - [ ] Step 11: Complete hands-on desktop acceptance checks listed below.
 
 ## Current
-Implemented smooth overscroll page creation animation and continuous scrolling:
-- Smooth Page Creation Glide: Replaced abrupt snapping with a 380ms `Curves.easeOutCubic` glide animation that smoothly frames the newly created page into view with its 24px top margin.
-- Non-blocking Continuous Scrolling: Removed the blocking `_isCreatingPage` check from `_handleScrollDelta`. User scroll and trackpad events immediately take over or continue smoothly through page creation, driving the view deeper into the new sheet without frame drops or stutters.
-- Animated Progress Pill: Added `AnimatedOpacity` and `AnimatedScale` to `_PageCreationLoader` so the loader pill blooms and fades smoothly.
-- Automated Verification: Added widget test verifying animated glide into the new page and uninterrupted continuous scrolling during page creation. All 26 automated tests pass and analysis is completely clean (0 issues).
+Fixed overscroll glitch during new page creation and stabilized gesture physics:
+- Eliminated 72-96px boundary jumps: Removed `loaderExtra` shifts from `_getCanvasScrollBounds`, `_handleScrollDelta`, `LayoutBuilder`, and `CanvasScrollIndicator`. Content bounds and `minY` are now strictly stable across all states.
+- Asymptotic Rubber-Band Damping: Implemented `_calculateOverscrollShift` using smooth exponential damping ($110 \cdot (1 - e^{-\text{overscroll}/150})$), providing natural resistance without hard clamps or sudden jumps.
+- Resolved Trackpad Gesture Conflicts: Gated the 350ms bounce-back timer with `!_isTrackpadPanning` so it never fires or fights the user while fingers are resting or moving on the trackpad.
+- Non-oscillating Bounce-back: Replaced `Curves.easeOutBack` with `Curves.easeOutCubic`, eliminating spring overshooting/vibration when returning from overscroll.
+- Stable Headroom for Loader: Added permanent layout headroom in `childHeight` so `RenderFlex` never overflows and layout never shifts dynamically.
+- Automated Verification: All 26 automated tests pass and analysis is completely clean (0 issues).
 - [x] Configured `EditorTool.select` as initial tool when opening notebooks/documents.
 - [x] Converted top toolbar items and sub-components to icon-only buttons with zero text clutter, passing text names and actions into tooltips.
 - [x] Moved all more controls / tool options out of the top header into `FloatingToolControls`, freeing header vertical space to a clean 44px.
