@@ -52,8 +52,9 @@ class _PaperTextEditorState extends State<PaperTextEditor> {
     _wasComposing = composing;
     if (committedWithoutTextChange) {
       scheduleMicrotask(() {
-        if (mounted && widget.controller.text == value.text)
+        if (mounted && widget.controller.text == value.text) {
           widget.onChanged(value.text);
+        }
       });
     }
   }
