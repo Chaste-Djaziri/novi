@@ -569,6 +569,8 @@ Confirm material feel and pressure with a physical tablet in the normal Mac app.
 - [x] Verified analyzer and the writing-tool integration test after correcting pencil dispatch.
 - [x] Extended pen and pencil Draw and Hold completion to recognize closed loops plus open lines, L/angle gestures, and simple arrow-like two-segment strokes; open gestures retain their endpoints.
 - [x] Verified analyzer and ink/workspace tests after the recognition update.
+- [x] Fixed completion ordering so held pen and pencil gestures reach full shape recognition before line fitting; circles and other closed shapes are no longer flattened into long lines.
+- [x] Verified analyzer and shape-recognition integration coverage after the ordering fix.
 - [ ] Add live held-stroke shape preview and resize/move interaction before pointer release.
 - [ ] Finish reducing legacy editor files and add broader painter comparison coverage.
 
