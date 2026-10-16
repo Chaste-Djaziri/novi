@@ -504,6 +504,13 @@ Confirm material feel and pressure with a physical tablet in the normal Mac app.
 - [x] `flutter analyze`: no issues. `flutter test`: all 35 tests pass.
 - [ ] Extract the legacy `main.dart`, `workspace_tools.dart`, and `library_ui.dart` responsibilities into the new modules; the checker currently reports these known legacy files as warnings.
 
+## Incremental extraction: persistence and editor tool state — 2026-10-16
+- [x] Moved `LibraryStore`, `encodePortable`, and `decodePortable` into `lib/core/persistence/notebook_store.dart` using a compatibility-preserving Dart part boundary. Existing model APIs, JSON keys, archive versions, and callers remain unchanged.
+- [x] Extracted `LassoType`, `WritingMode`, `PenType`, `EraserType`, and `EditorTool` into `features/editor/tools/common/tool_types.dart`; the legacy toolbar re-exports them for compatibility.
+- [x] Added independent state modules for pen, pencil, highlighter, tape, and eraser under `features/editor/tools`, including serializable settings and listener-based updates.
+- [x] Added focused `test/tool_state_test.dart`; `flutter analyze` is clean and the full suite now passes 38 tests.
+- [ ] Continue extracting toolbar dialogs, tool renderers, pointer controllers, and `EditorSession` from `workspace_tools.dart`.
+
 
 ## Writing materials and paper footprints — 2026-10-16
 - [x] Added shared nib geometry and distinct fountain, ballpoint, brush, graphite pencil, highlighter and paper tape renderers. New styles store pen subtype/material version; legacy styles retain their renderer.
