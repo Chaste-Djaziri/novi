@@ -290,18 +290,27 @@ class _WorkspaceState extends State<Workspace> {
 
   void zoom(double factor) {
     setState(() {
-      final scale = session.view.value.getMaxScaleOnAxis();
-      final target = factor == 0 ? 1.0 : (scale * factor).clamp(0.05, 3.0);
+      final oldScale = session.view.value.getMaxScaleOnAxis();
+      final target = factor == 0 ? 1.0 : (oldScale * factor).clamp(0.05, 3.0);
       final matrix = Matrix4.identity()..scaleByDouble(target, target, target, 1);
       if (_lastConstraints != null) {
         final paperWidth = _currentPaperWidth * target;
         if (paperWidth <= _lastConstraints!.maxWidth) {
           matrix.storage[12] = 0.0;
-          matrix.storage[13] = 0.0;
         } else {
           final centeredTx = (_lastConstraints!.maxWidth - paperWidth) / 2;
           matrix.storage[12] = centeredTx;
         }
+        final hasCover = current?.kind == 'Notebook';
+        final pageHeight = current?.landscape == true ? 760.0 : 980.0;
+        final totalContentHeight = hasCover ? (pageHeight * 2 + 72.0) : (pageHeight + 48.0);
+        final totalHeight = totalContentHeight * target;
+        final double minY = totalHeight <= _lastConstraints!.maxHeight
+            ? 0.0
+            : _lastConstraints!.maxHeight - totalHeight;
+        final currentTy = session.view.value.storage[13];
+        final scaledTy = factor == 0 ? 0.0 : (currentTy * (target / oldScale));
+        matrix.storage[13] = scaledTy.clamp(minY, 0.0);
       }
       session.view.value = matrix;
     });
@@ -319,7 +328,9 @@ class _WorkspaceState extends State<Workspace> {
     final currentTy = matrix.storage[13];
 
     final paperWidth = pageWidth * scale;
-    final totalHeight = (pageHeight + 48) * scale;
+    final hasCover = current?.kind == 'Notebook';
+    final totalContentHeight = hasCover ? (pageHeight * 2 + 72.0) : (pageHeight + 48.0);
+    final totalHeight = totalContentHeight * scale;
 
     final double minX, maxX;
     if (paperWidth <= constraints.maxWidth) {
@@ -674,13 +685,15 @@ class _WorkspaceState extends State<Workspace> {
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   _lastConstraints = constraints;
+                  final hasCover = note.kind == 'Notebook';
                   final scale = session.view.value.getMaxScaleOnAxis();
                   final paperWidth = pageWidth * scale;
+                  final totalContentHeight = hasCover ? (pageHeight * 2 + 72.0) : (pageHeight + 48.0);
                   final isFitting = paperWidth <= constraints.maxWidth;
                   final childWidth = isFitting ? (constraints.maxWidth / scale) : pageWidth;
                   final childHeight = isFitting
-                      ? math.max(constraints.maxHeight / scale, pageHeight + 48)
-                      : math.max(constraints.maxHeight, pageHeight + 48);
+                      ? math.max(constraints.maxHeight / scale, totalContentHeight)
+                      : math.max(constraints.maxHeight, totalContentHeight);
                   return Listener(
                     onPointerSignal: (event) {
                       if (event is PointerScrollEvent) {
@@ -713,10 +726,37 @@ class _WorkspaceState extends State<Workspace> {
                         alignment: isFitting ? Alignment.center : Alignment.topCenter,
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 24),
-                          child: SizedBox(
-                            width: pageWidth,
-                            height: pageHeight,
-                          child: DecoratedBox(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (hasCover) ...[
+                                // Page 1: Notebook Cover
+                                SizedBox(
+                                  key: ValueKey('cover-page-${note.id}'),
+                                  width: pageWidth,
+                                  height: pageHeight,
+                                  child: DecoratedBox(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(12),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.35),
+                                          blurRadius: 16,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                    child: DocumentCover(note),
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                              ],
+                              // Paper Canvas
+                              SizedBox(
+                                key: ValueKey('paper-page-${note.id}'),
+                                width: pageWidth,
+                                height: pageHeight,
+                              child: DecoratedBox(
                             decoration: BoxDecoration(
                               boxShadow: [
                                 BoxShadow(
@@ -813,30 +853,34 @@ class _WorkspaceState extends State<Workspace> {
                           ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
               ),
-            );
-          },
-        ),
-      ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-              child: Row(
-                children: [
-                  Text(
-                    '${note.kind} / ${note.paper}',
-                    style: const TextStyle(fontSize: 10, color: Colors.grey),
-                  ),
-                  const Spacer(),
-                  Text(
-                    'Page 1 of 1 · ${session.tool.name}',
-                    style: const TextStyle(fontSize: 10, color: Colors.grey),
-                  ),
-                ],
-              ),
             ),
+          ),
+        );
+      },
+    ),
+  ),
+  Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+    child: Row(
+      children: [
+        Text(
+          '${note.kind} / ${note.paper}',
+          style: const TextStyle(fontSize: 10, color: Colors.grey),
+        ),
+        const Spacer(),
+        Text(
+          note.kind == 'Notebook'
+              ? 'Page ${(session.view.value.storage[13].abs() < (pageHeight * session.view.value.getMaxScaleOnAxis() * 0.5)) ? 1 : 2} of 2 · ${session.tool.name}'
+              : 'Page 1 of 1 · ${session.tool.name}',
+          style: const TextStyle(fontSize: 10, color: Colors.grey),
+        ),
+      ],
+    ),
+  ),
           ],
         ),
       ),
