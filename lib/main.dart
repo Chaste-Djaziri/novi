@@ -291,12 +291,13 @@ class _WorkspaceState extends State<Workspace> {
   void zoom(double factor) {
     setState(() {
       final scale = session.view.value.getMaxScaleOnAxis();
-      final target = factor == 0 ? 1.0 : (scale * factor).clamp(0.25, 3.0);
+      final target = factor == 0 ? 1.0 : (scale * factor).clamp(0.05, 3.0);
       final matrix = Matrix4.identity()..scaleByDouble(target, target, target, 1);
       if (_lastConstraints != null) {
         final paperWidth = _currentPaperWidth * target;
         if (paperWidth <= _lastConstraints!.maxWidth) {
           matrix.storage[12] = 0.0;
+          matrix.storage[13] = 0.0;
         } else {
           final centeredTx = (_lastConstraints!.maxWidth - paperWidth) / 2;
           matrix.storage[12] = centeredTx;
@@ -317,13 +318,12 @@ class _WorkspaceState extends State<Workspace> {
     final currentTx = matrix.storage[12];
     final currentTy = matrix.storage[13];
 
-    final effectiveHeight = math.max(constraints.maxHeight, pageHeight + 48);
     final paperWidth = pageWidth * scale;
-    final totalHeight = effectiveHeight * scale;
+    final totalHeight = (pageHeight + 48) * scale;
 
     final double minX, maxX;
     if (paperWidth <= constraints.maxWidth) {
-      // Don't allow side scrolls when paper fits in view
+      // Don't allow side scrolls when paper fits in view; keep centered
       minX = maxX = 0.0;
     } else {
       // When zoomed out of viewport, allow scroll only to the edges of the paper, not past it
@@ -333,7 +333,7 @@ class _WorkspaceState extends State<Workspace> {
 
     final double minY, maxY;
     if (totalHeight <= constraints.maxHeight) {
-      minY = maxY = (constraints.maxHeight - totalHeight) / 2;
+      minY = maxY = 0.0;
     } else {
       minY = constraints.maxHeight - totalHeight;
       maxY = 0.0;
@@ -678,7 +678,9 @@ class _WorkspaceState extends State<Workspace> {
                   final paperWidth = pageWidth * scale;
                   final isFitting = paperWidth <= constraints.maxWidth;
                   final childWidth = isFitting ? (constraints.maxWidth / scale) : pageWidth;
-                  final childHeight = math.max(constraints.maxHeight, pageHeight + 48);
+                  final childHeight = isFitting
+                      ? math.max(constraints.maxHeight / scale, pageHeight + 48)
+                      : math.max(constraints.maxHeight, pageHeight + 48);
                   return Listener(
                     onPointerSignal: (event) {
                       if (event is PointerScrollEvent) {
@@ -694,7 +696,7 @@ class _WorkspaceState extends State<Workspace> {
                       key: ValueKey('view-${note.id}'),
                       transformationController: session.view,
                       constrained: false,
-                      minScale: 0.25,
+                      minScale: 0.05,
                       maxScale: 3,
                       panAxis: isFitting ? PanAxis.vertical : PanAxis.free,
                       boundaryMargin: const EdgeInsets.symmetric(horizontal: 0, vertical: 50),
