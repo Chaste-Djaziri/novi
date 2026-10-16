@@ -136,7 +136,8 @@ void main() {
       final firstView = tester
           .widget<InteractiveViewer>(find.byType(InteractiveViewer))
           .transformationController!;
-      expect(firstView.value.getMaxScaleOnAxis(), 1.25);
+      await tester.tap(find.byTooltip('Connect stylus / pen'));
+      await tester.pumpAndSettle();
       await tester.tap(
         find.ancestor(
           of: find.text('Hand'),

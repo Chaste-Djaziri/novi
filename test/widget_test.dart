@@ -2,12 +2,12 @@ import 'desktop_test_support.dart';
 
 import 'dart:io';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:novi/main.dart';
@@ -833,6 +833,124 @@ void main() {
       );
       expect(inkCanvasesAfterUndo, findsNWidgets(1));
       expect(find.textContaining('Page 2 of 2'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'allows scroll without hand tool when using pc and keyboard/mouse and reveals hand when stylus is connected',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final directory = Directory.systemTemp.createTempSync('novi-scroll-test-');
+      final original = PathProviderPlatform.instance;
+      PathProviderPlatform.instance = TestPaths(directory.path);
+      addTearDown(() {
+        PathProviderPlatform.instance = original;
+        directory.deleteSync(recursive: true);
+      });
+
+      await tester.pumpWidget(const NoviApp());
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
+      await tester.pumpAndSettle();
+
+      // Create notebook
+      await tester.tap(find.text('New'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Notebook').first);
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('document-name')),
+        'Mouse Keyboard Scroll Doc',
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Create'));
+      await tester.tap(find.text('Create'));
+      await tester.pumpAndSettle();
+
+      final handFinder = find.ancestor(
+        of: find.text('Hand'),
+        matching: find.byType(DesktopToolButton),
+      );
+
+      // 1. Hand tool is initially HIDDEN when using mouse & keyboard normally
+      expect(handFinder, findsNothing);
+
+      final viewerFinder = find.byType(InteractiveViewer);
+      final coverFinder = find.byWidgetPredicate(
+        (w) =>
+            w is SizedBox &&
+            w.key is ValueKey<String> &&
+            (w.key! as ValueKey<String>).value.startsWith('cover-page-'),
+      );
+      final initialTop = tester.getTopLeft(coverFinder).dy;
+
+      // 2. Can scroll without the hand control using mouse wheel
+      final viewerCenter = tester.getCenter(viewerFinder);
+      await tester.sendEventToBinding(
+        PointerScrollEvent(
+          position: viewerCenter,
+          scrollDelta: const Offset(0, 150),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final scrolledTop = tester.getTopLeft(coverFinder).dy;
+      expect(scrolledTop, lessThan(initialTop));
+
+      // 3. Can scroll without the hand control using keyboard arrow keys
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      final arrowScrolledTop = tester.getTopLeft(coverFinder).dy;
+      expect(arrowScrolledTop, lessThan(scrolledTop));
+
+      // 4. Can scroll using PageDown key
+      await tester.sendKeyEvent(LogicalKeyboardKey.pageDown);
+      await tester.pumpAndSettle();
+      final pageDownTop = tester.getTopLeft(coverFinder).dy;
+      expect(pageDownTop, lessThan(arrowScrolledTop));
+
+      // 5. Connect stylus via the stylus toggle button (or stylus pointer event)
+      final stylusConnectFinder = find.byTooltip('Connect stylus / pen');
+      expect(stylusConnectFinder, findsOneWidget);
+      await tester.tap(stylusConnectFinder);
+      await tester.pumpAndSettle();
+
+      // Hand tool is now REVEALED and visible in the toolbar!
+      expect(handFinder, findsOneWidget);
+
+      // Select Hand tool
+      await tester.tap(handFinder);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('· hand'), findsOneWidget);
+
+      // Disconnect stylus: Hand tool hides again and tool switches to pen
+      await tester.tap(find.byTooltip('Stylus connected (click to disconnect)'));
+      await tester.pumpAndSettle();
+      expect(handFinder, findsNothing);
+      expect(find.textContaining('· pen'), findsOneWidget);
+
+      // 6. Connecting stylus via actual Stylus Pointer event automatically reveals Hand tool!
+      await tester.sendEventToBinding(
+        PointerDownEvent(
+          kind: PointerDeviceKind.stylus,
+          position: viewerCenter,
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.sendEventToBinding(
+        PointerUpEvent(
+          kind: PointerDeviceKind.stylus,
+          position: viewerCenter,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Automatically detected stylus: Hand tool is visible!
+      expect(handFinder, findsOneWidget);
     },
   );
 }
