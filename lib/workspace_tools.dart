@@ -10,6 +10,9 @@ import 'notebook.dart';
 import 'ink_material.dart';
 import 'features/editor/tools/common/tool_types.dart';
 
+// Temporary compatibility export for callers migrating from this legacy file.
+export 'features/editor/tools/common/tool_types.dart';
+
 class EditorSession {
   EditorSession(Notebook note)
     : text = TextEditingController(text: note.text),
