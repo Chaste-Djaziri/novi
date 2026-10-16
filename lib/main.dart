@@ -2073,7 +2073,13 @@ class _WorkspaceState extends State<Workspace>
       return;
     }
     if (session.tool == EditorTool.eraser) {
-      eraseAt(e.localPosition, pageIndex: activeStrokePageIndex);
+      final start = lastPoint ?? e.localPosition;
+      final delta = e.localPosition - start;
+      final steps = math.max(1, (delta.distance / math.max(1, session.eraserRadius / 2)).ceil());
+      for (var i = 1; i <= steps; i++) {
+        eraseAt(start + delta * (i / steps), pageIndex: activeStrokePageIndex, persist: false);
+      }
+      if (editedGesture) save();
     } else if (session.tool == EditorTool.select) {
       setState(() {
         if (movingSelection) {
@@ -2108,7 +2114,7 @@ class _WorkspaceState extends State<Workspace>
     lastPoint = e.localPosition;
   }
 
-  void eraseAt(Offset position, {int? pageIndex}) {
+  void eraseAt(Offset position, {int? pageIndex, bool persist = true}) {
     final targetIndex = pageIndex ?? activeStrokePageIndex;
     if (current == null || targetIndex >= current!.pages.length) return;
     final page = current!.pages[targetIndex];
@@ -2168,7 +2174,7 @@ class _WorkspaceState extends State<Workspace>
           page.strokes.removeAt(i);
           page.inkStyles.removeAt(i);
         }
-        save();
+        if (persist) save();
       });
       return;
     }
@@ -2276,7 +2282,7 @@ class _WorkspaceState extends State<Workspace>
         page.inkStyles
           ..clear()
           ..addAll(newStyles);
-        save();
+        if (persist) save();
       });
     }
   }
