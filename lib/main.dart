@@ -2542,7 +2542,9 @@ class _WorkspaceState extends State<Workspace>
           }
         }
 
-        if (finalStyle['kind'] == 'shape' || holdToShape) {
+        if (finalStyle['kind'] == 'shape' ||
+            holdToShape ||
+            !identical(finalStroke, activeStroke)) {
           finalStyle['originalPoints'] = originalPoints;
         }
         page.strokes.add(finalStroke);
