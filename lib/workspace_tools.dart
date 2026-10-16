@@ -112,6 +112,7 @@ class WorkspaceToolbar extends StatelessWidget {
           height: 42,
           child: LayoutBuilder(
             builder: (context, bounds) {
+              final compact = bounds.maxWidth < 1100;
               final tools = EditorTool.values
                   .where((tool) => tool != EditorTool.hand || hasStylus)
                   .toList();
@@ -193,14 +194,17 @@ class WorkspaceToolbar extends StatelessWidget {
                                       EditorTool.hand =>
                                         CupertinoIcons.hand_raised,
                                     }, size: 17),
-                                    label: Text(switch (tool) {
-                                      EditorTool.pen => 'Draw',
-                                      EditorTool.highlighter => 'Highlight',
-                                      EditorTool.eraser => 'Erase',
-                                      EditorTool.select => 'Select',
-                                      EditorTool.text => 'Type',
-                                      EditorTool.hand => 'Hand',
-                                    }),
+                                    label: compact
+                                        ? const SizedBox.shrink()
+                                        : Text(switch (tool) {
+                                            EditorTool.pen => 'Draw',
+                                            EditorTool.highlighter =>
+                                              'Highlight',
+                                            EditorTool.eraser => 'Erase',
+                                            EditorTool.select => 'Select',
+                                            EditorTool.text => 'Type',
+                                            EditorTool.hand => 'Hand',
+                                          }),
                                     selected: session.tool == tool,
                                     onSelected: (_) => onTool(tool),
                                   ),
