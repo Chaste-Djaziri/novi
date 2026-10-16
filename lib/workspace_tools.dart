@@ -11,7 +11,7 @@ enum EditorTool { pen, highlighter, eraser, select, text, hand }
 class EditorSession {
   EditorSession(Notebook note)
     : text = TextEditingController(text: note.text),
-      tool = note.kind == 'Text document' ? EditorTool.text : EditorTool.pen {
+      tool = note.kind == 'Text document' ? EditorTool.text : EditorTool.select {
     textFocus.addListener(() {
       if (textFocus.hasFocus) activeTextPage = 0;
     });
@@ -47,7 +47,7 @@ class EditorSession {
   final Set<int> selection = {};
   final Set<int> composingPages = {};
   EditorTool tool;
-  EditorTool previousTool = EditorTool.pen;
+  EditorTool previousTool = EditorTool.select;
   double width = 3;
   int? color;
   void dispose() {
@@ -100,9 +100,9 @@ class WorkspaceToolbar extends StatelessWidget {
   final VoidCallback? onTogglePages;
   final bool showPages;
   static const futureTools = <String, IconData>{
-    'Shapes': CupertinoIcons.square,
-    'Images': CupertinoIcons.photo,
     'Stickers': CupertinoIcons.smiley,
+    'Images': CupertinoIcons.photo,
+    'Shapes': CupertinoIcons.square_on_circle,
     'Sticky notes': CupertinoIcons.doc_text,
     'Laser pointer': CupertinoIcons.sparkles,
     'Recording': CupertinoIcons.mic,
@@ -113,28 +113,30 @@ class WorkspaceToolbar extends StatelessWidget {
   };
   Widget planned(String name, IconData icon) => DesktopIconButton(
     tooltip: '$name — Coming later',
-    icon: Icon(icon, size: 18),
+    icon: Icon(icon, size: 17),
     onPressed: null,
   );
   @override
   Widget build(BuildContext context) => Container(
     decoration: const BoxDecoration(
-      color: Color(0xff202020),
-      border: Border(bottom: BorderSide(color: Color(0xff383838))),
+      color: Color(0xff1d1d20),
+      border: Border(bottom: BorderSide(color: Color(0xff2d2d32), width: 0.8)),
     ),
     child: Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
-          height: 42,
+          height: 44,
           child: LayoutBuilder(
             builder: (context, bounds) {
-              final compact = bounds.maxWidth < 1100;
               final tools = EditorTool.values
                   .where((tool) => tool != EditorTool.hand || hasStylus)
                   .toList();
               final extras = bounds.maxWidth >= 1200
                   ? futureTools.entries.take(5).toList()
-                  : <MapEntry<String, IconData>>[];
+                  : bounds.maxWidth >= 1050
+                      ? futureTools.entries.take(3).toList()
+                      : <MapEntry<String, IconData>>[];
               return Stack(
                 alignment: Alignment.center,
                 children: [
@@ -174,18 +176,13 @@ class WorkspaceToolbar extends StatelessWidget {
                             size: 18,
                           ),
                         ),
-                        DesktopIconButton(
-                          tooltip: 'Delete selected ink',
-                          onPressed: onDelete,
-                          icon: const Icon(CupertinoIcons.trash, size: 18),
-                        ),
                       ],
                     ),
                   ),
                   Center(
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
-                        maxWidth: (bounds.maxWidth - 230).clamp(
+                        maxWidth: (bounds.maxWidth - 240).clamp(
                           0,
                           double.infinity,
                         ),
@@ -199,49 +196,42 @@ class WorkspaceToolbar extends StatelessWidget {
                             ...tools.map(
                               (tool) => Padding(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 2,
+                                  horizontal: 2.5,
                                 ),
-                                child: Tooltip(
-                                  message: switch (tool) {
-                                    EditorTool.pen => 'Pen',
-                                    EditorTool.highlighter => 'Highlighter',
-                                    EditorTool.eraser => 'Stroke eraser',
-                                    EditorTool.select => 'Select ink',
+                                child: DesktopToolButton(
+                                  key: ValueKey('tool-${tool.name}'),
+                                  tooltip: switch (tool) {
+                                    EditorTool.pen => 'Draw',
+                                    EditorTool.highlighter => 'Highlight',
+                                    EditorTool.eraser => 'Erase',
+                                    EditorTool.select => 'Select',
                                     EditorTool.text => 'Type',
-                                    EditorTool.hand => 'Hand / pan',
+                                    EditorTool.hand => 'Hand',
                                   },
-                                  child: DesktopToolButton(
-                                    key: ValueKey('tool-${tool.name}'),
-                                    avatar: Icon(switch (tool) {
-                                      EditorTool.pen => CupertinoIcons.pencil,
-                                      EditorTool.highlighter =>
-                                        CupertinoIcons.pencil_outline,
-                                      EditorTool.eraser =>
-                                        CupertinoIcons.pencil_slash,
-                                      EditorTool.select => CupertinoIcons.crop,
-                                      EditorTool.text =>
-                                        CupertinoIcons.textformat,
-                                      EditorTool.hand =>
-                                        CupertinoIcons.hand_raised,
-                                    }, size: 17),
-                                    label: compact
-                                        ? const SizedBox.shrink()
-                                        : Text(switch (tool) {
-                                            EditorTool.pen => 'Draw',
-                                            EditorTool.highlighter =>
-                                              'Highlight',
-                                            EditorTool.eraser => 'Erase',
-                                            EditorTool.select => 'Select',
-                                            EditorTool.text => 'Type',
-                                            EditorTool.hand => 'Hand',
-                                          }),
-                                    selected: session.tool == tool,
-                                    onSelected: (_) => onTool(tool),
-                                  ),
+                                  avatar: Icon(switch (tool) {
+                                    EditorTool.pen => CupertinoIcons.pencil,
+                                    EditorTool.highlighter =>
+                                      CupertinoIcons.pencil_outline,
+                                    EditorTool.eraser =>
+                                      CupertinoIcons.pencil_slash,
+                                    EditorTool.select => CupertinoIcons.crop,
+                                    EditorTool.text =>
+                                      CupertinoIcons.textformat,
+                                    EditorTool.hand =>
+                                      CupertinoIcons.hand_raised,
+                                  }, size: 17),
+                                  selected: session.tool == tool,
+                                  onSelected: (_) => onTool(tool),
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 6),
+                            Container(
+                              width: 1,
+                              height: 18,
+                              color: const Color(0xff383840),
+                            ),
+                            const SizedBox(width: 6),
                             ...extras.map(
                               (entry) => planned(entry.key, entry.value),
                             ),
@@ -291,6 +281,11 @@ class WorkspaceToolbar extends StatelessWidget {
                             size: 18,
                           ),
                         ),
+                        DesktopIconButton(
+                          tooltip: 'Delete selected ink',
+                          onPressed: onDelete,
+                          icon: const Icon(CupertinoIcons.trash, size: 18),
+                        ),
                       ],
                     ),
                   ),
@@ -299,23 +294,20 @@ class WorkspaceToolbar extends StatelessWidget {
             },
           ),
         ),
-        SizedBox(
-          height: 52,
+        // Floating Hovering Sub-components Component
+        Padding(
+          padding: const EdgeInsets.only(top: 4, bottom: 8),
           child: Center(
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              child: Container(
-                key: const Key('context-controls'),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xff292929),
-                  borderRadius: BorderRadius.circular(9),
-                  border: Border.all(color: const Color(0xff414141)),
-                ),
-                child: _settings(),
+              child: _HoveringContextControls(
+                session: session,
+                note: note,
+                onSettings: onSettings,
+                onFontSize: onFontSize,
+                onBold: onBold,
+                onZoom: onZoom,
+                onDelete: onDelete,
               ),
             ),
           ),
@@ -323,124 +315,275 @@ class WorkspaceToolbar extends StatelessWidget {
       ],
     ),
   );
-  Widget _settings() => Row(
-    children: [
-      if (session.tool == EditorTool.text) ...[
-        const Text(
-          'Text size',
-          style: TextStyle(color: Colors.grey, fontSize: 11),
+}
+
+class _HoveringContextControls extends StatefulWidget {
+  const _HoveringContextControls({
+    required this.session,
+    required this.note,
+    required this.onSettings,
+    required this.onFontSize,
+    required this.onBold,
+    required this.onZoom,
+    required this.onDelete,
+  });
+
+  final EditorSession session;
+  final Notebook note;
+  final VoidCallback onSettings;
+  final ValueChanged<double> onFontSize;
+  final VoidCallback onBold;
+  final ValueChanged<double> onZoom;
+  final VoidCallback? onDelete;
+
+  @override
+  State<_HoveringContextControls> createState() =>
+      _HoveringContextControlsState();
+}
+
+class _HoveringContextControlsState extends State<_HoveringContextControls> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final session = widget.session;
+    final note = widget.note;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        key: const Key('context-controls'),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+        decoration: BoxDecoration(
+          color: _isHovered
+              ? const Color(0xf528282c)
+              : const Color(0xee212124),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: _isHovered
+                ? Colors.white.withValues(alpha: 0.22)
+                : Colors.white.withValues(alpha: 0.11),
+            width: 0.8,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: _isHovered ? 0.45 : 0.28),
+              blurRadius: _isHovered ? 16 : 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
-        const SizedBox(width: 8),
-        DesktopPopupButton<double>(
-          value: note.fontSize,
-          items: {12.0, 16.0, 20.0, 24.0, 32.0, note.fontSize}
-              .map(
-                (s) => DesktopMenuItem(
-                  value: s,
-                  child: Text(
-                    '${s.round()}',
-                    style: const TextStyle(fontSize: 12),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (session.tool == EditorTool.text) ...[
+              Tooltip(
+                message: 'Text size',
+                child: const Icon(
+                  CupertinoIcons.textformat_size,
+                  size: 16,
+                  color: Colors.white70,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Tooltip(
+                message: 'Text size: ${note.fontSize.round()}',
+                child: DesktopPopupButton<double>(
+                  value: note.fontSize,
+                  items: {12.0, 16.0, 20.0, 24.0, 32.0, note.fontSize}
+                      .map(
+                        (s) => DesktopMenuItem(
+                          value: s,
+                          child: Text(
+                            '${s.round()}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) widget.onFontSize(v);
+                  },
+                ),
+              ),
+              const SizedBox(width: 6),
+              DesktopIconButton(
+                tooltip: 'Bold text',
+                isSelected: note.boldText,
+                onPressed: widget.onBold,
+                icon: const Icon(CupertinoIcons.bold, size: 16),
+              ),
+            ] else if (session.tool == EditorTool.pen ||
+                session.tool == EditorTool.highlighter ||
+                session.tool == EditorTool.eraser) ...[
+              Tooltip(
+                message: session.tool == EditorTool.eraser
+                    ? 'Eraser radius: ${session.width.toStringAsFixed(1)} px'
+                    : 'Stroke width: ${session.width.toStringAsFixed(1)} px',
+                child: Icon(
+                  session.tool == EditorTool.eraser
+                      ? CupertinoIcons.circle_grid_hex
+                      : CupertinoIcons.line_horizontal_3,
+                  size: 16,
+                  color: Colors.white70,
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 130,
+                child: Tooltip(
+                  message:
+                      '${session.tool == EditorTool.eraser ? "Eraser radius" : "Stroke width"}: ${session.width.toStringAsFixed(1)} px',
+                  child: DesktopSlider(
+                    value: session.width,
+                    min: 1,
+                    max: session.tool == EditorTool.eraser ? 24 : 12,
+                    onChanged: (v) {
+                      session.width = v;
+                      widget.onSettings();
+                    },
                   ),
                 ),
-              )
-              .toList(),
-          onChanged: (v) {
-            if (v != null) {
-              onFontSize(v);
-            }
-          },
-        ),
-        DesktopIconButton(
-          tooltip: 'Bold text',
-          isSelected: note.boldText,
-          onPressed: onBold,
-          icon: const Icon(CupertinoIcons.bold, size: 18),
-        ),
-      ] else if (session.tool == EditorTool.pen ||
-          session.tool == EditorTool.highlighter ||
-          session.tool == EditorTool.eraser) ...[
-        Text(
-          session.tool == EditorTool.eraser ? 'Eraser radius' : 'Stroke width',
-          style: const TextStyle(color: Colors.grey, fontSize: 11),
-        ),
-        SizedBox(
-          width: 140,
-          child: DesktopSlider(
-            value: session.width,
-            min: 1,
-            max: 12,
-
-            onChanged: (v) {
-              session.width = v;
-              onSettings();
-            },
-          ),
-        ),
-        Text(
-          '${session.width.toStringAsFixed(1)} px',
-          style: const TextStyle(fontSize: 11),
-        ),
-        const SizedBox(width: 18),
-        if (session.tool != EditorTool.eraser) ...[
-          Tooltip(
-            message: 'Automatic ink contrast',
-            child: DesktopButton(
-              child: Text(session.color == null ? 'Auto ✓' : 'Auto'),
-              onPressed: () {
-                session.color = null;
-                onSettings();
-              },
+              ),
+              const SizedBox(width: 6),
+              Tooltip(
+                message: '${session.width.toStringAsFixed(1)} px',
+                child: Container(
+                  width: (session.width * 1.5).clamp(4.0, 18.0),
+                  height: (session.width * 1.5).clamp(4.0, 18.0),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: session.tool == EditorTool.eraser
+                        ? Colors.white24
+                        : (session.color != null
+                            ? Color(session.color!)
+                            : Colors.white70),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              if (session.tool != EditorTool.eraser) ...[
+                DesktopIconButton(
+                  tooltip: 'Automatic ink contrast',
+                  isSelected: session.color == null,
+                  onPressed: () {
+                    session.color = null;
+                    widget.onSettings();
+                  },
+                  icon: const Icon(CupertinoIcons.wand_rays, size: 16),
+                ),
+                const SizedBox(width: 4),
+                ...[0xff151515, 0xff666666, 0xffaaaaaa, 0xfffafafa].map(
+                  (color) => DesktopIconButton(
+                    tooltip:
+                        'Ink shade ${[0xff151515, 0xff666666, 0xffaaaaaa, 0xfffafafa].indexOf(color) + 1}',
+                    onPressed: () {
+                      session.color = color;
+                      widget.onSettings();
+                    },
+                    icon: Container(
+                      width: 16,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(color),
+                        border: Border.all(
+                          color: session.color == color
+                              ? Colors.white
+                              : Colors.grey.shade600,
+                          width: session.color == color ? 2.5 : 1.0,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ] else
+                DesktopIconButton(
+                  tooltip: 'Delete selected ink',
+                  onPressed: widget.onDelete,
+                  icon: const Icon(CupertinoIcons.trash, size: 16),
+                ),
+            ] else if (session.tool == EditorTool.select) ...[
+              Tooltip(
+                message: 'Select ink strokes',
+                child: const Icon(
+                  CupertinoIcons.crop,
+                  size: 16,
+                  color: Color(0xff007aff),
+                ),
+              ),
+              const SizedBox(width: 6),
+              DesktopIconButton(
+                tooltip: 'Delete selected ink',
+                onPressed: widget.onDelete,
+                icon: const Icon(CupertinoIcons.trash, size: 16),
+              ),
+              DesktopIconButton(
+                tooltip: 'Clear selection',
+                onPressed: () {
+                  session.selection.clear();
+                  widget.onSettings();
+                },
+                icon: const Icon(CupertinoIcons.xmark_circle, size: 16),
+              ),
+            ] else ...[
+              Tooltip(
+                message: 'Hand / pan mode',
+                child: const Icon(
+                  CupertinoIcons.hand_raised,
+                  size: 16,
+                  color: Colors.white70,
+                ),
+              ),
+            ],
+            const SizedBox(width: 14),
+            Container(
+              width: 1,
+              height: 16,
+              color: Colors.white.withValues(alpha: 0.12),
             ),
-          ),
-          ...[0xff151515, 0xff666666, 0xffaaaaaa, 0xfffafafa].map(
-            (color) => DesktopIconButton(
-              tooltip:
-                  'Ink shade ${[0xff151515, 0xff666666, 0xffaaaaaa, 0xfffafafa].indexOf(color) + 1}',
-              onPressed: () {
-                session.color = color;
-                onSettings();
-              },
-              icon: Container(
-                width: 20,
-                height: 20,
+            const SizedBox(width: 10),
+            DesktopIconButton(
+              tooltip: 'Zoom out',
+              onPressed: () => widget.onZoom(0.8),
+              icon: const Icon(CupertinoIcons.minus, size: 16),
+            ),
+            Tooltip(
+              message: 'Current zoom',
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 7,
+                  vertical: 2.5,
+                ),
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(color),
-                  border: Border.all(
-                    color: session.color == color ? Colors.white : Colors.grey,
-                    width: session.color == color ? 3 : 1,
+                  color: Colors.white.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${(session.view.value.getMaxScaleOnAxis() * 100).round()}%',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white70,
                   ),
                 ),
               ),
             ),
-          ),
-        ],
-      ] else
-        Text(
-          session.tool == EditorTool.select
-              ? 'Drag to select ink · Drag selection to move · Delete to remove'
-              : 'Drag to pan · Pinch or use zoom controls',
-          style: const TextStyle(fontSize: 11, color: Colors.grey),
+            DesktopIconButton(
+              tooltip: 'Zoom in',
+              onPressed: () => widget.onZoom(1.25),
+              icon: const Icon(CupertinoIcons.plus, size: 16),
+            ),
+            DesktopIconButton(
+              tooltip: 'Reset view',
+              onPressed: () => widget.onZoom(0),
+              icon: const Icon(CupertinoIcons.aspectratio, size: 16),
+            ),
+          ],
         ),
-      const SizedBox(width: 24),
-      DesktopIconButton(
-        tooltip: 'Zoom out',
-        onPressed: () => onZoom(0.8),
-        icon: const Icon(CupertinoIcons.minus, size: 18),
       ),
-      Text(
-        '${(session.view.value.getMaxScaleOnAxis() * 100).round()}%',
-        style: const TextStyle(fontSize: 11),
-      ),
-      DesktopIconButton(
-        tooltip: 'Zoom in',
-        onPressed: () => onZoom(1.25),
-        icon: const Icon(CupertinoIcons.plus, size: 18),
-      ),
-      DesktopButton(
-        onPressed: () => onZoom(0),
-        child: const Text('Reset view', style: TextStyle(fontSize: 11)),
-      ),
-    ],
-  );
+    );
+  }
 }
