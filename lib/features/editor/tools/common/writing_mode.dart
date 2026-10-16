@@ -1,1 +1,1 @@
-export '../../../../workspace_tools.dart' show WritingMode, PenType, EraserType;
+export 'tool_types.dart' show WritingMode, PenType, EraserType;

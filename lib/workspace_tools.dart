@@ -8,16 +8,7 @@ import 'desktop_ui.dart';
 import 'library_ui.dart' show CustomColorPickerDialog;
 import 'notebook.dart';
 import 'ink_material.dart';
-
-enum LassoType { rectangular, freehand }
-
-enum WritingMode { pen, pencil, highlighter, tape, drawShape }
-
-enum PenType { fountain, ballpoint, brush }
-
-enum EraserType { precision, standard, stroke }
-
-enum EditorTool { select, pen, highlighter, eraser, text, hand }
+import 'features/editor/tools/common/tool_types.dart';
 
 class EditorSession {
   EditorSession(Notebook note)

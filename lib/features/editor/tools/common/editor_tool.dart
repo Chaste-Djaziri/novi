@@ -1,1 +1,1 @@
-export '../../../../workspace_tools.dart' show EditorTool;
+export 'tool_types.dart' show EditorTool;
