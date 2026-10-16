@@ -549,6 +549,8 @@ Confirm material feel and pressure with a physical tablet in the normal Mac app.
 - [x] Added editor widget boundary coverage; targeted workspace tests and `flutter analyze` pass.
 - [x] Split floating controls into writing, eraser, text, and zoom modules; each implementation is now below the preferred 500-line soft ceiling.
 - [x] Verified editor boundary, ink workspace, and widget suites: 25 tests pass; `flutter analyze` is clean.
+- [x] Added a working pencil dropdown with Standard Pencil settings for Reduce Latency and Draw and Hold, including serializable session style metadata.
+- [x] Added pencil dialog boundary coverage; workspace/widget tests pass and `flutter analyze` is clean.
 - [ ] Finish reducing legacy editor files and add broader painter comparison coverage.
 
 
