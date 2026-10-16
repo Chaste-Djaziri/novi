@@ -801,7 +801,7 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
       ),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 9),
       child: Text(
-        '$status  ·  Offline · No account required',
+        '$status  ·  Offline · ${tablets.description}',
         style: const TextStyle(color: Colors.grey, fontSize: 11),
       ),
     ),
@@ -935,6 +935,11 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
                         : totalContentHeight;
                     return Listener(
                       behavior: HitTestBehavior.translucent,
+                      onPointerHover: (event) {
+                        if (event.kind == PointerDeviceKind.stylus ||
+                            event.kind == PointerDeviceKind.invertedStylus)
+                          tablets.observePen();
+                      },
                       onPointerDown: (event) {
                         if (event.kind == PointerDeviceKind.stylus ||
                             event.kind == PointerDeviceKind.invertedStylus) {
@@ -1347,7 +1352,12 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
         if (!mounted || current?.id != note.id) return;
         session.focusNodeForPage(target).requestFocus();
         _panCanvas(
-          Offset(0, -(height + 24) * session.view.value.getMaxScaleOnAxis()),
+          Offset(
+            0,
+            -(height + 24) *
+                (target - pageIndex) *
+                session.view.value.getMaxScaleOnAxis(),
+          ),
         );
       });
     }
