@@ -226,6 +226,8 @@ class DesktopTextField extends StatelessWidget {
     this.placeholder,
     this.prefix,
     this.borderless = false,
+    this.strutStyle,
+    this.scrollPhysics,
   });
   final TextEditingController? controller;
   final FocusNode? focusNode;
@@ -238,9 +240,14 @@ class DesktopTextField extends StatelessWidget {
   final String? placeholder;
   final Widget? prefix;
   final bool borderless;
+  final StrutStyle? strutStyle;
+  final ScrollPhysics? scrollPhysics;
   @override
   Widget build(BuildContext context) => mac.MacosTextField(
     controller: controller,
+    strutStyle: strutStyle,
+    scrollPhysics: scrollPhysics,
+    scrollPadding: borderless ? EdgeInsets.zero : const EdgeInsets.all(20),
     focusNode: focusNode,
     maxLines: maxLines,
     expands: expands,
