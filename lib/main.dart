@@ -2475,56 +2475,6 @@ _RecognizedShape _recognizeAndFitShape(
   final height = maxY - minY;
   final maxDim = math.max(width, height);
 
-  // 1. Straight Line Check
-  if (totalLength > 0 && (endDist / totalLength) >= 0.82) {
-    double maxDev = 0;
-    final lineVec = Offset(last[0] - first[0], last[1] - first[1]);
-    final lenSq = lineVec.distanceSquared;
-    for (final p in stroke) {
-      if (lenSq > 0) {
-        final t = (((p[0] - first[0]) * lineVec.dx +
-                    (p[1] - first[1]) * lineVec.dy) /
-                lenSq)
-            .clamp(0.0, 1.0);
-        final proj =
-            Offset(first[0] + lineVec.dx * t, first[1] + lineVec.dy * t);
-        final dev = (Offset(p[0], p[1]) - proj).distance;
-        if (dev > maxDev) maxDev = dev;
-      }
-    }
-    if (maxDev < math.max(16.0, totalLength * 0.15)) {
-      return _RecognizedShape(
-        stroke: [
-          [first[0], first[1], first[2]],
-          [last[0], last[1], last[2]],
-        ],
-        isClosed: false,
-      );
-    }
-  }
-
-  // Preserve open two-segment gestures such as L, >, and simple arrows.
-  if (stroke.length >= 3 && totalLength > 24) {
-    final chord = Offset(last[0] - first[0], last[1] - first[1]);
-    final chordLengthSq = chord.distanceSquared;
-    if (chordLengthSq > 1) {
-      var cornerIndex = 1;
-      var cornerDeviation = 0.0;
-      for (var i = 1; i < stroke.length - 1; i++) {
-        final point = Offset(stroke[i][0], stroke[i][1]);
-        final origin = Offset(first[0], first[1]);
-        final t = (((point - origin).dx * chord.dx + (point - origin).dy * chord.dy) / chordLengthSq).clamp(0.0, 1.0);
-        final projection = origin + chord * t;
-        final deviation = (point - projection).distance;
-        if (deviation > cornerDeviation) { cornerDeviation = deviation; cornerIndex = i; }
-      }
-      if (cornerDeviation >= math.max(12.0, totalLength * 0.12)) {
-        final corner = stroke[cornerIndex];
-        return _RecognizedShape(stroke: [[first[0], first[1], first[2]], [corner[0], corner[1], corner[2]], [last[0], last[1], last[2]]], isClosed: false);
-      }
-    }
-  }
-
   // 2. Closed Loop Checks
   final isLoop = endDist <= math.max(36.0, maxDim * 0.35);
 
@@ -2566,6 +2516,58 @@ _RecognizedShape _recognizeAndFitShape(
     ];
     return _RecognizedShape(stroke: rectPoints, isClosed: true);
   }
+
+  // 1. Straight Line Check
+  if (totalLength > 0 && (endDist / totalLength) >= 0.82) {
+    double maxDev = 0;
+    final lineVec = Offset(last[0] - first[0], last[1] - first[1]);
+    final lenSq = lineVec.distanceSquared;
+    for (final p in stroke) {
+      if (lenSq > 0) {
+        final t = (((p[0] - first[0]) * lineVec.dx +
+                    (p[1] - first[1]) * lineVec.dy) /
+                lenSq)
+            .clamp(0.0, 1.0);
+        final proj =
+            Offset(first[0] + lineVec.dx * t, first[1] + lineVec.dy * t);
+        final dev = (Offset(p[0], p[1]) - proj).distance;
+        if (dev > maxDev) maxDev = dev;
+      }
+    }
+    if (maxDev < math.max(16.0, totalLength * 0.15)) {
+      return _RecognizedShape(
+        stroke: [
+          [first[0], first[1], first[2]],
+          [last[0], last[1], last[2]],
+        ],
+        isClosed: false,
+      );
+    }
+  }
+
+
+  // Preserve open two-segment gestures such as L, >, and simple arrows.
+  if (stroke.length >= 3 && totalLength > 24) {
+    final chord = Offset(last[0] - first[0], last[1] - first[1]);
+    final chordLengthSq = chord.distanceSquared;
+    if (chordLengthSq > 1) {
+      var cornerIndex = 1;
+      var cornerDeviation = 0.0;
+      for (var i = 1; i < stroke.length - 1; i++) {
+        final point = Offset(stroke[i][0], stroke[i][1]);
+        final origin = Offset(first[0], first[1]);
+        final t = (((point - origin).dx * chord.dx + (point - origin).dy * chord.dy) / chordLengthSq).clamp(0.0, 1.0);
+        final projection = origin + chord * t;
+        final deviation = (point - projection).distance;
+        if (deviation > cornerDeviation) { cornerDeviation = deviation; cornerIndex = i; }
+      }
+      if (cornerDeviation >= math.max(12.0, totalLength * 0.12)) {
+        final corner = stroke[cornerIndex];
+        return _RecognizedShape(stroke: [[first[0], first[1], first[2]], [corner[0], corner[1], corner[2]], [last[0], last[1], last[2]]], isClosed: false);
+      }
+    }
+  }
+
 
   return _RecognizedShape(stroke: stroke, isClosed: false);
 }
