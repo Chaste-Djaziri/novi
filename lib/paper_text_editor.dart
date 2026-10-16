@@ -50,8 +50,9 @@ class _PaperTextEditorState extends State<PaperTextEditor> {
     return Listener(
       onPointerDown: (event) => down = event.localPosition,
       onPointerMove: (event) {
-        if (down != null && (event.localPosition - down!).distance > 5)
+        if (down != null && (event.localPosition - down!).distance > 5) {
           down = null;
+        }
       },
       onPointerUp: (event) {
         if (down == null) return;
