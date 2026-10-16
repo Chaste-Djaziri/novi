@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart' show CupertinoIcons;
 
 import 'desktop_ui.dart';
 
+import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 
@@ -287,6 +288,11 @@ class _WorkspaceState extends State<Workspace> {
 
   BoxConstraints? _lastConstraints;
   double get _currentPaperWidth => current?.landscape == true ? 980.0 : 760.0;
+  double _bottomOverscroll = 0.0;
+  bool _isCreatingPage = false;
+  Timer? _overscrollResetTimer;
+  static const double _createPageThreshold = 100.0;
+  int activeStrokePageIndex = 0;
 
   void zoom(double factor) {
     setState(() {
@@ -302,8 +308,10 @@ class _WorkspaceState extends State<Workspace> {
           matrix.storage[12] = centeredTx;
         }
         final hasCover = current?.kind == 'Notebook';
+        final paperCount = current?.pages.length ?? 1;
+        final totalSheets = (hasCover ? 1 : 0) + paperCount;
         final pageHeight = current?.landscape == true ? 760.0 : 980.0;
-        final totalContentHeight = hasCover ? (pageHeight * 2 + 72.0) : (pageHeight + 48.0);
+        final totalContentHeight = totalSheets * pageHeight + (totalSheets + 1) * 24.0;
         final totalHeight = totalContentHeight * target;
         final double minY = totalHeight <= _lastConstraints!.maxHeight
             ? 0.0
@@ -322,6 +330,7 @@ class _WorkspaceState extends State<Workspace> {
     double pageWidth,
     double pageHeight,
   ) {
+    if (_isCreatingPage) return;
     final matrix = session.view.value.clone();
     final scale = matrix.getMaxScaleOnAxis();
     final currentTx = matrix.storage[12];
@@ -329,7 +338,10 @@ class _WorkspaceState extends State<Workspace> {
 
     final paperWidth = pageWidth * scale;
     final hasCover = current?.kind == 'Notebook';
-    final totalContentHeight = hasCover ? (pageHeight * 2 + 72.0) : (pageHeight + 48.0);
+    final paperCount = current?.pages.length ?? 1;
+    final totalSheets = (hasCover ? 1 : 0) + paperCount;
+    final loaderExtra = (_bottomOverscroll > 0 || _isCreatingPage) ? 72.0 : 0.0;
+    final totalContentHeight = totalSheets * pageHeight + (totalSheets + 1) * 24.0 + loaderExtra;
     final totalHeight = totalContentHeight * scale;
 
     final double minX, maxX;
@@ -351,13 +363,75 @@ class _WorkspaceState extends State<Workspace> {
     }
 
     final newTx = (currentTx - event.scrollDelta.dx).clamp(minX, maxX);
-    final newTy = (currentTy - event.scrollDelta.dy).clamp(minY, maxY);
+    double newTy;
+
+    final bool atOrPastBottom = currentTy <= minY + 1.0 || _bottomOverscroll > 0;
+    if (atOrPastBottom && event.scrollDelta.dy > 0) {
+      // User is at or past the bottom and scrolling further down to add page!
+      _bottomOverscroll += event.scrollDelta.dy;
+      final overscrollShift = math.min(50.0, _bottomOverscroll * 0.25);
+      newTy = minY - overscrollShift;
+
+      _overscrollResetTimer?.cancel();
+      _overscrollResetTimer = Timer(const Duration(milliseconds: 400), () {
+        if (mounted && _bottomOverscroll > 0 && !_isCreatingPage) {
+          setState(() {
+            _bottomOverscroll = 0.0;
+            final m = session.view.value.clone();
+            m.storage[13] = m.storage[13].clamp(minY, 0.0);
+            session.view.value = m;
+          });
+        }
+      });
+
+      if (_bottomOverscroll >= _createPageThreshold) {
+        _createNextPage(constraints, pageWidth, pageHeight);
+        return;
+      }
+      setState(() {});
+    } else if (event.scrollDelta.dy < 0 && _bottomOverscroll > 0) {
+      if (_bottomOverscroll + event.scrollDelta.dy >= 0) {
+        _bottomOverscroll += event.scrollDelta.dy;
+        final overscrollShift = math.min(50.0, _bottomOverscroll * 0.25);
+        newTy = minY - overscrollShift;
+      } else {
+        final remainingDelta = event.scrollDelta.dy + _bottomOverscroll;
+        _bottomOverscroll = 0.0;
+        newTy = (minY - remainingDelta).clamp(minY, maxY);
+      }
+      setState(() {});
+    } else {
+      _bottomOverscroll = 0.0;
+      newTy = (currentTy - event.scrollDelta.dy).clamp(minY, maxY);
+    }
 
     if (currentTx != newTx || currentTy != newTy) {
       matrix.storage[12] = newTx;
       matrix.storage[13] = newTy;
       session.view.value = matrix;
     }
+  }
+
+  void _createNextPage(BoxConstraints constraints, double pageWidth, double pageHeight) {
+    if (_isCreatingPage || current == null) return;
+    _isCreatingPage = true;
+    _overscrollResetTimer?.cancel();
+    snapshot();
+    setState(() {
+      current!.pages.add(NotebookPage());
+      save();
+      _bottomOverscroll = 0.0;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || current == null) return;
+      setState(() {
+        _isCreatingPage = false;
+        final hasCover = current!.kind == 'Notebook';
+        final totalPages = (hasCover ? 1 : 0) + current!.pages.length;
+        status = 'Page $totalPages created';
+      });
+    });
   }
 
   void _snapHorizontalToCenter(BoxConstraints constraints, double pageWidth) {
@@ -544,6 +618,7 @@ class _WorkspaceState extends State<Workspace> {
 
   @override
   void dispose() {
+    _overscrollResetTimer?.cancel();
     for (final editor in sessions.values) {
       editor.dispose();
     }
@@ -686,14 +761,18 @@ class _WorkspaceState extends State<Workspace> {
                 builder: (context, constraints) {
                   _lastConstraints = constraints;
                   final hasCover = note.kind == 'Notebook';
+                  final paperCount = note.pages.length;
+                  final totalSheets = (hasCover ? 1 : 0) + paperCount;
                   final scale = session.view.value.getMaxScaleOnAxis();
                   final paperWidth = pageWidth * scale;
-                  final totalContentHeight = hasCover ? (pageHeight * 2 + 72.0) : (pageHeight + 48.0);
-                  final isFitting = paperWidth <= constraints.maxWidth;
-                  final childWidth = isFitting ? (constraints.maxWidth / scale) : pageWidth;
-                  final childHeight = isFitting
+                  final loaderExtra = (_bottomOverscroll > 0 || _isCreatingPage) ? 72.0 : 0.0;
+                  final totalContentHeight = totalSheets * pageHeight + (totalSheets + 1) * 24.0 + loaderExtra;
+                  final isFittingHorizontally = paperWidth <= constraints.maxWidth;
+                  final isFittingVertically = (totalContentHeight * scale) <= constraints.maxHeight;
+                  final childWidth = isFittingHorizontally ? (constraints.maxWidth / scale) : pageWidth;
+                  final childHeight = isFittingVertically
                       ? math.max(constraints.maxHeight / scale, totalContentHeight)
-                      : math.max(constraints.maxHeight, totalContentHeight);
+                      : totalContentHeight;
                   return Listener(
                     onPointerSignal: (event) {
                       if (event is PointerScrollEvent) {
@@ -711,7 +790,7 @@ class _WorkspaceState extends State<Workspace> {
                       constrained: false,
                       minScale: 0.05,
                       maxScale: 3,
-                      panAxis: isFitting ? PanAxis.vertical : PanAxis.free,
+                      panAxis: isFittingHorizontally ? PanAxis.vertical : PanAxis.free,
                       boundaryMargin: const EdgeInsets.symmetric(horizontal: 0, vertical: 50),
                       panEnabled: tool == EditorTool.hand,
                       scaleEnabled: tool == EditorTool.hand,
@@ -723,7 +802,7 @@ class _WorkspaceState extends State<Workspace> {
                       width: childWidth,
                       height: childHeight,
                       child: Align(
-                        alignment: isFitting ? Alignment.center : Alignment.topCenter,
+                        alignment: isFittingVertically ? Alignment.center : Alignment.topCenter,
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 24),
                           child: Column(
@@ -751,153 +830,220 @@ class _WorkspaceState extends State<Workspace> {
                                 ),
                                 const SizedBox(height: 24),
                               ],
-                              // Paper Canvas
-                              SizedBox(
-                                key: ValueKey('paper-page-${note.id}'),
-                                width: pageWidth,
-                                height: pageHeight,
-                              child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.35),
-                                  blurRadius: 16,
-                                  offset: const Offset(0, 4),
+                              // Paper Canvases (Page 2, Page 3, etc.)
+                              for (var i = 0; i < note.pages.length; i++) ...[
+                                if (i > 0) const SizedBox(height: 24),
+                                _buildPaperPage(
+                                  note,
+                                  i,
+                                  pageWidth,
+                                  pageHeight,
+                                  foreground,
+                                  tool,
                                 ),
                               ],
-                            ),
-                            child: ClipRect(
-                              child: CustomPaint(
-                                painter: PaperPainter(note.paper, note.tone),
-                              child: Stack(
-                                children: [
-                                  Positioned(
-                                    left: 28,
-                                    top: 28,
-                                    right: 28,
-                                    bottom: 28,
-                                    child: IgnorePointer(
-                                      ignoring: tool != EditorTool.text,
-                                      child: DesktopTextField(
-                                        key: ValueKey('text-${note.id}'),
-                                        controller: text,
-                                        focusNode: session.textFocus,
-                                        maxLines: null,
-                                        expands: true,
-                                        textAlignVertical:
-                                            TextAlignVertical.top,
-                                        style: TextStyle(
-                                          color: foreground,
-                                          fontSize: note.fontSize,
-                                          fontWeight: note.boldText
-                                              ? FontWeight.bold
-                                              : FontWeight.normal,
-                                          height: 1.6,
-                                        ),
-                                        cursorColor: foreground,
-                                        borderless: true,
-                                        placeholder: 'Write your thoughts…',
-                                        onChanged: (value) {
-                                          setState(() {
-                                            snapshot();
-                                            note.text = value;
-                                            save();
-                                          });
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                  Positioned.fill(
-                                    child: IgnorePointer(
-                                      ignoring:
-                                          tool == EditorTool.text ||
-                                          tool == EditorTool.hand,
-                                      child: MouseRegion(
-                                        cursor: tool == EditorTool.select
-                                            ? SystemMouseCursors.precise
-                                            : SystemMouseCursors.precise,
-                                        child: Listener(
-                                          behavior: HitTestBehavior.opaque,
-                                          onPointerDown: pointerDown,
-                                          onPointerMove: pointerMove,
-                                          onPointerUp: (e) {
-                                            if (e.pointer == activePointer) {
-                                              finishStroke();
-                                            }
-                                          },
-                                          onPointerCancel: (e) {
-                                            if (e.pointer == activePointer) {
-                                              finishStroke();
-                                            }
-                                          },
-                                          child: CustomPaint(
-                                            painter: InkPainter(
-                                              [...note.strokes, ?activeStroke],
-                                              color: foreground,
-                                              styles: [
-                                                ...note.inkStyles,
-                                                ?activeStyle,
-                                              ],
-                                              selected: session.selection,
-                                              selectionBox: selectionBox,
-                                            ),
-                                            size: Size.infinite,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                              if (_bottomOverscroll > 0 || _isCreatingPage)
+                                _PageCreationLoader(
+                                  progress: (_bottomOverscroll / _createPageThreshold).clamp(0.0, 1.0),
+                                  isCreating: _isCreatingPage,
+                                ),
+                            ],
                           ),
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
-        );
-      },
-    ),
-  ),
-  Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-    child: Row(
-      children: [
-        Text(
-          '${note.kind} / ${note.paper}',
-          style: const TextStyle(fontSize: 10, color: Colors.grey),
-        ),
-        const Spacer(),
-        Text(
-          note.kind == 'Notebook'
-              ? 'Page ${(session.view.value.storage[13].abs() < (pageHeight * session.view.value.getMaxScaleOnAxis() * 0.5)) ? 1 : 2} of 2 · ${session.tool.name}'
-              : 'Page 1 of 1 · ${session.tool.name}',
-          style: const TextStyle(fontSize: 10, color: Colors.grey),
-        ),
-      ],
-    ),
-  ),
-          ],
-        ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+            child: Row(
+              children: [
+                Text(
+                  '${note.kind} / ${note.paper}',
+                  style: const TextStyle(fontSize: 10, color: Colors.grey),
+                ),
+                const Spacer(),
+                Builder(
+                  builder: (_) {
+                    final hasCover = note.kind == 'Notebook';
+                    final totalPages = (hasCover ? 1 : 0) + note.pages.length;
+                    final scale = session.view.value.getMaxScaleOnAxis();
+                    final scrollY = session.view.value.storage[13].abs();
+                    final sheetHeightWithGap = (pageHeight + 24.0) * scale;
+                    final pageNum = (sheetHeightWithGap <= 0
+                            ? 1
+                            : ((scrollY + sheetHeightWithGap * 0.4) / sheetHeightWithGap).floor() + 1)
+                        .clamp(1, totalPages);
+                    return Text(
+                      'Page $pageNum of $totalPages · ${session.tool.name}',
+                      style: const TextStyle(fontSize: 10, color: Colors.grey),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     ),
-  );
+  ),
+);
 }
 
+  Widget _buildPaperPage(
+    Notebook note,
+    int pageIndex,
+    double pageWidth,
+    double pageHeight,
+    Color foreground,
+    EditorTool tool,
+  ) {
+    final page = note.pages[pageIndex];
+    final pageController = session.controllerForPage(pageIndex, page.text);
+    final pageFocus = session.focusNodeForPage(pageIndex);
+
+    return SizedBox(
+      key: pageIndex == 0
+          ? ValueKey('paper-page-${note.id}')
+          : ValueKey('paper-page-${note.id}-$pageIndex'),
+      width: pageWidth,
+      height: pageHeight,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.35),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ClipRect(
+          child: CustomPaint(
+            painter: PaperPainter(note.paper, note.tone),
+            child: Stack(
+              children: [
+                Positioned(
+                  left: 28,
+                  top: 28,
+                  right: 28,
+                  bottom: 28,
+                  child: IgnorePointer(
+                    ignoring: tool != EditorTool.text,
+                    child: DesktopTextField(
+                      key: pageIndex == 0
+                          ? ValueKey('text-${note.id}')
+                          : ValueKey('text-${note.id}-$pageIndex'),
+                      controller: pageController,
+                      focusNode: pageFocus,
+                      maxLines: null,
+                      expands: true,
+                      textAlignVertical: TextAlignVertical.top,
+                      style: TextStyle(
+                        color: foreground,
+                        fontSize: note.fontSize,
+                        fontWeight: note.boldText
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        height: 1.6,
+                      ),
+                      cursorColor: foreground,
+                      borderless: true,
+                      placeholder: pageIndex == 0
+                          ? 'Write your thoughts…'
+                          : 'Page ${pageIndex + 1}…',
+                      onChanged: (value) {
+                        setState(() {
+                          snapshot();
+                          page.text = value;
+                          save();
+                        });
+                      },
+                    ),
+                  ),
+                ),
+                Positioned.fill(
+                  child: IgnorePointer(
+                    ignoring:
+                        tool == EditorTool.text ||
+                        tool == EditorTool.hand,
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.precise,
+                      child: Listener(
+                        behavior: HitTestBehavior.opaque,
+                        onPointerDown: (e) =>
+                            pointerDown(e, pageIndex: pageIndex),
+                        onPointerMove: pointerMove,
+                        onPointerUp: (e) {
+                          if (e.pointer == activePointer) {
+                            finishStroke();
+                          }
+                        },
+                        onPointerCancel: (e) {
+                          if (e.pointer == activePointer) {
+                            finishStroke();
+                          }
+                        },
+                        child: CustomPaint(
+                          painter: InkPainter(
+                            [
+                              ...page.strokes,
+                              if (activeStrokePageIndex == pageIndex &&
+                                  activeStroke != null)
+                                activeStroke!,
+                            ],
+                            color: foreground,
+                            styles: [
+                              ...page.inkStyles,
+                              if (activeStrokePageIndex == pageIndex &&
+                                  activeStyle != null)
+                                activeStyle!,
+                            ],
+                            selected: activeStrokePageIndex == pageIndex
+                                ? session.selection
+                                : const {},
+                            selectionBox: activeStrokePageIndex == pageIndex
+                                ? selectionBox
+                                : null,
+                          ),
+                          size: Size.infinite,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  NotebookPage get _activePage {
+    if (current != null && activeStrokePageIndex < current!.pages.length) {
+      return current!.pages[activeStrokePageIndex];
+    }
+    return current?.pages.first ?? NotebookPage();
+  }
+
   void normalizeStyles() {
-    while (current!.inkStyles.length < current!.strokes.length) {
-      current!.inkStyles.add({});
+    if (current == null) return;
+    for (final page in current!.pages) {
+      while (page.inkStyles.length < page.strokes.length) {
+        page.inkStyles.add({});
+      }
     }
   }
 
   Rect? selectedBounds() {
+    final page = _activePage;
     final points = session.selection
-        .where((i) => i < current!.strokes.length)
-        .expand((i) => current!.strokes[i])
+        .where((i) => i < page.strokes.length)
+        .expand((i) => page.strokes[i])
         .toList();
     if (points.isEmpty) {
       return null;
@@ -910,10 +1056,11 @@ class _WorkspaceState extends State<Workspace> {
     ).inflate(8);
   }
 
-  void pointerDown(PointerDownEvent e) {
+  void pointerDown(PointerDownEvent e, {int pageIndex = 0}) {
     if (activePointer != null || (e.buttons & 1) == 0) {
       return;
     }
+    activeStrokePageIndex = pageIndex;
     FocusManager.instance.primaryFocus?.unfocus();
     workspaceFocus.requestFocus();
     activePointer = e.pointer;
@@ -926,7 +1073,7 @@ class _WorkspaceState extends State<Workspace> {
         setState(() => session.selection.clear());
       }
     } else if (session.tool == EditorTool.eraser) {
-      eraseAt(e.localPosition);
+      eraseAt(e.localPosition, pageIndex: pageIndex);
     } else {
       snapshot();
       normalizeStyles();
@@ -949,7 +1096,7 @@ class _WorkspaceState extends State<Workspace> {
       return;
     }
     if (session.tool == EditorTool.eraser) {
-      eraseAt(e.localPosition);
+      eraseAt(e.localPosition, pageIndex: activeStrokePageIndex);
     } else if (session.tool == EditorTool.select) {
       setState(() {
         if (movingSelection) {
@@ -958,10 +1105,13 @@ class _WorkspaceState extends State<Workspace> {
             editedGesture = true;
           }
           final delta = e.localPosition - lastPoint!;
+          final page = _activePage;
           for (final i in session.selection) {
-            for (final p in current!.strokes[i]) {
-              p[0] += delta.dx;
-              p[1] += delta.dy;
+            if (i < page.strokes.length) {
+              for (final p in page.strokes[i]) {
+                p[0] += delta.dx;
+                p[1] += delta.dy;
+              }
             }
           }
         } else {
@@ -980,11 +1130,14 @@ class _WorkspaceState extends State<Workspace> {
     lastPoint = e.localPosition;
   }
 
-  void eraseAt(Offset position) {
+  void eraseAt(Offset position, {int? pageIndex}) {
+    final targetIndex = pageIndex ?? activeStrokePageIndex;
+    if (current == null || targetIndex >= current!.pages.length) return;
+    final page = current!.pages[targetIndex];
     final radius = session.width * 3;
     final hits = <int>[];
-    for (var i = 0; i < current!.strokes.length; i++) {
-      final stroke = current!.strokes[i];
+    for (var i = 0; i < page.strokes.length; i++) {
+      final stroke = page.strokes[i];
       if (stroke.any(
         (p) => (Offset(p[0], p[1]) - position).distance <= radius,
       )) {
@@ -1016,8 +1169,8 @@ class _WorkspaceState extends State<Workspace> {
       }
       normalizeStyles();
       for (final i in hits.reversed) {
-        current!.strokes.removeAt(i);
-        current!.inkStyles.removeAt(i);
+        page.strokes.removeAt(i);
+        page.inkStyles.removeAt(i);
       }
       save();
     });
@@ -1027,13 +1180,16 @@ class _WorkspaceState extends State<Workspace> {
     if (session.selection.isEmpty) {
       return;
     }
+    final page = _activePage;
     snapshot();
     setState(() {
       normalizeStyles();
       final indices = session.selection.toList()..sort();
       for (final i in indices.reversed) {
-        current!.strokes.removeAt(i);
-        current!.inkStyles.removeAt(i);
+        if (i < page.strokes.length) {
+          page.strokes.removeAt(i);
+          page.inkStyles.removeAt(i);
+        }
       }
       session.selection.clear();
       save();
@@ -1044,16 +1200,17 @@ class _WorkspaceState extends State<Workspace> {
     if (activePointer == null) {
       return;
     }
+    final page = _activePage;
     setState(() {
       if (activeStroke != null) {
-        current!.strokes.add(activeStroke!);
-        current!.inkStyles.add(activeStyle!);
+        page.strokes.add(activeStroke!);
+        page.inkStyles.add(activeStyle!);
         save();
       } else if (session.tool == EditorTool.select &&
           !movingSelection &&
           selectionBox != null) {
-        for (var i = 0; i < current!.strokes.length; i++) {
-          if (current!.strokes[i].any(
+        for (var i = 0; i < page.strokes.length; i++) {
+          if (page.strokes[i].any(
             (p) => selectionBox!.contains(Offset(p[0], p[1])),
           )) {
             session.selection.add(i);
@@ -1068,6 +1225,82 @@ class _WorkspaceState extends State<Workspace> {
       selectionBox = null;
       gestureStart = null;
     });
+  }
+}
+
+class _PageCreationLoader extends StatelessWidget {
+  const _PageCreationLoader({
+    required this.progress,
+    required this.isCreating,
+  });
+
+  final double progress;
+  final bool isCreating;
+
+  @override
+  Widget build(BuildContext context) {
+    final percent = (progress * 100).toInt().clamp(0, 100);
+    return Padding(
+      padding: const EdgeInsets.only(top: 20, bottom: 8),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xff1e1e1e),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: isCreating || progress >= 1.0
+                  ? Colors.white.withValues(alpha: 0.35)
+                  : Colors.white.withValues(alpha: 0.12),
+              width: 0.8,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.35),
+                blurRadius: 14,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 18,
+                height: 18,
+                child: isCreating
+                    ? const CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      )
+                    : CircularProgressIndicator(
+                        value: progress.clamp(0.04, 1.0),
+                        strokeWidth: 2.2,
+                        backgroundColor: Colors.white.withValues(alpha: 0.15),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          progress >= 1.0 ? Colors.white : Colors.white70,
+                        ),
+                      ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                isCreating
+                    ? 'Creating new page…'
+                    : progress >= 1.0
+                        ? 'Release or scroll to create page'
+                        : 'Scroll to add page $percent%',
+                style: TextStyle(
+                  color: progress >= 1.0 ? Colors.white : Colors.grey[300],
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
