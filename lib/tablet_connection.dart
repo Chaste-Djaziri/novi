@@ -26,6 +26,7 @@ class TabletConnection extends ChangeNotifier {
     _subscription = events.receiveBroadcastStream().listen(
       (value) => apply(value),
       onError: (_) {
+        if (_closed) return;
         available = false;
         notifyListeners();
       },
