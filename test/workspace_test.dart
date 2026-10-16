@@ -136,7 +136,7 @@ void main() {
       final firstView = tester
           .widget<InteractiveViewer>(find.byType(InteractiveViewer))
           .transformationController!;
-      await tester.tap(find.byTooltip('Connect stylus / pen'));
+      setTabletHardware(tester, ['test-tablet']);
       await tester.pumpAndSettle();
       await tester.tap(
         find.ancestor(
