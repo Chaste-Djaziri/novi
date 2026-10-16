@@ -77,7 +77,13 @@ private final class TabletMonitor: NSObject, FlutterStreamHandler {
       }
       if tablet {
         var identifier: UInt64 = 0
-        if IORegistryEntryGetRegistryEntryID(device, &identifier) == KERN_SUCCESS { devices.insert(String(identifier)) }
+        let vendor = (property(device, "VendorID") as? NSNumber)?.stringValue ?? "unknown"
+        let product = (property(device, "ProductID") as? NSNumber)?.stringValue ?? "unknown"
+        let serial = property(device, "SerialNumber") as? String ?? ""
+        let location = (property(device, "LocationID") as? NSNumber)?.uint64Value ?? 0
+        if !serial.isEmpty { devices.insert("\(vendor):\(product):\(serial)") }
+        else if location != 0 { devices.insert("\(vendor):\(product):\(location)") }
+        else if IORegistryEntryGetRegistryEntryID(device, &identifier) == KERN_SUCCESS { devices.insert(String(identifier)) }
       }
     }
     return ["available": monitoring, "devices": devices.sorted()]
