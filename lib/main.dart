@@ -354,6 +354,7 @@ class _WorkspaceState extends State<Workspace>
   double get _currentPaperWidth => current?.landscape == true ? 980.0 : 760.0;
   double _bottomOverscroll = 0.0;
   bool _isCreatingPage = false;
+  bool _isTrackpadPanning = false;
   Timer? _overscrollResetTimer;
   static const double _createPageThreshold = 180.0;
   AnimationController? _overscrollBounceController;
@@ -364,6 +365,11 @@ class _WorkspaceState extends State<Workspace>
   VelocityTracker _panVelocityTracker =
       VelocityTracker.withKind(PointerDeviceKind.trackpad);
   double _accumulatedPanY = 0.0;
+
+  double _calculateOverscrollShift(double overscroll) {
+    if (overscroll <= 0) return 0.0;
+    return 110.0 * (1.0 - math.exp(-overscroll / 150.0));
+  }
 
   void _stopPageCreationAnimation() {
     if (_pageCreationScrollController != null) {
@@ -474,9 +480,8 @@ class _WorkspaceState extends State<Workspace>
     final hasCover = current?.kind == 'Notebook';
     final paperCount = current?.pages.length ?? 1;
     final totalSheets = (hasCover ? 1 : 0) + paperCount;
-    final loaderExtra = _bottomOverscroll > 0 ? 72.0 : 0.0;
     final totalContentHeight =
-        totalSheets * pageHeight + (totalSheets + 1) * 24.0 + loaderExtra;
+        totalSheets * pageHeight + (totalSheets + 1) * 24.0;
     final totalHeight = totalContentHeight * scale;
 
     final double minX = paperWidth <= constraints.maxWidth
@@ -526,7 +531,7 @@ class _WorkspaceState extends State<Workspace>
     final startVal = _bottomOverscroll;
     final curve = CurvedAnimation(
       parent: _overscrollBounceController!,
-      curve: Curves.easeOutBack,
+      curve: Curves.easeOutCubic,
     );
     _overscrollBounceAnimation = Tween<double>(begin: startVal, end: 0.0)
         .animate(curve)
@@ -539,17 +544,14 @@ class _WorkspaceState extends State<Workspace>
           final hasCover = current?.kind == 'Notebook';
           final paperCount = current?.pages.length ?? 1;
           final totalSheets = (hasCover ? 1 : 0) + paperCount;
-          final loaderExtra = (_bottomOverscroll > 0) ? 96.0 : 0.0;
-          final totalContentHeight = totalSheets * pageHeight +
-              (totalSheets + 1) * 24.0 +
-              loaderExtra;
+          final totalContentHeight =
+              totalSheets * pageHeight + (totalSheets + 1) * 24.0;
           final totalHeight = totalContentHeight * scale;
           final minY = totalHeight <= constraints.maxHeight
               ? 0.0
               : constraints.maxHeight - totalHeight;
-          final overscrollShift = math.min(130.0, _bottomOverscroll * 0.55);
-          matrix.storage[13] =
-              (minY - overscrollShift).clamp(minY - 140.0, 0.0);
+          final overscrollShift = _calculateOverscrollShift(_bottomOverscroll);
+          matrix.storage[13] = minY - overscrollShift;
           session.view.value = matrix;
         });
       })
@@ -583,9 +585,8 @@ class _WorkspaceState extends State<Workspace>
     final hasCover = current?.kind == 'Notebook';
     final paperCount = current?.pages.length ?? 1;
     final totalSheets = (hasCover ? 1 : 0) + paperCount;
-    final loaderExtra = _bottomOverscroll > 0 ? 96.0 : 0.0;
     final totalContentHeight =
-        totalSheets * pageHeight + (totalSheets + 1) * 24.0 + loaderExtra;
+        totalSheets * pageHeight + (totalSheets + 1) * 24.0;
     final totalHeight = totalContentHeight * scale;
 
     final double minX, maxX;
@@ -614,14 +615,16 @@ class _WorkspaceState extends State<Workspace>
       _overscrollBounceController?.stop();
       _overscrollResetTimer?.cancel();
       _bottomOverscroll += scrollDelta.dy;
-      final overscrollShift = math.min(130.0, _bottomOverscroll * 0.55);
+      final overscrollShift = _calculateOverscrollShift(_bottomOverscroll);
       newTy = minY - overscrollShift;
 
-      _overscrollResetTimer = Timer(const Duration(milliseconds: 350), () {
-        if (mounted && _bottomOverscroll > 0 && !_isCreatingPage) {
-          _startBounceBack(constraints, pageWidth, pageHeight);
-        }
-      });
+      if (!_isTrackpadPanning) {
+        _overscrollResetTimer = Timer(const Duration(milliseconds: 350), () {
+          if (mounted && _bottomOverscroll > 0 && !_isCreatingPage) {
+            _startBounceBack(constraints, pageWidth, pageHeight);
+          }
+        });
+      }
 
       if (_bottomOverscroll >= _createPageThreshold && !_isCreatingPage) {
         _createNextPage(constraints, pageWidth, pageHeight);
@@ -636,7 +639,7 @@ class _WorkspaceState extends State<Workspace>
       _overscrollResetTimer?.cancel();
       if (_bottomOverscroll + scrollDelta.dy >= 0) {
         _bottomOverscroll += scrollDelta.dy;
-        final overscrollShift = math.min(130.0, _bottomOverscroll * 0.55);
+        final overscrollShift = _calculateOverscrollShift(_bottomOverscroll);
         newTy = minY - overscrollShift;
       } else {
         final remainingDelta = scrollDelta.dy + _bottomOverscroll;
@@ -1307,12 +1310,9 @@ class _WorkspaceState extends State<Workspace>
                     final totalSheets = (hasCover ? 1 : 0) + paperCount;
                     final scale = session.view.value.getMaxScaleOnAxis();
                     final paperWidth = pageWidth * scale;
-                    final loaderExtra =
-                        (_bottomOverscroll > 0 || _isCreatingPage) ? 72.0 : 0.0;
                     final totalContentHeight =
                         totalSheets * pageHeight +
-                        (totalSheets + 1) * 24.0 +
-                        loaderExtra;
+                        (totalSheets + 1) * 24.0;
                     final isFittingHorizontally =
                         paperWidth <= constraints.maxWidth;
                     final isFittingVertically =
@@ -1325,7 +1325,7 @@ class _WorkspaceState extends State<Workspace>
                             constraints.maxHeight / scale,
                             totalContentHeight,
                           )
-                        : totalContentHeight;
+                        : totalContentHeight + 80.0;
                     return Stack(
                       children: [
                         Positioned.fill(
@@ -1397,6 +1397,7 @@ class _WorkspaceState extends State<Workspace>
                         }
                       },
                       onPointerPanZoomStart: (event) {
+                        _isTrackpadPanning = true;
                         _stopFling();
                         _stopPageCreationAnimation();
                         _pinchScale = 1;
@@ -1432,6 +1433,7 @@ class _WorkspaceState extends State<Workspace>
                         }
                       },
                       onPointerPanZoomEnd: (_) {
+                        _isTrackpadPanning = false;
                         _pinchScale = 1;
                         _snapHorizontalToCenter(constraints, pageWidth);
                         if (_bottomOverscroll > 0 && !_isCreatingPage) {
@@ -2223,12 +2225,9 @@ class _CanvasScrollIndicatorState extends State<CanvasScrollIndicator> {
         final hasCover = widget.note.kind == 'Notebook';
         final paperCount = widget.note.pages.length;
         final totalSheets = (hasCover ? 1 : 0) + paperCount;
-        final loaderExtra =
-            (widget.bottomOverscroll > 0 || widget.isCreatingPage) ? 72.0 : 0.0;
         final totalContentHeight =
             totalSheets * widget.pageHeight +
-            (totalSheets + 1) * 24.0 +
-            loaderExtra;
+            (totalSheets + 1) * 24.0;
         final totalHeight = totalContentHeight * scale;
         final viewportHeight = widget.constraints.maxHeight;
 
