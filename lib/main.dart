@@ -566,6 +566,20 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
       current!.boldText = bold ?? current!.boldText;
       save();
     });
+    final width = current!.landscape ? 980.0 : 760.0;
+    final height = current!.landscape ? 760.0 : 980.0;
+    final focusedPage = List.generate(
+      current!.pages.length,
+      (i) => i,
+    ).firstWhere((i) => session.focusNodeForPage(i).hasFocus, orElse: () => 0);
+    _paperChanged(
+      0,
+      current!.pages.first.text,
+      width,
+      height,
+      recordUndo: false,
+      caretSource: focusedPage,
+    );
   }
 
   void snapshot() {
@@ -1047,7 +1061,16 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
                                   tablets.observePen();
                                 }
                               }
-                              if (tool != EditorTool.hand &&
+                              final sheetLeft = (childWidth - pageWidth) / 2;
+                              final onSheet =
+                                  event.localPosition.dx >= sheetLeft &&
+                                  event.localPosition.dx <=
+                                      sheetLeft + pageWidth &&
+                                  event.localPosition.dy >= 24 &&
+                                  event.localPosition.dy <=
+                                      totalContentHeight - 24;
+                              if (!onSheet &&
+                                  tool != EditorTool.hand &&
                                   (event.buttons & 1) != 0) {
                                 _isPanning = true;
                                 _panStartPos = event.position;
@@ -1290,12 +1313,26 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
     );
   }
 
-  void _paperChanged(int pageIndex, String value, double width, double height) {
-    snapshot();
+  void _paperChanged(
+    int pageIndex,
+    String value,
+    double width,
+    double height, {
+    bool recordUndo = true,
+    int? caretSource,
+  }) {
+    if (recordUndo) snapshot();
     final note = current!;
-    final controller = session.controllerForPage(pageIndex, value);
-    var caretPage = pageIndex;
-    var caretOffset = controller.selection.baseOffset.clamp(0, value.length);
+    var caretPage = caretSource ?? pageIndex;
+    final controller = session.controllerForPage(
+      caretPage,
+      note.pages[caretPage].text,
+    );
+    var caretOffset = controller.selection.baseOffset.clamp(
+      0,
+      controller.text.length,
+    );
+    final initialCaretPage = caretPage;
     setState(() {
       note.pages[pageIndex].text = value;
       // Preserve in-progress IME composition. Reflow when it commits.
@@ -1319,6 +1356,7 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
           note.pages[i].text = content.substring(0, split);
           if (i + 1 >= note.pages.length) note.pages.add(NotebookPage());
           note.pages[i + 1].text = overflow + note.pages[i + 1].text;
+          if (caretPage == i + 1) caretOffset += overflow.length;
           if (caretPage == i && caretOffset >= split) {
             caretPage++;
             caretOffset -= split;
@@ -1346,7 +1384,7 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
       }
       save();
     });
-    if (caretPage != pageIndex) {
+    if (caretPage != initialCaretPage) {
       final target = caretPage;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || current?.id != note.id) return;
@@ -1355,7 +1393,7 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
           Offset(
             0,
             -(height + 24) *
-                (target - pageIndex) *
+                (target - initialCaretPage) *
                 session.view.value.getMaxScaleOnAxis(),
           ),
         );
