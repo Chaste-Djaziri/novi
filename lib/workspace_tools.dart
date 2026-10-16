@@ -5707,23 +5707,13 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
             borderRadius: BorderRadius.circular(8),
           ),
           child: Center(
-            child: Container(
-              width: lineLength,
-              height: math.min(
-                18,
-                InkMaterial.toolWidth(
-                  widget.session.inkKind,
-                  [
-                    widget.session.thinWidth,
-                    widget.session.mediumWidth,
-                    widget.session.thickWidth,
-                  ][index],
-                ),
-              ),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(strokeHeight / 2),
-              ),
+            child: CustomPaint(
+              size: const Size(24, 18),
+              painter: InkSamplePainter(InkMaterial(widget.session.inkStyle(baseWidth: [
+                widget.session.thinWidth,
+                widget.session.mediumWidth,
+                widget.session.thickWidth,
+              ][index]))),
             ),
           ),
         ),
