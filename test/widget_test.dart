@@ -528,6 +528,10 @@ void main() {
     expect((initialTop - viewerTop - 24.0).abs(), lessThan(2.0));
 
     // 2. Scrolling left or right MUST always keep paper centered horizontally!
+    final initialIv = tester.widget<InteractiveViewer>(viewerFinder);
+    expect(initialIv.panAxis, PanAxis.vertical);
+    expect(initialIv.boundaryMargin.horizontal, 0.0);
+
     await tester.sendEventToBinding(
       PointerScrollEvent(
         position: viewerCenter,
@@ -610,6 +614,10 @@ void main() {
     final zoomedCenter = tester.getCenter(inkCanvasFinder);
     expect((zoomedCenter.dx - viewerCenter.dx).abs(), lessThan(5.0));
 
+    final zoomedIv = tester.widget<InteractiveViewer>(viewerFinder);
+    expect(zoomedIv.panAxis, PanAxis.free);
+    expect(zoomedIv.boundaryMargin.horizontal, 0.0);
+
     // 7. When too big out of view: allow left and right scrolling to the edge of the paper
     final initialZoomedLeft = tester.getTopLeft(inkCanvasFinder).dx;
     await tester.sendEventToBinding(
@@ -633,6 +641,16 @@ void main() {
     final paperRight = tester.getTopRight(inkCanvasFinder).dx;
     expect((paperRight - viewerRight).abs(), lessThan(5.0));
 
+    // Scrolling right further cannot scroll past the right edge
+    await tester.sendEventToBinding(
+      PointerScrollEvent(
+        position: viewerCenter,
+        scrollDelta: const Offset(1000, 0),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect((tester.getTopRight(inkCanvasFinder).dx - viewerRight).abs(), lessThan(5.0));
+
     // Scroll to left edge of the paper: left edge sticks to left edge of viewport
     await tester.sendEventToBinding(
       PointerScrollEvent(
@@ -644,6 +662,16 @@ void main() {
     final viewerLeft = tester.getTopLeft(viewerFinder).dx;
     final paperLeft = tester.getTopLeft(inkCanvasFinder).dx;
     expect((paperLeft - viewerLeft).abs(), lessThan(5.0));
+
+    // Scrolling left further cannot scroll past the left edge
+    await tester.sendEventToBinding(
+      PointerScrollEvent(
+        position: viewerCenter,
+        scrollDelta: const Offset(-1000, 0),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect((tester.getTopLeft(inkCanvasFinder).dx - viewerLeft).abs(), lessThan(5.0));
   });
 }
 
