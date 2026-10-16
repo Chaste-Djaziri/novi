@@ -116,7 +116,7 @@ class _FontSizeMenuDialogState extends State<FontSizeMenuDialog> {
                   padding: EdgeInsets.only(left: arrowLeft),
                   child: CustomPaint(
                     size: const Size(arrowWidth, arrowHeight),
-                    painter: _LassoArrowPainter(
+                    painter: LassoArrowPainter(
                       color: const Color(0xff1e1e22),
                       borderColor: Colors.white.withValues(alpha: 0.16),
                     ),
@@ -404,7 +404,7 @@ class FontFamilyMenuDialog extends StatelessWidget {
                   padding: EdgeInsets.only(left: arrowLeft),
                   child: CustomPaint(
                     size: const Size(arrowWidth, arrowHeight),
-                    painter: _LassoArrowPainter(
+                    painter: LassoArrowPainter(
                       color: const Color(0xff1e1e22),
                       borderColor: Colors.white.withValues(alpha: 0.16),
                     ),
@@ -620,7 +620,7 @@ class _TextStyleMenuDialogState extends State<TextStyleMenuDialog> {
                   padding: EdgeInsets.only(left: arrowLeft),
                   child: CustomPaint(
                     size: const Size(arrowWidth, arrowHeight),
-                    painter: _LassoArrowPainter(
+                    painter: LassoArrowPainter(
                       color: const Color(0xff1e1e22),
                       borderColor: Colors.white.withValues(alpha: 0.16),
                     ),
@@ -910,7 +910,7 @@ class _TextColorMenuDialogState extends State<TextColorMenuDialog> {
                   padding: EdgeInsets.only(left: arrowLeft),
                   child: CustomPaint(
                     size: const Size(arrowWidth, arrowHeight),
-                    painter: _LassoArrowPainter(
+                    painter: LassoArrowPainter(
                       color: const Color(0xff1a1c1e),
                       borderColor: Colors.white.withValues(alpha: 0.16),
                     ),
@@ -1242,7 +1242,7 @@ class _TextAlignmentMenuDialogState extends State<TextAlignmentMenuDialog> {
                   padding: EdgeInsets.only(left: arrowLeft),
                   child: CustomPaint(
                     size: const Size(arrowWidth, arrowHeight),
-                    painter: _LassoArrowPainter(
+                    painter: LassoArrowPainter(
                       color: const Color(0xff1e1e22),
                       borderColor: Colors.white.withValues(alpha: 0.16),
                     ),
@@ -1331,7 +1331,7 @@ class _TextAlignmentMenuDialogState extends State<TextAlignmentMenuDialog> {
           child: Center(
             child: CustomPaint(
               size: const Size(18, 14),
-              painter: _AlignmentIconPainter(
+              painter: AlignmentIconPainter(
                 color: isSelected ? const Color(0xff151515) : Colors.white70,
                 alignment: align,
               ),
@@ -1438,7 +1438,7 @@ class _LineHeightMenuDialogState extends State<LineHeightMenuDialog> {
                   padding: EdgeInsets.only(left: arrowLeft),
                   child: CustomPaint(
                     size: const Size(arrowWidth, arrowHeight),
-                    painter: _LassoArrowPainter(
+                    painter: LassoArrowPainter(
                       color: const Color(0xff1a1c1e),
                       borderColor: Colors.white.withValues(alpha: 0.16),
                     ),
@@ -1750,7 +1750,7 @@ class _TextBoxStyleMenuDialogState extends State<TextBoxStyleMenuDialog> {
                   padding: EdgeInsets.only(left: arrowLeft),
                   child: CustomPaint(
                     size: const Size(arrowWidth, arrowHeight),
-                    painter: _LassoArrowPainter(
+                    painter: LassoArrowPainter(
                       color: const Color(0xff1a1c1e),
                       borderColor: Colors.white.withValues(alpha: 0.16),
                     ),
@@ -1928,7 +1928,7 @@ class _TextBoxStyleMenuDialogState extends State<TextBoxStyleMenuDialog> {
             ? Center(
                 child: CustomPaint(
                   size: const Size(20, 20),
-                  painter: _TextBoxStyleIconPainter(color: Colors.white60),
+                  painter: TextBoxStyleIconPainter(color: Colors.white60),
                 ),
               )
             : null,

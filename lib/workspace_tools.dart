@@ -10,6 +10,7 @@ import 'notebook.dart';
 import 'ink_material.dart';
 import 'features/editor/tools/common/tool_types.dart';
 import 'features/editor/tools/common/writing_icon_painters.dart';
+import 'features/editor/tools/common/editor_icon_painters.dart';
 
 // Temporary compatibility export for callers migrating from this legacy file.
 export 'features/editor/tools/common/tool_types.dart';
@@ -39,110 +40,6 @@ void _drawDashedPath(
       distance += dashWidth + dashSpace;
     }
   }
-}
-
-class _DashedRectPainter extends CustomPainter {
-  const _DashedRectPainter({this.color = Colors.white});
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 1.6
-      ..style = PaintingStyle.stroke;
-    final rrect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(1, 1, size.width - 2, size.height - 2),
-      const Radius.circular(3),
-    );
-    final path = Path()..addRRect(rrect);
-    _drawDashedPath(canvas, path, paint, 3.5, 2.5);
-  }
-
-  @override
-  bool shouldRepaint(covariant _DashedRectPainter oldDelegate) =>
-      oldDelegate.color != color;
-}
-
-class _DashedLassoPainter extends CustomPainter {
-  const _DashedLassoPainter({this.color = Colors.white});
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 1.6
-      ..style = PaintingStyle.stroke;
-    final path = Path();
-    path.moveTo(size.width * 0.25, size.height * 0.2);
-    path.cubicTo(
-      size.width * 0.5,
-      size.height * 0.05,
-      size.width * 0.9,
-      size.height * 0.25,
-      size.width * 0.85,
-      size.height * 0.55,
-    );
-    path.cubicTo(
-      size.width * 0.8,
-      size.height * 0.85,
-      size.width * 0.45,
-      size.height * 0.95,
-      size.width * 0.2,
-      size.height * 0.75,
-    );
-    path.cubicTo(
-      size.width * 0.05,
-      size.height * 0.6,
-      size.width * 0.08,
-      size.height * 0.35,
-      size.width * 0.25,
-      size.height * 0.2,
-    );
-    path.close();
-    _drawDashedPath(canvas, path, paint, 3.5, 2.5);
-  }
-
-  @override
-  bool shouldRepaint(covariant _DashedLassoPainter oldDelegate) =>
-      oldDelegate.color != color;
-}
-
-class _LassoArrowPainter extends CustomPainter {
-  const _LassoArrowPainter({required this.color, required this.borderColor});
-
-  final Color color;
-  final Color borderColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final fillPaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
-    final path = Path()
-      ..moveTo(0, size.height + 1)
-      ..lineTo(size.width / 2, 0)
-      ..lineTo(size.width, size.height + 1)
-      ..close();
-    canvas.drawPath(path, fillPaint);
-
-    final strokePaint = Paint()
-      ..color = borderColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.8;
-
-    final strokePath = Path()
-      ..moveTo(0, size.height + 1)
-      ..lineTo(size.width / 2, 0)
-      ..lineTo(size.width, size.height + 1);
-    canvas.drawPath(strokePath, strokePaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _LassoArrowPainter oldDelegate) =>
-      oldDelegate.color != color || oldDelegate.borderColor != borderColor;
 }
 
 Future<void> showColorPaletteMenu(
@@ -249,7 +146,7 @@ class ColorPaletteMenuDialog extends StatelessWidget {
                   padding: EdgeInsets.only(left: arrowLeft),
                   child: CustomPaint(
                     size: const Size(arrowWidth, arrowHeight),
-                    painter: _LassoArrowPainter(
+                    painter: LassoArrowPainter(
                       color: const Color(0xff1c1c1e),
                       borderColor: Colors.white.withValues(alpha: 0.12),
                     ),
@@ -520,7 +417,7 @@ class _WorkspaceToolbarState extends State<WorkspaceToolbar> {
                                   children: [
                                     CustomPaint(
                                       size: const Size(15, 12),
-                                      painter: _DashedRectPainter(
+                                      painter: DashedRectPainter(
                                         color: isSelected
                                             ? Colors.white
                                             : Colors.white70,
@@ -547,7 +444,7 @@ class _WorkspaceToolbarState extends State<WorkspaceToolbar> {
                                   ),
                                   EditorTool.eraser => CustomPaint(
                                     size: const Size(16, 16),
-                                    painter: _EraserIconPainter(
+                                    painter: EraserIconPainter(
                                       color: isSelected
                                           ? Colors.black
                                           : Colors.white70,
@@ -1229,7 +1126,7 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
                 children: [
                   CustomPaint(
                     size: const Size(16, 16),
-                    painter: _EraserIconPainter(
+                    painter: EraserIconPainter(
                       color: Colors.white,
                       accentColor: session.eraserType == EraserType.standard
                           ? const Color(0xff007aff)
@@ -1614,7 +1511,7 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
               ),
               child: CustomPaint(
                 size: const Size(18, 16),
-                painter: _AlignmentIconPainter(
+                painter: AlignmentIconPainter(
                   color: Colors.white,
                   alignment: session.textAlign,
                 ),
@@ -1650,7 +1547,7 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
               ),
               child: CustomPaint(
                 size: const Size(18, 16),
-                painter: const _LineHeightIconPainter(color: Colors.white),
+                painter: const LineHeightIconPainter(color: Colors.white),
               ),
             ),
           ),
@@ -1691,7 +1588,7 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
               ),
               child: CustomPaint(
                 size: const Size(20, 18),
-                painter: _TextBoxStyleIconPainter(
+                painter: TextBoxStyleIconPainter(
                   color: Colors.white70,
                   bgColor: session.textBoxBgColor,
                   preset: session.textBoxPreset,
@@ -1723,7 +1620,7 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
               ),
               child: CustomPaint(
                 size: const Size(20, 18),
-                painter: _FavoriteTextIconPainter(
+                painter: FavoriteTextIconPainter(
                   color: Colors.white70,
                   isSaved: session.favoriteTextStyleSaved,
                 ),

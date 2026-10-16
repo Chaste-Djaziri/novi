@@ -91,7 +91,7 @@ class _EraserTypeMenuDialogState extends State<EraserTypeMenuDialog> {
                   padding: EdgeInsets.only(left: arrowLeft),
                   child: CustomPaint(
                     size: const Size(arrowWidth, arrowHeight),
-                    painter: _LassoArrowPainter(
+                    painter: LassoArrowPainter(
                       color: const Color(0xff1c1c1e),
                       borderColor: Colors.white.withValues(alpha: 0.12),
                     ),
@@ -214,7 +214,7 @@ class _EraserTypeMenuDialogState extends State<EraserTypeMenuDialog> {
           children: [
             CustomPaint(
               size: const Size(20, 20),
-              painter: _EraserIconPainter(
+              painter: EraserIconPainter(
                 color: isSelected ? Colors.white : Colors.white60,
                 accentColor: isBlueAccent ? const Color(0xff007aff) : null,
               ),

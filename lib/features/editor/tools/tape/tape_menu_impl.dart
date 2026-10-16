@@ -95,7 +95,7 @@ class _TapeMenuDialogState extends State<TapeMenuDialog> {
                   padding: EdgeInsets.only(left: arrowLeft),
                   child: CustomPaint(
                     size: const Size(arrowWidth, arrowHeight),
-                    painter: _LassoArrowPainter(
+                    painter: LassoArrowPainter(
                       color: const Color(0xff1c1c1e),
                       borderColor: Colors.white.withValues(alpha: 0.12),
                     ),
