@@ -86,6 +86,26 @@ void main() {
     workspace.eraseAt(const Offset(130, 104), pageIndex: 0);
     expect(note.pages.first.strokes.length, before - 1);
     expect(note.pages.first.inkStyles.any((s) => s['kind'] == 'pencil'), isTrue);
+    // A single fast horizontal eraser event must cut a vertical stroke between its endpoints.
+    workspace.chooseTool(EditorTool.pen);
+    session.writingMode = WritingMode.pen;
+    workspace.pointerDown(const PointerDownEvent(pointer: 9, position: Offset(300, 200), buttons: 1), pageIndex: 0);
+    move(300, 400);
+    workspace.finishStroke();
+    final uncutCount = note.pages.first.strokes.length;
+    workspace.chooseTool(EditorTool.eraser);
+    session.eraserType = EraserType.precision;
+    session.eraserFilters.updateAll((key, value) => true);
+    session.eraserRadius = 6;
+    workspace.pointerDown(const PointerDownEvent(pointer: 9, position: Offset(200, 300), buttons: 1), pageIndex: 0);
+    move(400, 300);
+    workspace.finishStroke();
+    expect(note.pages.first.strokes.length, uncutCount + 1);
+    expect(note.pages.first.strokes.last.first[1], greaterThan(300));
+    workspace.history(true);
+    expect((workspace.current as Notebook).pages.first.strokes.length, uncutCount);
+    workspace.history(false);
+    expect((workspace.current as Notebook).pages.first.strokes.length, uncutCount + 1);
     session.eraserRadius = 26;
     final writingWidth = session.width;
     workspace.chooseTool(EditorTool.pen);
