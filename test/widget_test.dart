@@ -1964,4 +1964,138 @@ void main() {
       expect(ink().strokes[1].first[0], greaterThan(200));
     },
   );
+
+  testWidgets(
+    'text tool floating bar, font size, font family, alignment, line height, and text box style popovers',
+    (tester) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final directory = Directory.systemTemp.createTempSync('novi-text-test');
+      final original = PathProviderPlatform.instance;
+      PathProviderPlatform.instance = TestPaths(directory.path);
+      addTearDown(() {
+        PathProviderPlatform.instance = original;
+        directory.deleteSync(recursive: true);
+      });
+
+      final dbPath = '${directory.path}/novi.sqlite';
+      final seed = LibraryStore(dbPath);
+      seed.save(Notebook(id: 't1', title: 'Text Test Doc'));
+      seed.close();
+
+      await tester.pumpWidget(const NoviApp());
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Text Test Doc').first);
+      await tester.pumpAndSettle();
+
+      // Switch to Text tool
+      await tester.tap(find.byTooltip('Type'));
+      await tester.pumpAndSettle();
+
+      // Verify text floating bar buttons are present
+      expect(find.byKey(const Key('text-collapse-button')), findsOneWidget);
+      expect(find.byKey(const Key('text-font-size-button')), findsOneWidget);
+      expect(find.byKey(const Key('text-font-family-button')), findsOneWidget);
+      expect(find.byKey(const Key('text-bold-button')), findsOneWidget);
+      expect(find.byKey(const Key('text-italic-button')), findsOneWidget);
+      expect(find.byKey(const Key('text-alignment-button')), findsOneWidget);
+      expect(find.byKey(const Key('text-line-height-button')), findsOneWidget);
+      expect(find.byKey(const Key('text-box-style-button')), findsOneWidget);
+      expect(find.byKey(const Key('favorite-text-style-button')), findsOneWidget);
+      expect(find.byKey(const Key('pin-text-tool-button')), findsOneWidget);
+
+      // 1. Font Size popover: change size to 24
+      await tester.tap(find.byKey(const Key('text-font-size-button')));
+      await tester.pumpAndSettle();
+      expect(find.byType(FontSizeMenuDialog), findsOneWidget);
+      await tester.tap(find.byKey(const Key('font-size-24')));
+      await tester.pumpAndSettle();
+      expect(find.byType(FontSizeMenuDialog), findsNothing);
+
+      // 2. Font Family popover: select Classic
+      await tester.tap(find.byKey(const Key('text-font-family-button')));
+      await tester.pumpAndSettle();
+      expect(find.byType(FontFamilyMenuDialog), findsOneWidget);
+      await tester.tap(find.byKey(const Key('font-family-Classic')));
+      await tester.pumpAndSettle();
+      expect(find.byType(FontFamilyMenuDialog), findsNothing);
+      expect(find.text('Classic'), findsOneWidget);
+
+      // 3. Bold & Italic toggles
+      await tester.tap(find.byKey(const Key('text-bold-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('text-italic-button')));
+      await tester.pumpAndSettle();
+
+      // 4. Text Alignment popover (Screenshot 2)
+      await tester.tap(find.byKey(const Key('text-alignment-button')));
+      await tester.pumpAndSettle();
+      expect(find.byType(TextAlignmentMenuDialog), findsOneWidget);
+      expect(find.byKey(const Key('align-left')), findsOneWidget);
+      expect(find.byKey(const Key('align-center')), findsOneWidget);
+      expect(find.byKey(const Key('align-right')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('align-center')));
+      await tester.pumpAndSettle();
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+      expect(find.byType(TextAlignmentMenuDialog), findsNothing);
+
+      // 5. Line Height popover (Screenshot 3)
+      await tester.tap(find.byKey(const Key('text-line-height-button')));
+      await tester.pumpAndSettle();
+      expect(find.byType(LineHeightMenuDialog), findsOneWidget);
+      expect(find.text('LINE HEIGHT'), findsOneWidget);
+      expect(find.byKey(const Key('line-height-plus')), findsOneWidget);
+      expect(find.byKey(const Key('line-height-minus')), findsOneWidget);
+      expect(find.byKey(const Key('line-height-auto-switch')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('line-height-plus')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('line-height-auto-switch')));
+      await tester.pumpAndSettle();
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+      expect(find.byType(LineHeightMenuDialog), findsNothing);
+
+      // 6. Text Box Style popover (Screenshots 4 & 5)
+      await tester.tap(find.byKey(const Key('text-box-style-button')));
+      await tester.pumpAndSettle();
+      expect(find.byType(TextBoxStyleMenuDialog), findsOneWidget);
+      expect(find.text('Text Box Style'), findsOneWidget);
+      expect(find.text('Presets'), findsOneWidget);
+      expect(find.text('Advanced'), findsOneWidget);
+
+      // Select preset 2 (Lime green)
+      await tester.tap(find.byKey(const Key('preset-swatch-2')));
+      await tester.pumpAndSettle();
+
+      // Switch to Advanced tab (Screenshot 5)
+      await tester.tap(find.byKey(const Key('tab-advanced')));
+      await tester.pumpAndSettle();
+      expect(find.text('Background Color'), findsOneWidget);
+      expect(find.text('Border Color'), findsOneWidget);
+      expect(find.text('Shadow'), findsOneWidget);
+      expect(find.byKey(const Key('advanced-shadow-switch')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('advanced-shadow-switch')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('corner-plus')));
+      await tester.pumpAndSettle();
+
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+      expect(find.byType(TextBoxStyleMenuDialog), findsNothing);
+
+      // 7. Pin Text Tool & Favorite Text Style
+      await tester.tap(find.byKey(const Key('pin-text-tool-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('favorite-text-style-button')));
+      await tester.pumpAndSettle();
+    },
+  );
 }

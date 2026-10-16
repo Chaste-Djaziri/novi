@@ -18,6 +18,17 @@ class PaperTextEditor extends StatefulWidget {
     required this.onChanged,
     required this.pageWidth,
     required this.pageHeight,
+    this.fontFamily = 'Modern',
+    this.italic = false,
+    this.textAlign = TextAlign.left,
+    this.lineHeight,
+    this.lineHeightAuto = true,
+    this.textBoxBgColor,
+    this.textBoxBorderColor,
+    this.textBoxRadius = 0.0,
+    this.textBoxBorder = 0.0,
+    this.textBoxPadding = 10.0,
+    this.textBoxShadow = false,
   });
   final TextEditingController controller;
   final FocusNode focusNode;
@@ -28,6 +39,17 @@ class PaperTextEditor extends StatefulWidget {
   final ValueChanged<String> onChanged;
   final double pageWidth;
   final double pageHeight;
+  final String fontFamily;
+  final bool italic;
+  final TextAlign textAlign;
+  final double? lineHeight;
+  final bool lineHeightAuto;
+  final int? textBoxBgColor;
+  final int? textBoxBorderColor;
+  final double textBoxRadius;
+  final double textBoxBorder;
+  final double textBoxPadding;
+  final bool textBoxShadow;
   @override
   State<PaperTextEditor> createState() => _PaperTextEditorState();
 }
@@ -67,9 +89,31 @@ class _PaperTextEditorState extends State<PaperTextEditor> {
 
   @override
   Widget build(BuildContext context) {
-    final style = DefaultTextStyle.of(context).style.merge(
-      widget.layout.textStyle(widget.fontSize, widget.bold, widget.foreground),
+    final resolvedFontFamily = switch (widget.fontFamily) {
+      'Classic' => 'Georgia',
+      'Monospace' => 'Courier',
+      'Handwritten' => 'Caveat',
+      _ => 'Inter',
+    };
+    var baseStyle = widget.layout.textStyle(
+      widget.fontSize,
+      widget.bold,
+      widget.foreground,
     );
+    if (widget.italic) {
+      baseStyle = baseStyle.copyWith(fontStyle: FontStyle.italic);
+    }
+    if (widget.fontFamily != 'Modern') {
+      baseStyle = baseStyle.copyWith(fontFamily: resolvedFontFamily);
+    }
+    if (!widget.lineHeightAuto &&
+        widget.lineHeight != null &&
+        widget.fontSize > 0) {
+      baseStyle = baseStyle.copyWith(
+        height: widget.lineHeight! / widget.fontSize,
+      );
+    }
+    final style = DefaultTextStyle.of(context).style.merge(baseStyle);
     final scaler = MediaQuery.textScalerOf(context);
     final sample = widget.layout.painter('M', widget.pageWidth, style, scaler);
     final baseline = sample.computeLineMetrics().first.baseline;
@@ -78,6 +122,10 @@ class _PaperTextEditorState extends State<PaperTextEditor> {
       0.0,
       widget.layout.lineHeight(widget.fontSize),
     );
+    final hasDecoration = widget.textBoxBgColor != null ||
+        (widget.textBoxBorder > 0 && widget.textBoxBorderColor != null) ||
+        widget.textBoxShadow;
+
     return Listener(
       behavior: HitTestBehavior.opaque,
       onPointerDown: (event) => down = event.localPosition,
@@ -115,18 +163,46 @@ class _PaperTextEditorState extends State<PaperTextEditor> {
           widget.layout.edge,
           widget.layout.edge,
         ),
-        child: DesktopTextField(
-          controller: widget.controller,
-          focusNode: widget.focusNode,
-          maxLines: null,
-          expands: true,
-          textAlignVertical: TextAlignVertical.top,
-          style: style,
-          cursorColor: widget.foreground,
-          borderless: true,
-          strutStyle: StrutStyle.fromTextStyle(style, forceStrutHeight: true),
-          scrollPhysics: const NeverScrollableScrollPhysics(),
-          onChanged: widget.onChanged,
+        child: Container(
+          decoration: hasDecoration
+              ? BoxDecoration(
+                  color: widget.textBoxBgColor != null
+                      ? Color(widget.textBoxBgColor!)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(widget.textBoxRadius),
+                  border: widget.textBoxBorder > 0 &&
+                          widget.textBoxBorderColor != null
+                      ? Border.all(
+                          color: Color(widget.textBoxBorderColor!),
+                          width: widget.textBoxBorder,
+                        )
+                      : null,
+                  boxShadow: widget.textBoxShadow
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.18),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ]
+                      : null,
+                )
+              : null,
+          padding: hasDecoration ? EdgeInsets.all(widget.textBoxPadding) : null,
+          child: DesktopTextField(
+            controller: widget.controller,
+            focusNode: widget.focusNode,
+            maxLines: null,
+            expands: true,
+            textAlign: widget.textAlign,
+            textAlignVertical: TextAlignVertical.top,
+            style: style,
+            cursorColor: widget.foreground,
+            borderless: true,
+            strutStyle: StrutStyle.fromTextStyle(style, forceStrutHeight: true),
+            scrollPhysics: const NeverScrollableScrollPhysics(),
+            onChanged: widget.onChanged,
+          ),
         ),
       ),
     );

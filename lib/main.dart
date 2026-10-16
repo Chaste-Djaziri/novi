@@ -1736,6 +1736,21 @@ class _WorkspaceState extends State<Workspace>
                       layout: PaperLayout(note.paper),
                       fontSize: note.fontSize,
                       bold: note.boldText,
+                      fontFamily: note.fontFamily,
+                      italic: note.italicText,
+                      textAlign: note.textAlign == 'center'
+                          ? TextAlign.center
+                          : note.textAlign == 'right'
+                              ? TextAlign.right
+                              : TextAlign.left,
+                      lineHeight: note.lineHeight,
+                      lineHeightAuto: note.lineHeightAuto,
+                      textBoxBgColor: note.textBoxBgColor,
+                      textBoxBorderColor: note.textBoxBorderColor,
+                      textBoxRadius: note.textBoxRadius,
+                      textBoxBorder: note.textBoxBorder,
+                      textBoxPadding: note.textBoxPadding,
+                      textBoxShadow: note.textBoxShadow,
                       foreground: foreground,
                       pageWidth: pageWidth,
                       pageHeight: pageHeight,

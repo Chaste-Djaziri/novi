@@ -71,6 +71,17 @@ class Notebook {
     List<Map<String, dynamic>>? inkStyles,
     this.fontSize = 16,
     this.boldText = false,
+    this.fontFamily = 'Modern',
+    this.italicText = false,
+    this.textAlign = 'left',
+    this.lineHeight,
+    this.lineHeightAuto = true,
+    this.textBoxBgColor,
+    this.textBoxBorderColor,
+    this.textBoxRadius = 0.0,
+    this.textBoxBorder = 0.0,
+    this.textBoxPadding = 10.0,
+    this.textBoxShadow = false,
     this.coverBookmarked = false,
     List<List<List<double>>>? strokes,
     List<NotebookPage>? pages,
@@ -94,6 +105,17 @@ class Notebook {
   bool coverBookmarked;
   double fontSize;
   bool boldText;
+  String fontFamily;
+  bool italicText;
+  String textAlign;
+  double? lineHeight;
+  bool lineHeightAuto;
+  int? textBoxBgColor;
+  int? textBoxBorderColor;
+  double textBoxRadius;
+  double textBoxBorder;
+  double textBoxPadding;
+  bool textBoxShadow;
   List<NotebookPage>? _pages;
 
   List<NotebookPage> get pages {
@@ -142,6 +164,17 @@ class Notebook {
     'inkStyles': inkStyles,
     'fontSize': fontSize,
     'boldText': boldText,
+    if (fontFamily != 'Modern') 'fontFamily': fontFamily,
+    if (italicText) 'italicText': true,
+    if (textAlign != 'left') 'textAlign': textAlign,
+    if (lineHeight != null) 'lineHeight': lineHeight,
+    if (!lineHeightAuto) 'lineHeightAuto': false,
+    if (textBoxBgColor != null) 'textBoxBgColor': textBoxBgColor,
+    if (textBoxBorderColor != null) 'textBoxBorderColor': textBoxBorderColor,
+    if (textBoxRadius > 0) 'textBoxRadius': textBoxRadius,
+    if (textBoxBorder > 0) 'textBoxBorder': textBoxBorder,
+    if (textBoxPadding != 10.0) 'textBoxPadding': textBoxPadding,
+    if (textBoxShadow) 'textBoxShadow': true,
     'strokes': strokes,
     'pages': pages.map((p) => p.toJson()).toList(),
   };
@@ -186,6 +219,17 @@ class Notebook {
       inkStyles: inkStyles,
       fontSize: (json['fontSize'] as num?)?.toDouble() ?? 16,
       boldText: json['boldText'] as bool? ?? false,
+      fontFamily: json['fontFamily'] as String? ?? 'Modern',
+      italicText: json['italicText'] as bool? ?? false,
+      textAlign: json['textAlign'] as String? ?? 'left',
+      lineHeight: (json['lineHeight'] as num?)?.toDouble(),
+      lineHeightAuto: json['lineHeightAuto'] as bool? ?? true,
+      textBoxBgColor: json['textBoxBgColor'] as int?,
+      textBoxBorderColor: json['textBoxBorderColor'] as int?,
+      textBoxRadius: (json['textBoxRadius'] as num?)?.toDouble() ?? 0.0,
+      textBoxBorder: (json['textBoxBorder'] as num?)?.toDouble() ?? 0.0,
+      textBoxPadding: (json['textBoxPadding'] as num?)?.toDouble() ?? 10.0,
+      textBoxShadow: json['textBoxShadow'] as bool? ?? false,
       strokes: strokes,
       pages: pages,
     );

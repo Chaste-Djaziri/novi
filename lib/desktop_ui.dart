@@ -297,6 +297,7 @@ class DesktopTextField extends StatelessWidget {
     this.expands = false,
     this.style,
     this.cursorColor,
+    this.textAlign = TextAlign.start,
     this.textAlignVertical,
     this.onChanged,
     this.placeholder,
@@ -311,6 +312,7 @@ class DesktopTextField extends StatelessWidget {
   final bool expands;
   final TextStyle? style;
   final Color? cursorColor;
+  final TextAlign textAlign;
   final TextAlignVertical? textAlignVertical;
   final ValueChanged<String>? onChanged;
   final String? placeholder;
@@ -329,6 +331,7 @@ class DesktopTextField extends StatelessWidget {
     expands: expands,
     style: style ?? const TextStyle(fontSize: 13, color: Color(0xffeeeeee)),
     cursorColor: cursorColor ?? Colors.white,
+    textAlign: textAlign,
     textAlignVertical: textAlignVertical,
     onChanged: onChanged,
     placeholder: placeholder,

@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart' show CupertinoIcons, CupertinoSwitch;
 import 'package:flutter/material.dart';
 
 import 'desktop_ui.dart';
+import 'library_ui.dart' show CustomColorPickerDialog;
 import 'notebook.dart';
 
 enum LassoType { rectangular, freehand }
@@ -19,7 +20,22 @@ enum EditorTool { select, pen, highlighter, eraser, text, hand }
 class EditorSession {
   EditorSession(Notebook note)
     : text = TextEditingController(text: note.text),
-      tool = note.kind == 'Text document' ? EditorTool.text : EditorTool.select {
+      tool = note.kind == 'Text document' ? EditorTool.text : EditorTool.select,
+      fontFamily = note.fontFamily,
+      italicText = note.italicText,
+      textAlign = note.textAlign == 'center'
+          ? TextAlign.center
+          : note.textAlign == 'right'
+              ? TextAlign.right
+              : TextAlign.left,
+      lineHeight = note.lineHeight ?? 28.0,
+      lineHeightAuto = note.lineHeightAuto,
+      textBoxBgColor = note.textBoxBgColor,
+      textBoxBorderColor = note.textBoxBorderColor,
+      textBoxRadius = note.textBoxRadius,
+      textBoxBorder = note.textBoxBorder,
+      textBoxPadding = note.textBoxPadding,
+      textBoxShadow = note.textBoxShadow {
     textFocus.addListener(() {
       if (textFocus.hasFocus) activeTextPage = 0;
     });
@@ -102,6 +118,22 @@ class EditorSession {
   double eraserMediumRadius = 14.0;
   double eraserLargeRadius = 26.0;
   int selectedEraserSizeIndex = 1;
+
+  // Text Tool Settings
+  String fontFamily = 'Modern';
+  bool italicText = false;
+  TextAlign textAlign = TextAlign.left;
+  double lineHeight = 28.0;
+  bool lineHeightAuto = true;
+  int textBoxPreset = 0;
+  int? textBoxBgColor;
+  int? textBoxBorderColor;
+  double textBoxRadius = 0.0;
+  double textBoxBorder = 0.0;
+  double textBoxPadding = 10.0;
+  bool textBoxShadow = false;
+  bool pinTextTool = false;
+  bool favoriteTextStyleSaved = false;
 
   void dispose() {
     text.dispose();
@@ -798,6 +830,231 @@ class _DrawShapePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _DrawShapePainter oldDelegate) =>
       oldDelegate.color != color;
+}
+
+class _LineHeightIconPainter extends CustomPainter {
+  const _LineHeightIconPainter({this.color = Colors.white});
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.3
+      ..strokeCap = StrokeCap.round;
+
+    // Vertical double arrow on the left
+    final arrowX = size.width * 0.28;
+    canvas.drawLine(
+      Offset(arrowX, size.height * 0.2),
+      Offset(arrowX, size.height * 0.8),
+      paint,
+    );
+    // Top arrow head
+    canvas.drawLine(
+      Offset(arrowX - 2.5, size.height * 0.35),
+      Offset(arrowX, size.height * 0.2),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(arrowX + 2.5, size.height * 0.35),
+      Offset(arrowX, size.height * 0.2),
+      paint,
+    );
+    // Bottom arrow head
+    canvas.drawLine(
+      Offset(arrowX - 2.5, size.height * 0.65),
+      Offset(arrowX, size.height * 0.8),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(arrowX + 2.5, size.height * 0.65),
+      Offset(arrowX, size.height * 0.8),
+      paint,
+    );
+
+    // Horizontal bars on the right
+    final lineStartX = size.width * 0.52;
+    final lineEndX = size.width * 0.88;
+    canvas.drawLine(
+      Offset(lineStartX, size.height * 0.3),
+      Offset(lineEndX, size.height * 0.3),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(lineStartX, size.height * 0.5),
+      Offset(lineEndX, size.height * 0.5),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(lineStartX, size.height * 0.7),
+      Offset(lineEndX, size.height * 0.7),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _LineHeightIconPainter oldDelegate) =>
+      oldDelegate.color != color;
+}
+
+class _TextBoxStyleIconPainter extends CustomPainter {
+  const _TextBoxStyleIconPainter({
+    this.color = Colors.white,
+    this.bgColor,
+    this.preset = 0,
+  });
+  final Color color;
+  final int? bgColor;
+  final int preset;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromLTWH(1, 1, size.width - 2, size.height - 2);
+    final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(3.5));
+
+    if (preset > 0 && bgColor != null) {
+      canvas.drawRRect(
+        rrect,
+        Paint()
+          ..color = Color(bgColor!)
+          ..style = PaintingStyle.fill,
+      );
+      canvas.drawRRect(
+        rrect,
+        Paint()
+          ..color = color.withValues(alpha: 0.6)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.0,
+      );
+    } else {
+      // Diagonal slash box (No fill / default)
+      final paint = Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2
+        ..strokeCap = StrokeCap.round;
+      canvas.drawRRect(rrect, paint);
+      canvas.drawLine(
+        Offset(rect.left + 2, rect.top + 2),
+        Offset(rect.right - 2, rect.bottom - 2),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _TextBoxStyleIconPainter oldDelegate) =>
+      oldDelegate.color != color ||
+      oldDelegate.bgColor != bgColor ||
+      oldDelegate.preset != preset;
+}
+
+class _FavoriteTextIconPainter extends CustomPainter {
+  const _FavoriteTextIconPainter({
+    this.color = Colors.white,
+    this.isSaved = false,
+  });
+  final Color color;
+  final bool isSaved;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromLTWH(1, 1, size.width - 2, size.height - 2);
+    final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(3.5));
+
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.1;
+    canvas.drawRRect(rrect, paint);
+
+    // Letter 'T'
+    final tPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.3
+      ..strokeCap = StrokeCap.round;
+    final cx = size.width * 0.44;
+    final cy = size.height * 0.52;
+    canvas.drawLine(
+      Offset(cx - 3.5, cy - 3.5),
+      Offset(cx + 3.5, cy - 3.5),
+      tPaint,
+    );
+    canvas.drawLine(Offset(cx, cy - 3.5), Offset(cx, cy + 4.5), tPaint);
+
+    // Heart badge at top right
+    final hx = size.width * 0.78;
+    final hy = size.height * 0.28;
+    final heartPath = Path();
+    heartPath.moveTo(hx, hy);
+    heartPath.cubicTo(hx - 2, hy - 2.5, hx - 3.5, hy, hx, hy + 3.5);
+    heartPath.cubicTo(hx + 3.5, hy, hx + 2, hy - 2.5, hx, hy);
+    heartPath.close();
+
+    canvas.drawPath(
+      heartPath,
+      Paint()
+        ..color = isSaved ? const Color(0xffff375f) : color
+        ..style = isSaved ? PaintingStyle.fill : PaintingStyle.stroke
+        ..strokeWidth = 1.0,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _FavoriteTextIconPainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.isSaved != isSaved;
+}
+
+class _AlignmentIconPainter extends CustomPainter {
+  const _AlignmentIconPainter({
+    this.color = Colors.white,
+    this.alignment = TextAlign.left,
+  });
+  final Color color;
+  final TextAlign alignment;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4
+      ..strokeCap = StrokeCap.round;
+
+    final widths = [
+      size.width * 0.8,
+      size.width * 0.55,
+      size.width * 0.8,
+      size.width * 0.45,
+    ];
+    final ys = [
+      size.height * 0.22,
+      size.height * 0.41,
+      size.height * 0.60,
+      size.height * 0.79,
+    ];
+
+    for (var i = 0; i < 4; i++) {
+      final w = widths[i];
+      final y = ys[i];
+      double startX;
+      if (alignment == TextAlign.center) {
+        startX = (size.width - w) / 2;
+      } else if (alignment == TextAlign.right) {
+        startX = size.width - w - 2;
+      } else {
+        startX = 2;
+      }
+      canvas.drawLine(Offset(startX, y), Offset(startX + w, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _AlignmentIconPainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.alignment != alignment;
 }
 
 Future<void> showDrawShapeMenu(
@@ -2415,6 +2672,1433 @@ class _EraserAdvancedSettingsDialogState
   }
 }
 
+Future<void> showFontSizeMenu(
+  BuildContext context, {
+  required Rect targetRect,
+  required Notebook note,
+  required EditorSession session,
+  required ValueChanged<double> onFontSize,
+  required VoidCallback onUpdate,
+}) {
+  return showGeneralDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'Close Font Size Menu',
+    barrierColor: Colors.transparent,
+    pageBuilder: (dialogContext, animation, secondaryAnimation) {
+      return FontSizeMenuDialog(
+        targetRect: targetRect,
+        note: note,
+        session: session,
+        onFontSize: onFontSize,
+        onUpdate: onUpdate,
+      );
+    },
+    transitionDuration: const Duration(milliseconds: 140),
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(
+        opacity: CurvedAnimation(parent: animation, curve: Curves.easeOutQuad),
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.95, end: 1.0).animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+          ),
+          alignment: Alignment.topCenter,
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
+class FontSizeMenuDialog extends StatelessWidget {
+  const FontSizeMenuDialog({
+    super.key,
+    required this.targetRect,
+    required this.note,
+    required this.session,
+    required this.onFontSize,
+    required this.onUpdate,
+  });
+
+  final Rect targetRect;
+  final Notebook note;
+  final EditorSession session;
+  final ValueChanged<double> onFontSize;
+  final VoidCallback onUpdate;
+
+  static const sizes = [
+    12.0,
+    14.0,
+    16.0,
+    18.0,
+    20.0,
+    24.0,
+    28.0,
+    32.0,
+    36.0,
+    48.0,
+    64.0,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    const cardWidth = 140.0;
+    const arrowWidth = 18.0;
+    const arrowHeight = 9.0;
+
+    final buttonCenterX = targetRect.left + (targetRect.width / 2);
+    final cardLeft = (buttonCenterX - (cardWidth / 2)).clamp(
+      12.0,
+      screenSize.width - cardWidth - 12.0,
+    );
+    final arrowLeft = (buttonCenterX - cardLeft - (arrowWidth / 2)).clamp(
+      16.0,
+      cardWidth - 16.0 - arrowWidth,
+    );
+    final cardTop = targetRect.bottom + 6.0;
+
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => Navigator.of(context).pop(),
+          ),
+        ),
+        Positioned(
+          left: cardLeft,
+          top: cardTop,
+          child: Material(
+            color: Colors.transparent,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(left: arrowLeft),
+                  child: CustomPaint(
+                    size: const Size(arrowWidth, arrowHeight),
+                    painter: _LassoArrowPainter(
+                      color: const Color(0xff1e1e22),
+                      borderColor: Colors.white.withValues(alpha: 0.16),
+                    ),
+                  ),
+                ),
+                Container(
+                  width: cardWidth,
+                  constraints: const BoxConstraints(maxHeight: 280),
+                  decoration: BoxDecoration(
+                    color: const Color(0xff1e1e22),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.16),
+                      width: 1.0,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: ListView.separated(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      shrinkWrap: true,
+                      itemCount: sizes.length,
+                      separatorBuilder: (_, _) => Divider(
+                        height: 1,
+                        thickness: 0.5,
+                        color: Colors.white.withValues(alpha: 0.06),
+                      ),
+                      itemBuilder: (context, index) {
+                        final s = sizes[index];
+                        final isSelected = note.fontSize.round() == s.round();
+                        return InkWell(
+                          key: Key('font-size-${s.round()}'),
+                          onTap: () {
+                            note.fontSize = s;
+                            onFontSize(s);
+                            onUpdate();
+                            Navigator.of(context).pop();
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 7,
+                            ),
+                            color: isSelected
+                                ? const Color(0xff007aff).withValues(alpha: 0.25)
+                                : Colors.transparent,
+                            child: Row(
+                              children: [
+                                Text(
+                                  '${s.round()}',
+                                  style: TextStyle(
+                                    color: isSelected
+                                        ? Colors.white
+                                        : Colors.white70,
+                                    fontSize: 13,
+                                    fontWeight: isSelected
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                  ),
+                                ),
+                                const Spacer(),
+                                if (isSelected)
+                                  const Icon(
+                                    CupertinoIcons.checkmark,
+                                    size: 13,
+                                    color: Color(0xff007aff),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+Future<void> showFontFamilyMenu(
+  BuildContext context, {
+  required Rect targetRect,
+  required Notebook note,
+  required EditorSession session,
+  required VoidCallback onUpdate,
+}) {
+  return showGeneralDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'Close Font Family Menu',
+    barrierColor: Colors.transparent,
+    pageBuilder: (dialogContext, animation, secondaryAnimation) {
+      return FontFamilyMenuDialog(
+        targetRect: targetRect,
+        note: note,
+        session: session,
+        onUpdate: onUpdate,
+      );
+    },
+    transitionDuration: const Duration(milliseconds: 140),
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(
+        opacity: CurvedAnimation(parent: animation, curve: Curves.easeOutQuad),
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.95, end: 1.0).animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+          ),
+          alignment: Alignment.topCenter,
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
+class FontFamilyMenuDialog extends StatelessWidget {
+  const FontFamilyMenuDialog({
+    super.key,
+    required this.targetRect,
+    required this.note,
+    required this.session,
+    required this.onUpdate,
+  });
+
+  final Rect targetRect;
+  final Notebook note;
+  final EditorSession session;
+  final VoidCallback onUpdate;
+
+  static const families = [
+    ('Modern', 'Clean sans-serif (Inter)'),
+    ('Classic', 'Elegant serif (Georgia)'),
+    ('Monospace', 'Code & technical (Courier)'),
+    ('Handwritten', 'Casual script (Caveat)'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    const cardWidth = 240.0;
+    const arrowWidth = 18.0;
+    const arrowHeight = 9.0;
+
+    final buttonCenterX = targetRect.left + (targetRect.width / 2);
+    final cardLeft = (buttonCenterX - (cardWidth / 2)).clamp(
+      12.0,
+      screenSize.width - cardWidth - 12.0,
+    );
+    final arrowLeft = (buttonCenterX - cardLeft - (arrowWidth / 2)).clamp(
+      16.0,
+      cardWidth - 16.0 - arrowWidth,
+    );
+    final cardTop = targetRect.bottom + 6.0;
+
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => Navigator.of(context).pop(),
+          ),
+        ),
+        Positioned(
+          left: cardLeft,
+          top: cardTop,
+          child: Material(
+            color: Colors.transparent,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(left: arrowLeft),
+                  child: CustomPaint(
+                    size: const Size(arrowWidth, arrowHeight),
+                    painter: _LassoArrowPainter(
+                      color: const Color(0xff1e1e22),
+                      borderColor: Colors.white.withValues(alpha: 0.16),
+                    ),
+                  ),
+                ),
+                Container(
+                  width: cardWidth,
+                  decoration: BoxDecoration(
+                    color: const Color(0xff1e1e22),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.16),
+                      width: 1.0,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: families.map((item) {
+                        final name = item.$1;
+                        final desc = item.$2;
+                        final isSelected = session.fontFamily == name;
+                        return InkWell(
+                          key: Key('font-family-$name'),
+                          onTap: () {
+                            session.fontFamily = name;
+                            note.fontFamily = name;
+                            onUpdate();
+                            Navigator.of(context).pop();
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 9,
+                            ),
+                            color: isSelected
+                                ? const Color(0xff007aff).withValues(alpha: 0.25)
+                                : Colors.transparent,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        name,
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 13.5,
+                                          fontWeight: isSelected
+                                              ? FontWeight.bold
+                                              : FontWeight.w500,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        desc,
+                                        style: const TextStyle(
+                                          color: Colors.white54,
+                                          fontSize: 10.5,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (isSelected) ...[
+                                  const SizedBox(width: 8),
+                                  const Icon(
+                                    CupertinoIcons.checkmark,
+                                    size: 13,
+                                    color: Color(0xff007aff),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+Future<void> showTextAlignmentMenu(
+  BuildContext context, {
+  required Rect targetRect,
+  required Notebook note,
+  required EditorSession session,
+  required VoidCallback onUpdate,
+}) {
+  return showGeneralDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'Close Text Alignment Menu',
+    barrierColor: Colors.transparent,
+    pageBuilder: (dialogContext, animation, secondaryAnimation) {
+      return TextAlignmentMenuDialog(
+        targetRect: targetRect,
+        note: note,
+        session: session,
+        onUpdate: onUpdate,
+      );
+    },
+    transitionDuration: const Duration(milliseconds: 140),
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(
+        opacity: CurvedAnimation(parent: animation, curve: Curves.easeOutQuad),
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.95, end: 1.0).animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+          ),
+          alignment: Alignment.topCenter,
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
+class TextAlignmentMenuDialog extends StatefulWidget {
+  const TextAlignmentMenuDialog({
+    super.key,
+    required this.targetRect,
+    required this.note,
+    required this.session,
+    required this.onUpdate,
+  });
+
+  final Rect targetRect;
+  final Notebook note;
+  final EditorSession session;
+  final VoidCallback onUpdate;
+
+  @override
+  State<TextAlignmentMenuDialog> createState() =>
+      _TextAlignmentMenuDialogState();
+}
+
+class _TextAlignmentMenuDialogState extends State<TextAlignmentMenuDialog> {
+  @override
+  Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    const cardWidth = 156.0;
+    const arrowWidth = 18.0;
+    const arrowHeight = 9.0;
+
+    final buttonCenterX =
+        widget.targetRect.left + (widget.targetRect.width / 2);
+    final cardLeft = (buttonCenterX - (cardWidth / 2)).clamp(
+      12.0,
+      screenSize.width - cardWidth - 12.0,
+    );
+    final arrowLeft = (buttonCenterX - cardLeft - (arrowWidth / 2)).clamp(
+      16.0,
+      cardWidth - 16.0 - arrowWidth,
+    );
+    final cardTop = widget.targetRect.bottom + 6.0;
+
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => Navigator.of(context).pop(),
+          ),
+        ),
+        Positioned(
+          left: cardLeft,
+          top: cardTop,
+          child: Material(
+            color: Colors.transparent,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(left: arrowLeft),
+                  child: CustomPaint(
+                    size: const Size(arrowWidth, arrowHeight),
+                    painter: _LassoArrowPainter(
+                      color: const Color(0xff1e1e22),
+                      borderColor: Colors.white.withValues(alpha: 0.16),
+                    ),
+                  ),
+                ),
+                Container(
+                  width: cardWidth,
+                  height: 48,
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xff1e1e22),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.16),
+                      width: 1.0,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildAlignButton(
+                        keyName: 'align-left',
+                        align: TextAlign.left,
+                        tooltip: 'Left Align',
+                      ),
+                      _buildAlignButton(
+                        keyName: 'align-center',
+                        align: TextAlign.center,
+                        tooltip: 'Center Align',
+                      ),
+                      _buildAlignButton(
+                        keyName: 'align-right',
+                        align: TextAlign.right,
+                        tooltip: 'Right Align',
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAlignButton({
+    required String keyName,
+    required TextAlign align,
+    required String tooltip,
+  }) {
+    final isSelected = widget.session.textAlign == align;
+    return GestureDetector(
+      key: Key(keyName),
+      onTap: () {
+        setState(() {
+          widget.session.textAlign = align;
+          widget.note.textAlign = align == TextAlign.center
+              ? 'center'
+              : align == TextAlign.right
+                  ? 'right'
+                  : 'left';
+        });
+        widget.onUpdate();
+      },
+      child: Tooltip(
+        message: tooltip,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: isSelected ? Colors.white : Colors.transparent,
+          ),
+          child: Center(
+            child: CustomPaint(
+              size: const Size(18, 14),
+              painter: _AlignmentIconPainter(
+                color: isSelected ? const Color(0xff151515) : Colors.white70,
+                alignment: align,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+Future<void> showLineHeightMenu(
+  BuildContext context, {
+  required Rect targetRect,
+  required Notebook note,
+  required EditorSession session,
+  required VoidCallback onUpdate,
+}) {
+  return showGeneralDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'Close Line Height Menu',
+    barrierColor: Colors.transparent,
+    pageBuilder: (dialogContext, animation, secondaryAnimation) {
+      return LineHeightMenuDialog(
+        targetRect: targetRect,
+        note: note,
+        session: session,
+        onUpdate: onUpdate,
+      );
+    },
+    transitionDuration: const Duration(milliseconds: 140),
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(
+        opacity: CurvedAnimation(parent: animation, curve: Curves.easeOutQuad),
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.95, end: 1.0).animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+          ),
+          alignment: Alignment.topCenter,
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
+class LineHeightMenuDialog extends StatefulWidget {
+  const LineHeightMenuDialog({
+    super.key,
+    required this.targetRect,
+    required this.note,
+    required this.session,
+    required this.onUpdate,
+  });
+
+  final Rect targetRect;
+  final Notebook note;
+  final EditorSession session;
+  final VoidCallback onUpdate;
+
+  @override
+  State<LineHeightMenuDialog> createState() => _LineHeightMenuDialogState();
+}
+
+class _LineHeightMenuDialogState extends State<LineHeightMenuDialog> {
+  @override
+  Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    const cardWidth = 290.0;
+    const arrowWidth = 18.0;
+    const arrowHeight = 9.0;
+
+    final buttonCenterX =
+        widget.targetRect.left + (widget.targetRect.width / 2);
+    final cardLeft = (buttonCenterX - (cardWidth / 2)).clamp(
+      12.0,
+      screenSize.width - cardWidth - 12.0,
+    );
+    final arrowLeft = (buttonCenterX - cardLeft - (arrowWidth / 2)).clamp(
+      16.0,
+      cardWidth - 16.0 - arrowWidth,
+    );
+    final cardTop = widget.targetRect.bottom + 6.0;
+
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => Navigator.of(context).pop(),
+          ),
+        ),
+        Positioned(
+          left: cardLeft,
+          top: cardTop,
+          child: Material(
+            color: Colors.transparent,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(left: arrowLeft),
+                  child: CustomPaint(
+                    size: const Size(arrowWidth, arrowHeight),
+                    painter: _LassoArrowPainter(
+                      color: const Color(0xff1a1c1e),
+                      borderColor: Colors.white.withValues(alpha: 0.16),
+                    ),
+                  ),
+                ),
+                Container(
+                  width: cardWidth,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xff1a1c1e),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.16),
+                      width: 1.0,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'LINE HEIGHT',
+                        style: TextStyle(
+                          color: Colors.white54,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xff121214),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '${widget.session.lineHeight.round()}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: SliderTheme(
+                              data: SliderTheme.of(context).copyWith(
+                                trackHeight: 3,
+                                activeTrackColor: const Color(0xff007aff),
+                                inactiveTrackColor: const Color(0xff333336),
+                                thumbColor: Colors.white,
+                                overlayShape: SliderComponentShape.noOverlay,
+                                thumbShape: const RoundSliderThumbShape(
+                                  enabledThumbRadius: 7,
+                                ),
+                              ),
+                              child: Slider(
+                                key: const Key('line-height-slider'),
+                                value: widget.session.lineHeight.clamp(
+                                  16.0,
+                                  64.0,
+                                ),
+                                min: 16.0,
+                                max: 64.0,
+                                onChanged: (val) {
+                                  setState(() {
+                                    widget.session.lineHeight = val;
+                                    widget.note.lineHeight = val;
+                                  });
+                                  widget.onUpdate();
+                                },
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xff2c2c2e),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                InkWell(
+                                  key: const Key('line-height-minus'),
+                                  onTap: () {
+                                    setState(() {
+                                      final val = (widget.session.lineHeight - 2)
+                                          .clamp(16.0, 64.0);
+                                      widget.session.lineHeight = val;
+                                      widget.note.lineHeight = val;
+                                    });
+                                    widget.onUpdate();
+                                  },
+                                  child: const Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    child: Icon(
+                                      CupertinoIcons.minus,
+                                      size: 12,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                Container(
+                                  width: 0.8,
+                                  height: 14,
+                                  color: Colors.white12,
+                                ),
+                                InkWell(
+                                  key: const Key('line-height-plus'),
+                                  onTap: () {
+                                    setState(() {
+                                      final val = (widget.session.lineHeight + 2)
+                                          .clamp(16.0, 64.0);
+                                      widget.session.lineHeight = val;
+                                      widget.note.lineHeight = val;
+                                    });
+                                    widget.onUpdate();
+                                  },
+                                  child: const Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    child: Icon(
+                                      CupertinoIcons.plus,
+                                      size: 12,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          const Text(
+                            'Automatic',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const Spacer(),
+                          Transform.scale(
+                            scale: 0.74,
+                            alignment: Alignment.centerRight,
+                            child: CupertinoSwitch(
+                              key: const Key('line-height-auto-switch'),
+                              value: widget.session.lineHeightAuto,
+                              activeTrackColor: const Color(0xff34c759),
+                              onChanged: (val) {
+                                setState(() {
+                                  widget.session.lineHeightAuto = val;
+                                  widget.note.lineHeightAuto = val;
+                                });
+                                widget.onUpdate();
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+Future<void> showTextBoxStyleMenu(
+  BuildContext context, {
+  required Rect targetRect,
+  required Notebook note,
+  required EditorSession session,
+  required VoidCallback onUpdate,
+}) {
+  return showGeneralDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'Close Text Box Style Menu',
+    barrierColor: Colors.transparent,
+    pageBuilder: (dialogContext, animation, secondaryAnimation) {
+      return TextBoxStyleMenuDialog(
+        targetRect: targetRect,
+        note: note,
+        session: session,
+        onUpdate: onUpdate,
+      );
+    },
+    transitionDuration: const Duration(milliseconds: 140),
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(
+        opacity: CurvedAnimation(parent: animation, curve: Curves.easeOutQuad),
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.95, end: 1.0).animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+          ),
+          alignment: Alignment.topCenter,
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
+class TextBoxStyleMenuDialog extends StatefulWidget {
+  const TextBoxStyleMenuDialog({
+    super.key,
+    required this.targetRect,
+    required this.note,
+    required this.session,
+    required this.onUpdate,
+  });
+
+  final Rect targetRect;
+  final Notebook note;
+  final EditorSession session;
+  final VoidCallback onUpdate;
+
+  @override
+  State<TextBoxStyleMenuDialog> createState() => _TextBoxStyleMenuDialogState();
+}
+
+class _TextBoxStyleMenuDialogState extends State<TextBoxStyleMenuDialog> {
+  int _tabIndex = 0; // 0: Presets, 1: Advanced
+
+  static const presets = [
+    (null, null, 0.0), // 0: None
+    (0xff2c3238, null, 0.0), // 1: Dark slate
+    (0xffa7e92f, null, 0.0), // 2: Lime green
+    (0xfffcd5ce, null, 0.0), // 3: Peach
+    (0xffffffff, 0xffe2e8f0, 1.0), // 4: White
+    (0xffe63946, null, 0.0), // 5: Coral red
+    (0xffffea00, null, 0.0), // 6: Yellow
+    (0xffe9ecef, null, 0.0), // 7: Off-white
+    (0xff3a506b, null, 0.0), // 8: Navy
+    (0xfff8f9fa, 0xffdee2e6, 1.0), // 9: Light grey
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    const cardWidth = 330.0;
+    const arrowWidth = 18.0;
+    const arrowHeight = 9.0;
+
+    final buttonCenterX =
+        widget.targetRect.left + (widget.targetRect.width / 2);
+    final cardLeft = (buttonCenterX - (cardWidth / 2)).clamp(
+      12.0,
+      screenSize.width - cardWidth - 12.0,
+    );
+    final arrowLeft = (buttonCenterX - cardLeft - (arrowWidth / 2)).clamp(
+      16.0,
+      cardWidth - 16.0 - arrowWidth,
+    );
+    final cardTop = widget.targetRect.bottom + 6.0;
+
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => Navigator.of(context).pop(),
+          ),
+        ),
+        Positioned(
+          left: cardLeft,
+          top: cardTop,
+          child: Material(
+            color: Colors.transparent,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(left: arrowLeft),
+                  child: CustomPaint(
+                    size: const Size(arrowWidth, arrowHeight),
+                    painter: _LassoArrowPainter(
+                      color: const Color(0xff1a1c1e),
+                      borderColor: Colors.white.withValues(alpha: 0.16),
+                    ),
+                  ),
+                ),
+                Container(
+                  width: cardWidth,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xff1a1c1e),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.16),
+                      width: 1.0,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Center(
+                        child: Text(
+                          'Text Box Style',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Segmented Tab Control [ Presets | Advanced ]
+                      Container(
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: const Color(0xff2c2c2e),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: const EdgeInsets.all(2),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                key: const Key('tab-presets'),
+                                onTap: () => setState(() => _tabIndex = 0),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: _tabIndex == 0
+                                        ? const Color(0xff48484a)
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    'Presets',
+                                    style: TextStyle(
+                                      color: _tabIndex == 0
+                                          ? Colors.white
+                                          : Colors.white60,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: GestureDetector(
+                                key: const Key('tab-advanced'),
+                                onTap: () => setState(() => _tabIndex = 1),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: _tabIndex == 1
+                                        ? const Color(0xff48484a)
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    'Advanced',
+                                    style: TextStyle(
+                                      color: _tabIndex == 1
+                                          ? Colors.white
+                                          : Colors.white60,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      if (_tabIndex == 0)
+                        _buildPresetsTab()
+                      else
+                        _buildAdvancedTab(),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPresetsTab() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            for (var i = 0; i < 5; i++) _buildPresetSwatch(i),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            for (var i = 5; i < 10; i++) _buildPresetSwatch(i),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPresetSwatch(int index) {
+    final preset = presets[index];
+    final isSelected = widget.session.textBoxPreset == index;
+    final bgColor = preset.$1;
+    final borderColor = preset.$2;
+    final borderW = preset.$3;
+
+    return GestureDetector(
+      key: Key('preset-swatch-$index'),
+      onTap: () {
+        setState(() {
+          widget.session.textBoxPreset = index;
+          widget.session.textBoxBgColor = bgColor;
+          widget.session.textBoxBorderColor = borderColor;
+          widget.session.textBoxBorder = borderW;
+          widget.note.textBoxBgColor = bgColor;
+          widget.note.textBoxBorderColor = borderColor;
+          widget.note.textBoxBorder = borderW;
+        });
+        widget.onUpdate();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        width: 48,
+        height: 38,
+        decoration: BoxDecoration(
+          color: bgColor != null ? Color(bgColor) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: isSelected
+              ? Border.all(color: const Color(0xff007aff), width: 2.2)
+              : Border.all(
+                  color: borderColor != null
+                      ? Color(borderColor)
+                      : Colors.white.withValues(alpha: 0.18),
+                  width: borderW > 0 ? borderW : 1.0,
+                ),
+        ),
+        child: index == 0
+            ? Center(
+                child: CustomPaint(
+                  size: const Size(20, 20),
+                  painter: _TextBoxStyleIconPainter(color: Colors.white60),
+                ),
+              )
+            : null,
+      ),
+    );
+  }
+
+  Widget _buildAdvancedTab() {
+    final session = widget.session;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildAdvancedRow(
+          keyName: 'advanced-bg-color',
+          label: 'Background Color',
+          trailing: const Icon(
+            CupertinoIcons.chevron_right,
+            size: 13,
+            color: Colors.white54,
+          ),
+          onTap: () async {
+            final col = await showDialog<Color>(
+              context: context,
+              builder: (ctx) => CustomColorPickerDialog(
+                initialColor: session.textBoxBgColor ?? 0xff2c3238,
+              ),
+            );
+            if (col != null) {
+              setState(() {
+                session.textBoxBgColor = col.toARGB32();
+                widget.note.textBoxBgColor = session.textBoxBgColor;
+              });
+              widget.onUpdate();
+            }
+          },
+        ),
+        const SizedBox(height: 8),
+        _buildAdvancedRow(
+          keyName: 'advanced-border-color',
+          label: 'Border Color',
+          trailing: const Icon(
+            CupertinoIcons.chevron_right,
+            size: 13,
+            color: Colors.white54,
+          ),
+          onTap: () async {
+            final col = await showDialog<Color>(
+              context: context,
+              builder: (ctx) => CustomColorPickerDialog(
+                initialColor: session.textBoxBorderColor ?? 0xff505050,
+              ),
+            );
+            if (col != null) {
+              setState(() {
+                session.textBoxBorderColor = col.toARGB32();
+                widget.note.textBoxBorderColor = session.textBoxBorderColor;
+              });
+              widget.onUpdate();
+            }
+          },
+        ),
+        const SizedBox(height: 8),
+        _buildStepperRow(
+          minusKey: 'corner-minus',
+          plusKey: 'corner-plus',
+          label: '${session.textBoxRadius.round()} pt Round Corner',
+          value: session.textBoxRadius,
+          min: 0,
+          max: 32,
+          onChanged: (v) {
+            setState(() {
+              session.textBoxRadius = v;
+              widget.note.textBoxRadius = v;
+            });
+            widget.onUpdate();
+          },
+        ),
+        const SizedBox(height: 8),
+        _buildAdvancedRow(
+          keyName: 'advanced-shadow-row',
+          label: 'Shadow',
+          trailing: Transform.scale(
+            scale: 0.74,
+            alignment: Alignment.centerRight,
+            child: CupertinoSwitch(
+              key: const Key('advanced-shadow-switch'),
+              value: session.textBoxShadow,
+              activeTrackColor: const Color(0xff34c759),
+              onChanged: (val) {
+                setState(() {
+                  session.textBoxShadow = val;
+                  widget.note.textBoxShadow = val;
+                });
+                widget.onUpdate();
+              },
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        _buildStepperRow(
+          minusKey: 'border-minus',
+          plusKey: 'border-plus',
+          label: '${session.textBoxBorder.round()} pt Border',
+          value: session.textBoxBorder,
+          min: 0,
+          max: 10,
+          onChanged: (v) {
+            setState(() {
+              session.textBoxBorder = v;
+              widget.note.textBoxBorder = v;
+            });
+            widget.onUpdate();
+          },
+        ),
+        const SizedBox(height: 8),
+        _buildStepperRow(
+          minusKey: 'padding-minus',
+          plusKey: 'padding-plus',
+          label: '${session.textBoxPadding.round()} pt Padding',
+          value: session.textBoxPadding,
+          min: 0,
+          max: 32,
+          onChanged: (v) {
+            setState(() {
+              session.textBoxPadding = v;
+              widget.note.textBoxPadding = v;
+            });
+            widget.onUpdate();
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAdvancedRow({
+    required String keyName,
+    required String label,
+    required Widget trailing,
+    VoidCallback? onTap,
+  }) {
+    return InkWell(
+      key: Key(keyName),
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        height: 38,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xff222428),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w400,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            trailing,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStepperRow({
+    required String minusKey,
+    required String plusKey,
+    required String label,
+    required double value,
+    required double min,
+    required double max,
+    required ValueChanged<double> onChanged,
+  }) {
+    return Container(
+      height: 38,
+      padding: const EdgeInsets.only(left: 10, right: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xff222428),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w400,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xff2c2c2e),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                InkWell(
+                  key: Key(minusKey),
+                  onTap: () {
+                    final next =
+                        (value - (max > 10 ? 2 : 1)).clamp(min, max);
+                    onChanged(next);
+                  },
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                    child: Icon(
+                      CupertinoIcons.minus,
+                      size: 11,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                Container(width: 0.8, height: 12, color: Colors.white12),
+                InkWell(
+                  key: Key(plusKey),
+                  onTap: () {
+                    final next =
+                        (value + (max > 10 ? 2 : 1)).clamp(min, max);
+                    onChanged(next);
+                  },
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                    child: Icon(
+                      CupertinoIcons.plus,
+                      size: 11,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class WorkspaceToolbar extends StatefulWidget {
   const WorkspaceToolbar({
     super.key,
@@ -2790,6 +4474,11 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
   final GlobalKey _colorDropdownKey = GlobalKey();
   final GlobalKey _eraserTypeKey = GlobalKey();
   final GlobalKey _eraserOptionsKey = GlobalKey();
+  final GlobalKey _fontSizeKey = GlobalKey();
+  final GlobalKey _fontFamilyKey = GlobalKey();
+  final GlobalKey _textAlignKey = GlobalKey();
+  final GlobalKey _lineHeightKey = GlobalKey();
+  final GlobalKey _textBoxStyleKey = GlobalKey();
 
   Rect _rectForKey(GlobalKey key) {
     final box = key.currentContext?.findRenderObject() as RenderBox?;
@@ -3429,44 +5118,392 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
   }
 
   Widget _buildTextToolbar(Notebook note) {
+    final session = widget.session;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Tooltip(
-          message: 'Text size',
-          child: Icon(
-            CupertinoIcons.textformat_size,
-            size: 16,
-            color: Colors.white70,
+        // 1. Collapse / Options circle button ( ⌄ )
+        Tooltip(
+          message: 'Text options',
+          child: Container(
+            key: const Key('text-collapse-button'),
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withValues(alpha: 0.08),
+            ),
+            child: const Center(
+              child: Icon(
+                CupertinoIcons.chevron_down,
+                size: 13,
+                color: Colors.white70,
+              ),
+            ),
           ),
         ),
         const SizedBox(width: 6),
-        Tooltip(
-          message: 'Text size: ${note.fontSize.round()}',
-          child: DesktopPopupButton<double>(
-            value: note.fontSize,
-            items: {12.0, 16.0, 20.0, 24.0, 32.0, note.fontSize}
-                .map(
-                  (s) => DesktopMenuItem(
-                    value: s,
-                    child: Text(
-                      '${s.round()}',
-                      style: const TextStyle(fontSize: 12),
+
+        // 2. Font Size pill [ 24 ˅ ]
+        GestureDetector(
+          key: _fontSizeKey,
+          onTap: () {
+            showFontSizeMenu(
+              context,
+              targetRect: _rectForKey(_fontSizeKey),
+              note: note,
+              session: session,
+              onFontSize: widget.onFontSize,
+              onUpdate: () {
+                setState(() {});
+                widget.onSettings();
+              },
+            );
+          },
+          child: Tooltip(
+            message: 'Font Size',
+            child: Container(
+              key: const Key('text-font-size-button'),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xff121214),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${note.fontSize.round()}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                )
-                .toList(),
-            onChanged: (v) {
-              if (v != null) widget.onFontSize(v);
-            },
+                  const SizedBox(width: 4),
+                  const Icon(
+                    CupertinoIcons.chevron_down,
+                    size: 11,
+                    color: Colors.white70,
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
         const SizedBox(width: 6),
-        DesktopIconButton(
-          tooltip: 'Bold text',
-          isSelected: note.boldText,
-          onPressed: widget.onBold,
-          icon: const Icon(CupertinoIcons.bold, size: 16),
+
+        // 3. Font Family pill [ Modern ˅ ]
+        GestureDetector(
+          key: _fontFamilyKey,
+          onTap: () {
+            showFontFamilyMenu(
+              context,
+              targetRect: _rectForKey(_fontFamilyKey),
+              note: note,
+              session: session,
+              onUpdate: () {
+                setState(() {});
+                widget.onSettings();
+              },
+            );
+          },
+          child: Tooltip(
+            message: 'Font Family',
+            child: Container(
+              key: const Key('text-font-family-button'),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xff121214),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    session.fontFamily,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(
+                    CupertinoIcons.chevron_down,
+                    size: 11,
+                    color: Colors.white70,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+
+        // 4. Bold / Italic button [ B I ]
+        Container(
+          key: const Key('text-bold-italic-button'),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          decoration: BoxDecoration(
+            color: (note.boldText || session.italicText)
+                ? Colors.white.withValues(alpha: 0.12)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              GestureDetector(
+                key: const Key('text-bold-button'),
+                onTap: widget.onBold,
+                child: Tooltip(
+                  message: 'Bold text',
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 3,
+                    ),
+                    child: Text(
+                      'B',
+                      style: TextStyle(
+                        color: note.boldText ? Colors.white : Colors.white60,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              GestureDetector(
+                key: const Key('text-italic-button'),
+                onTap: () {
+                  setState(() {
+                    session.italicText = !session.italicText;
+                    note.italicText = session.italicText;
+                  });
+                  widget.onSettings();
+                },
+                child: Tooltip(
+                  message: 'Italic',
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 3,
+                    ),
+                    child: Text(
+                      'I',
+                      style: TextStyle(
+                        color: session.italicText
+                            ? Colors.white
+                            : Colors.white60,
+                        fontStyle: FontStyle.italic,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        fontFamily: 'serif',
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 6),
+
+        // 5. Alignment button [ ≡ ]
+        GestureDetector(
+          key: _textAlignKey,
+          onTap: () {
+            showTextAlignmentMenu(
+              context,
+              targetRect: _rectForKey(_textAlignKey),
+              note: note,
+              session: session,
+              onUpdate: () {
+                setState(() {});
+                widget.onSettings();
+              },
+            );
+          },
+          child: Tooltip(
+            message: 'Alignment',
+            child: Container(
+              key: const Key('text-alignment-button'),
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: CustomPaint(
+                size: const Size(18, 16),
+                painter: _AlignmentIconPainter(
+                  color: Colors.white,
+                  alignment: session.textAlign,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 4),
+
+        // 6. Line Height button [ ↕≡ ]
+        GestureDetector(
+          key: _lineHeightKey,
+          onTap: () {
+            showLineHeightMenu(
+              context,
+              targetRect: _rectForKey(_lineHeightKey),
+              note: note,
+              session: session,
+              onUpdate: () {
+                setState(() {});
+                widget.onSettings();
+              },
+            );
+          },
+          child: Tooltip(
+            message: 'Line Height',
+            child: Container(
+              key: const Key('text-line-height-button'),
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: CustomPaint(
+                size: const Size(18, 16),
+                painter: const _LineHeightIconPainter(color: Colors.white),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+
+        // 7. Divider |
+        Container(
+          width: 1,
+          height: 18,
+          color: Colors.white.withValues(alpha: 0.15),
+        ),
+        const SizedBox(width: 8),
+
+        // 8. Text Box Style button [ ⟍ ]
+        GestureDetector(
+          key: _textBoxStyleKey,
+          onTap: () {
+            showTextBoxStyleMenu(
+              context,
+              targetRect: _rectForKey(_textBoxStyleKey),
+              note: note,
+              session: session,
+              onUpdate: () {
+                setState(() {});
+                widget.onSettings();
+              },
+            );
+          },
+          child: Tooltip(
+            message: 'Text Box Style',
+            child: Container(
+              key: const Key('text-box-style-button'),
+              padding: const EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: CustomPaint(
+                size: const Size(20, 18),
+                painter: _TextBoxStyleIconPainter(
+                  color: Colors.white70,
+                  bgColor: session.textBoxBgColor,
+                  preset: session.textBoxPreset,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+
+        // 9. Favorite Text Style [ T♡ ]
+        GestureDetector(
+          key: const Key('favorite-text-style-button'),
+          onTap: () {
+            setState(() {
+              session.favoriteTextStyleSaved = !session.favoriteTextStyleSaved;
+            });
+            widget.onSettings();
+          },
+          child: Tooltip(
+            message: session.favoriteTextStyleSaved
+                ? 'Favorite style saved'
+                : 'Save as favorite style',
+            child: Container(
+              padding: const EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: CustomPaint(
+                size: const Size(20, 18),
+                painter: _FavoriteTextIconPainter(
+                  color: Colors.white70,
+                  isSaved: session.favoriteTextStyleSaved,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+
+        // 10. Pin Text Tool button [ 📌 Pin Text Tool ]
+        GestureDetector(
+          key: const Key('pin-text-tool-button'),
+          onTap: () {
+            setState(() {
+              session.pinTextTool = !session.pinTextTool;
+            });
+            widget.onSettings();
+          },
+          child: Tooltip(
+            message: session.pinTextTool ? 'Unpin text tool' : 'Pin text tool',
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 140),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: session.pinTextTool
+                    ? const Color(0xff007aff)
+                    : Colors.white.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: session.pinTextTool
+                      ? const Color(0xff007aff)
+                      : Colors.white.withValues(alpha: 0.12),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    CupertinoIcons.pin,
+                    size: 13,
+                    color: session.pinTextTool ? Colors.white : Colors.white70,
+                  ),
+                  const SizedBox(width: 5),
+                  const Text(
+                    'Pin Text Tool',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ],
     );
