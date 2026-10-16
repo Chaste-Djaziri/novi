@@ -15,6 +15,7 @@ class Notebook {
     this.paper = 'Blank',
     this.tone = 'White',
     this.cover = 0xff303030,
+    this.coverImage,
     this.landscape = false,
     this.favorite = false,
     List<Map<String, dynamic>>? inkStyles,
@@ -30,6 +31,7 @@ class Notebook {
   String paper;
   String tone;
   int cover;
+  String? coverImage;
   bool landscape;
   bool favorite;
   List<Map<String, dynamic>> inkStyles;
@@ -44,6 +46,7 @@ class Notebook {
     'paper': paper,
     'tone': tone,
     'cover': cover,
+    'coverImage': coverImage,
     'landscape': landscape,
     'favorite': favorite,
     'inkStyles': inkStyles,
@@ -73,6 +76,7 @@ class Notebook {
       paper: json['paper'] as String? ?? 'Blank',
       tone: json['tone'] as String? ?? 'White',
       cover: json['cover'] as int? ?? 0xff303030,
+      coverImage: json['coverImage'] as String?,
       landscape: json['landscape'] as bool? ?? false,
       favorite: json['favorite'] as bool? ?? false,
       inkStyles: (json['inkStyles'] as List? ?? [])
