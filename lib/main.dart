@@ -1,5 +1,6 @@
 import 'tablet_connection.dart';
 import 'paper_layout.dart';
+import 'ink_material.dart';
 import 'paper_text_editor.dart';
 
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
@@ -119,7 +120,38 @@ class _WorkspaceState extends State<Workspace>
   Rect? selectionBox;
   bool movingSelection = false;
   bool editedGesture = false;
+  Offset? _inkHover;
+  int? _inkHoverPage;
+  double _inkPressure = 1;
+  Timer? _inkHoldTimer;
+  bool _inkHeld = false;
   Map<String, dynamic>? activeStyle;
+
+  bool get _showInkFootprint => !_isPanning &&
+      !HardwareKeyboard.instance.isLogicalKeyPressed(LogicalKeyboardKey.space) &&
+      (session.tool == EditorTool.pen || session.tool == EditorTool.highlighter || session.tool == EditorTool.eraser);
+
+  void _trackInkPointer(PointerEvent event, int pageIndex) {
+    setState(() {
+      _inkHover = event.kind == PointerDeviceKind.touch ? null : event.localPosition;
+      _inkHoverPage = pageIndex;
+      _inkPressure = event is PointerHoverEvent || event.kind == PointerDeviceKind.mouse ? 1 : event.pressure;
+    });
+  }
+
+  void _scheduleInkHold() {
+    _inkHoldTimer?.cancel();
+    _inkHeld = false;
+    if (activeStyle == null || activeStroke == null || activeStroke!.length < 2) return;
+    if ((activeStyle!['kind'] == 'pen' && activeStyle!['holdForLine'] == true) ||
+        (activeStyle!['kind'] == 'shape' && activeStyle!['requireHold'] == true)) {
+      _inkHoldTimer = Timer(const Duration(milliseconds: 500), () {
+        if (!mounted || activeStroke == null) return;
+        setState(() => _inkHeld = true);
+      });
+    }
+  }
+
   List<List<double>>? activeStroke;
   int? activePointer;
   bool get drawing => session.tool != EditorTool.text;
@@ -1069,6 +1101,7 @@ class _WorkspaceState extends State<Workspace>
     windowManager.removeListener(this);
     tablets.removeListener(_tabletsChanged);
     tablets.dispose();
+    _inkHoldTimer?.cancel();
     _overscrollResetTimer?.cancel();
     _overscrollBounceController?.dispose();
     _stopPageCreationAnimation();
@@ -1773,12 +1806,19 @@ class _WorkspaceState extends State<Workspace>
                     ignoring:
                         tool == EditorTool.text || tool == EditorTool.hand,
                     child: MouseRegion(
-                      cursor: SystemMouseCursors.precise,
+                      cursor: _showInkFootprint ? SystemMouseCursors.none : SystemMouseCursors.precise,
+                      onHover: (e) => _trackInkPointer(e, pageIndex),
+                      onExit: (_) => setState(() { _inkHover = null; _inkHoverPage = null; }),
                       child: Listener(
                         behavior: HitTestBehavior.opaque,
-                        onPointerDown: (e) =>
-                            pointerDown(e, pageIndex: pageIndex),
-                        onPointerMove: pointerMove,
+                        onPointerDown: (e) {
+                          _trackInkPointer(e, pageIndex);
+                          pointerDown(e, pageIndex: pageIndex);
+                        },
+                        onPointerMove: (e) {
+                          _trackInkPointer(e, pageIndex);
+                          pointerMove(e);
+                        },
                         onPointerUp: (e) {
                           if (e.pointer == activePointer) {
                             finishStroke();
@@ -1790,6 +1830,12 @@ class _WorkspaceState extends State<Workspace>
                           }
                         },
                         child: CustomPaint(
+                          foregroundPainter: _showInkFootprint && _inkHover != null && _inkHoverPage == pageIndex
+                              ? InkFootprintPainter(position: _inkHover!, material: InkMaterial(activeStyle ?? session.inkStyle()),
+                                  color: Color((activeStyle?['color'] as int?) ?? session.color ?? foreground.toARGB32()),
+                                  pressure: _inkPressure,
+                                  eraserRadius: session.tool == EditorTool.eraser ? session.eraserRadius : null)
+                              : null,
                           painter: InkPainter(
                             [
                               ...page.strokes,
@@ -1990,44 +2036,8 @@ class _WorkspaceState extends State<Workspace>
     } else {
       snapshot();
       normalizeStyles();
-      final isHighlighter = session.tool == EditorTool.highlighter ||
-          (session.tool == EditorTool.pen &&
-              session.writingMode == WritingMode.highlighter);
-      final isTape = session.tool == EditorTool.pen &&
-          session.writingMode == WritingMode.tape;
-      final isShape = session.tool == EditorTool.pen &&
-          session.writingMode == WritingMode.drawShape;
-      final isPencil = session.tool == EditorTool.pen &&
-          session.writingMode == WritingMode.pencil;
-
-      final strokeKind = isTape
-          ? 'tape'
-          : isHighlighter
-              ? 'highlighter'
-              : isPencil
-                  ? 'pencil'
-                  : isShape
-                      ? 'shape'
-                      : 'pen';
-
-      final strokeWidth = isTape
-          ? 22.0
-          : isHighlighter
-              ? session.width * 4.0
-              : session.width;
-
-      final strokeOpacity = isHighlighter
-          ? 0.35
-          : isTape
-              ? 0.95
-              : 1.0;
-
-      activeStyle = {
-        'kind': strokeKind,
-        'width': strokeWidth,
-        'color': session.color,
-        'opacity': strokeOpacity,
-      };
+      activeStyle = session.inkStyle();
+      _inkHeld = false;
       setState(
         () => activeStroke = [
           [e.localPosition.dx, e.localPosition.dy, e.pressure],
@@ -2072,6 +2082,7 @@ class _WorkspaceState extends State<Workspace>
         ]),
       );
     }
+    _scheduleInkHold();
     lastPoint = e.localPosition;
   }
 
@@ -2079,7 +2090,7 @@ class _WorkspaceState extends State<Workspace>
     final targetIndex = pageIndex ?? activeStrokePageIndex;
     if (current == null || targetIndex >= current!.pages.length) return;
     final page = current!.pages[targetIndex];
-    final radius = session.width.clamp(4.0, 60.0);
+    final radius = session.eraserRadius.clamp(4.0, 60.0);
     normalizeStyles();
 
     bool canEraseStyle(Map<String, dynamic> style) {
@@ -2088,7 +2099,7 @@ class _WorkspaceState extends State<Workspace>
       if (kind == 'tape') {
         return session.eraserFilters['Tape'] ?? true;
       }
-      if (kind == 'highlighter' || opacity < 1.0) {
+      if (kind == 'highlighter' || (kind == null && opacity < 1.0)) {
         return session.eraserFilters['Highlighter'] ?? true;
       }
       if (kind == 'pencil') {
@@ -2262,6 +2273,7 @@ class _WorkspaceState extends State<Workspace>
 
   void removeAllTape() {
     final page = _activePage;
+    if (!page.inkStyles.any((style) => style['kind'] == 'tape')) return;
     snapshot();
     setState(() {
       normalizeStyles();
@@ -2310,6 +2322,7 @@ class _WorkspaceState extends State<Workspace>
   }
 
   void finishStroke() {
+    _inkHoldTimer?.cancel();
     if (activePointer == null) {
       return;
     }
@@ -2319,20 +2332,35 @@ class _WorkspaceState extends State<Workspace>
         var finalStroke = activeStroke!;
         var finalStyle = Map<String, dynamic>.from(activeStyle!);
 
-        if (session.writingMode == WritingMode.tape &&
-            session.tapeStraight &&
+        if (((finalStyle['kind'] == 'tape' && finalStyle['straight'] == true) ||
+            (finalStyle['kind'] == 'pen' && finalStyle['holdForLine'] == true && _inkHeld)) &&
             finalStroke.length > 1) {
           finalStroke = [
             finalStroke.first,
             finalStroke.last,
           ];
-        } else if (session.writingMode == WritingMode.drawShape &&
-            finalStroke.length >= 2) {
+        } else if (finalStyle['kind'] == 'shape' &&
+            (finalStyle['requireHold'] != true || _inkHeld) && finalStroke.length >= 2) {
           final recognized = _recognizeAndFitShape(finalStroke, session);
           finalStroke = recognized.stroke;
-          if (recognized.isClosed && session.shapeFillColor) {
+          if (finalStyle['snapToShapes'] == true) {
+            for (final point in finalStroke) {
+              Offset? closest;
+              var distance = 10.0;
+              for (var i = 0; i < page.strokes.length; i++) {
+                if (i >= page.inkStyles.length || page.inkStyles[i]['kind'] != 'shape') continue;
+                for (final target in page.strokes[i]) {
+                  final candidate = Offset(target[0], target[1]);
+                  final d = (candidate - Offset(point[0], point[1])).distance;
+                  if (d < distance) { distance = d; closest = candidate; }
+                }
+              }
+              if (closest != null) { point[0] = closest.dx; point[1] = closest.dy; }
+            }
+          }
+          if (recognized.isClosed && finalStyle['shapeFill'] == true) {
             finalStyle['fill'] = true;
-            finalStyle['fillColor'] = session.color;
+            finalStyle['fillColor'] = finalStyle['color'];
           }
         }
 
@@ -2710,7 +2738,7 @@ class InkPainter extends CustomPainter {
       final opacity = (style['opacity'] as num?)?.toDouble() ?? 1.0;
       final width = (style['width'] as num?)?.toDouble() ?? 3.0;
       // Composite a marker stroke once so overlapping segments do not darken joins.
-      if (opacity < 1) {
+      if (opacity < 1 && style['materialVersion'] != 1) {
         canvas.saveLayer(
           null,
           Paint()..color = Colors.white.withValues(alpha: opacity),
@@ -2733,6 +2761,9 @@ class InkPainter extends CustomPainter {
             ..style = PaintingStyle.fill,
         );
       }
+      if (style['materialVersion'] == 1) {
+        InkMaterial(style).paint(canvas, stroke, strokeColor);
+      } else {
       final isTape = style['kind'] == 'tape';
       final paint = Paint()
         ..color = strokeColor
@@ -2749,7 +2780,8 @@ class InkPainter extends CustomPainter {
           canvas.drawLine(Offset(previous[0], previous[1]), a, paint);
         }
       }
-      if (opacity < 1) {
+      }
+      if (opacity < 1 && style['materialVersion'] != 1) {
         canvas.restore();
       }
       if (selected.contains(index) && stroke.isNotEmpty) {
