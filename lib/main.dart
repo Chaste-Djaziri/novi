@@ -121,6 +121,7 @@ class _WorkspaceState extends State<Workspace>
   bool movingSelection = false;
   bool editedGesture = false;
   Offset? _inkHover;
+  Offset? _inkGlobalPointer;
   int? _inkHoverPage;
   double _inkPressure = 1;
   Timer? _inkHoldTimer;
@@ -145,6 +146,7 @@ class _WorkspaceState extends State<Workspace>
 
   void _trackInkPointer(PointerEvent event, int pageIndex) {
     setState(() {
+      _inkGlobalPointer = event.position;
       _inkHover = event.kind == PointerDeviceKind.touch ? null : event.localPosition;
       _inkHoverPage = pageIndex;
       _inkPressure = event is PointerHoverEvent || event.kind == PointerDeviceKind.mouse ? 1 : event.pressure;
@@ -1847,9 +1849,13 @@ class _WorkspaceState extends State<Workspace>
                             finishStroke();
                           }
                         },
-                        child: CustomPaint(
+                        child: AnimatedBuilder(
+                          animation: session.view,
+                          builder: (paperContext, _) => CustomPaint(
                           foregroundPainter: _showInkFootprint && _inkHover != null && _inkHoverPage == pageIndex
-                              ? InkFootprintPainter(position: _inkHover!, material: InkMaterial(activeStyle ?? session.inkStyle()),
+                              ? InkFootprintPainter(position: _inkHover!,
+                                  resolvePosition: () => (paperContext.findRenderObject() as RenderBox).globalToLocal(_inkGlobalPointer!),
+                                  material: InkMaterial(activeStyle ?? session.inkStyle()),
                                   color: Color((activeStyle?['color'] as int?) ?? session.color ?? foreground.toARGB32()),
                                   pressure: _inkPressure,
                                   eraserRadius: session.tool == EditorTool.eraser ? session.eraserRadius : null)
@@ -1880,6 +1886,7 @@ class _WorkspaceState extends State<Workspace>
                           size: Size.infinite,
                             ),
                           ),
+                        ),
                         ),
                       ),
                     ),
