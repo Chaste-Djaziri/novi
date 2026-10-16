@@ -518,6 +518,12 @@ Confirm material feel and pressure with a physical tablet in the normal Mac app.
 - [x] Clean-process verification: `flutter analyze` is clean and the full suite passes 40 tests.
 - [ ] Move the large private toolbar dialogs and icon painters from `workspace_tools.dart` into tool-specific modules; hot reload should be replaced by a full restart after Dart library-boundary moves.
 
+## Incremental extraction: writing toolbar painters — 2026-10-16
+- [x] Extracted the pen, pencil, highlighter, tape, and shape toolbar painters into `features/editor/tools/common/writing_icon_painters.dart`.
+- [x] Updated the writing toolbar and tool controls to use the extracted public painters while preserving appearance and compatibility.
+- [x] `flutter analyze`: clean. `flutter test`: all 40 tests pass.
+- [ ] Extract the remaining eraser/lasso/text painters and the private tool dialogs into their feature modules.
+
 
 ## Writing materials and paper footprints — 2026-10-16
 - [x] Added shared nib geometry and distinct fountain, ballpoint, brush, graphite pencil, highlighter and paper tape renderers. New styles store pen subtype/material version; legacy styles retain their renderer.
