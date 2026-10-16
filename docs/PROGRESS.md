@@ -545,6 +545,8 @@ Confirm material feel and pressure with a physical tablet in the normal Mac app.
 - [x] Added focused rendering coverage in `test/editor_icon_painters_test.dart`; the focused test and `flutter analyze` pass.
 - [x] Moved the color palette dialog into `features/editor/widgets/color_palette_menu_impl.dart` while preserving its public entrypoint and callbacks.
 - [x] Targeted dialog and workspace widget tests pass; `flutter analyze` remains clean.
+- [x] Moved `WorkspaceToolbar` and `FloatingToolControls` into focused editor widget modules with compatibility-preserving part wiring.
+- [x] Added editor widget boundary coverage; targeted workspace tests and `flutter analyze` pass.
 - [ ] Finish reducing legacy editor files and add broader painter comparison coverage.
 
 
