@@ -135,6 +135,13 @@ void main() {
       // Click below existing text on the actual paper at its current zoom.
       await tester.tap(find.byKey(const ValueKey('tool-text')));
       await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<WorkspaceToolbar>(find.byType(WorkspaceToolbar))
+            .session
+            .tool,
+        EditorTool.text,
+      );
       final editor = find.byType(PaperTextEditor).first;
       final viewport = find.byType(InteractiveViewer);
       final delta =
@@ -151,9 +158,14 @@ void main() {
           .transformationController!
           .value
           .getMaxScaleOnAxis();
-      await tester.tapAt(
-        tester.getTopLeft(editor) + Offset(40 * scale, 145 * scale),
+      final tap = tester.getTopLeft(editor) + Offset(40 * scale, 145 * scale);
+      expect(
+        tester.getRect(viewport).contains(tap),
+        isTrue,
+        reason:
+            'Typing row must be on screen: $tap in ${tester.getRect(viewport)}',
       );
+      await tester.tapAt(tap);
       await tester.pumpAndSettle();
       final field = tester.widget<PaperTextEditor>(editor);
       expect(field.controller.text, startsWith('\n\n\n'));
