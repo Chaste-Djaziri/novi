@@ -228,7 +228,12 @@ void main() {
       await tester.enterText(input, text);
       await tester.pumpAndSettle();
       final note = state.current as Notebook;
-      expect(note.pages.length, greaterThan(1));
+      expect(
+        note.pages.length,
+        greaterThan(1),
+        reason:
+            'Saved characters: ${note.pages.first.text.length}; input characters: ${field.controller.text.length}; composition: ${field.controller.value.composing}; saved text starts: ${note.pages.first.text.substring(0, note.pages.first.text.length.clamp(0, 30))}',
+      );
       expect(note.pages.map((p) => p.text).join(), text);
       await tester.tap(find.byTooltip('Undo'));
       await tester.pumpAndSettle();
