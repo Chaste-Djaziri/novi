@@ -541,7 +541,9 @@ Confirm material feel and pressure with a physical tablet in the normal Mac app.
 - [x] `flutter analyze`: clean. `flutter test`: all 41 tests pass.
 - [x] Physically moved the text popover implementations into `features/editor/tools/text/text_popovers_impl.dart`.
 - [x] `flutter analyze`: clean. `flutter test`: all 41 tests pass.
-- [ ] Extract the remaining private eraser/lasso/text painters and finish reducing legacy editor files.
+- [x] Extracted eraser, lasso, selection, and text icon painters into `features/editor/tools/common/editor_icon_painters.dart`.
+- [x] Added focused rendering coverage in `test/editor_icon_painters_test.dart`; the focused test and `flutter analyze` pass.
+- [ ] Finish reducing legacy editor files and add broader painter comparison coverage.
 
 
 ## Writing materials and paper footprints — 2026-10-16
