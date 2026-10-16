@@ -18,6 +18,8 @@ void main() {
     return;
   }
   stdout.writeln('Dart file length warnings (existing files are non-blocking):');
-  for (final warning in warnings..sort()) stdout.writeln('  $warning');
+  for (final warning in warnings..sort()) {
+    stdout.writeln('  $warning');
+  }
   exitCode = 0;
 }
