@@ -1,3 +1,5 @@
+import 'paper_layout.dart';
+
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -63,7 +65,8 @@ class Wordmark extends StatelessWidget {
 }
 
 class PaperPainter extends CustomPainter {
-  PaperPainter(this.pattern, this.tone);
+  PaperPainter(this.pattern, this.tone, {this.guides = false});
+  final bool guides;
   final String pattern;
   final String tone;
   @override
@@ -74,8 +77,8 @@ class PaperPainter extends CustomPainter {
         alpha: 0.12,
       )
       ..strokeWidth = 0.6;
-    final spacing = pattern == 'Wide ruled' ? 36.0 : 24.0;
-    if (pattern == 'Blank') {
+    final spacing = PaperLayout(pattern).spacing;
+    if (pattern == 'Blank' && !guides) {
       return;
     }
     for (double y = spacing; y < size.height; y += spacing) {
@@ -96,7 +99,9 @@ class PaperPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant PaperPainter oldDelegate) =>
-      pattern != oldDelegate.pattern || tone != oldDelegate.tone;
+      pattern != oldDelegate.pattern ||
+      tone != oldDelegate.tone ||
+      guides != oldDelegate.guides;
 }
 
 class DocumentCover extends StatelessWidget {
@@ -1734,7 +1739,7 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
   }
 
   Widget _buildTemplateName(String pattern) {
-    if (pattern == 'Blank') {
+    if (pattern == 'Blank' && !guides) {
       return const Text(
         'Blank',
         style: TextStyle(
