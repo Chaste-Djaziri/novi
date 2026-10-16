@@ -326,6 +326,8 @@ class _WorkspaceState extends State<Workspace>
     finishStroke();
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
+      _inkHover = null;
+      _inkHoverPage = null;
       current = notes.firstWhere((n) => n.id == note.id);
       sessions.putIfAbsent(note.id, () => EditorSession(current!));
       if (!openIds.contains(note.id)) {
@@ -1267,6 +1269,10 @@ class _WorkspaceState extends State<Workspace>
       },
       child: Focus(
         focusNode: workspaceFocus,
+        onKeyEvent: (_, event) {
+          if (event.logicalKey == LogicalKeyboardKey.space) setState(() {});
+          return KeyEventResult.ignored;
+        },
         autofocus: true,
         child: Container(
           margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
