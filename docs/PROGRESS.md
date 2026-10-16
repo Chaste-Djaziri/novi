@@ -313,6 +313,22 @@ The first technical alpha is implemented. A reported native crash on New noteboo
 - [x] Unit and widget test suite: all 17 tests pass (`test/library_ui_test.dart`, `test/widget_test.dart`, `test/workspace_test.dart`).
 - [ ] Hands-on interaction check in the running Mac app.
 
+## Notebook cover as Page 1 and paper canvas as Page 2 — 2026-10-16
+- [x] Configured multi-page continuous vertical layout for notebooks (`note.kind == 'Notebook'`):
+  - Page 1 renders the notebook cover (`DocumentCover(note)`) with rounded corners and drop shadow.
+  - Page 2 renders the paper canvas (`PaperPainter`, text editor, ink layer) directly under the cover, separated by a 24px vertical gap.
+  - Other document types (`Whiteboard`, `Text document`, `Quick note`) remain single-page canvas layouts.
+- [x] Extended scroll and zoom bounds:
+  - Total content height dynamically adapts to `pageHeight * 2 + 72.0` when a cover is present, maintaining 24px margins at the top, between pages, and at the bottom.
+  - Page indicator in the bottom bar dynamically updates (`Page 1 of 2` vs `Page 2 of 2`) based on the scroll position.
+  - Zoom preserves and scales the vertical scroll position clamped to valid bounds rather than jumping to 0.0.
+- [x] Test coverage:
+  - Updated `test/widget_test.dart` to assert cover (Page 1) and paper (Page 2) are vertically stacked, 24px apart, centered horizontally, and scroll bounds stick to top and bottom margins correctly.
+  - Updated `test/workspace_test.dart` and `test/library_ui_test.dart` to verify drawing, erasing, undo/redo, selection, and zoom interactions on Page 2 pass seamlessly.
+- [x] `flutter analyze`: clean (0 issues).
+- [x] Unit and widget test suite: all 17 tests pass.
+- [ ] Hands-on interaction check in the running Mac app.
+
 ## Next
 Perform hands-on visual and drag verification in the rebuilt Mac app. Continue the desktop acceptance checks listed in the checklist above, recording results here.
 
