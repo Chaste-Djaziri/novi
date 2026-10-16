@@ -290,21 +290,19 @@ class _WorkspaceState extends State<Workspace> {
 
   void zoom(double factor) {
     setState(() {
-      if (factor == 0) {
-        session.view.value = Matrix4.identity();
-      } else {
-        final scale = session.view.value.getMaxScaleOnAxis();
-        final target = (scale * factor).clamp(0.25, 3.0);
-        final matrix = Matrix4.identity()..scaleByDouble(target, target, target, 1);
-        if (_lastConstraints != null) {
-          final effectiveWidth = math.max(_lastConstraints!.maxWidth, _currentPaperWidth);
-          final paperWidth = _currentPaperWidth * target;
-          final paperLeftInChild = (effectiveWidth - _currentPaperWidth) / 2 * target;
-          final centeredTx = (_lastConstraints!.maxWidth - (2 * paperLeftInChild + paperWidth)) / 2;
+      final scale = session.view.value.getMaxScaleOnAxis();
+      final target = factor == 0 ? 1.0 : (scale * factor).clamp(0.25, 3.0);
+      final matrix = Matrix4.identity()..scaleByDouble(target, target, target, 1);
+      if (_lastConstraints != null) {
+        final paperWidth = _currentPaperWidth * target;
+        if (paperWidth <= _lastConstraints!.maxWidth) {
+          matrix.storage[12] = 0.0;
+        } else {
+          final centeredTx = (_lastConstraints!.maxWidth - paperWidth) / 2;
           matrix.storage[12] = centeredTx;
         }
-        session.view.value = matrix;
       }
+      session.view.value = matrix;
     });
   }
 
@@ -319,22 +317,18 @@ class _WorkspaceState extends State<Workspace> {
     final currentTx = matrix.storage[12];
     final currentTy = matrix.storage[13];
 
-    final effectiveWidth = math.max(constraints.maxWidth, pageWidth);
     final effectiveHeight = math.max(constraints.maxHeight, pageHeight + 48);
-
     final paperWidth = pageWidth * scale;
-    final totalWidth = effectiveWidth * scale;
     final totalHeight = effectiveHeight * scale;
 
     final double minX, maxX;
     if (paperWidth <= constraints.maxWidth) {
-      // Don't allow left and right scrolls when paper fits in view; stay centered!
-      minX = maxX = (constraints.maxWidth - totalWidth) / 2;
+      // Don't allow side scrolls when paper fits in view
+      minX = maxX = 0.0;
     } else {
-      // When too big out of view, allow left and right scrolling to the edges of the paper
-      final paperLeftInChild = (effectiveWidth - pageWidth) / 2 * scale;
-      maxX = -paperLeftInChild;
-      minX = constraints.maxWidth - (paperLeftInChild + paperWidth);
+      // When zoomed out of viewport, allow scroll only to the edges of the paper, not past it
+      maxX = 0.0;
+      minX = constraints.maxWidth - paperWidth;
     }
 
     final double minY, maxY;
@@ -358,24 +352,20 @@ class _WorkspaceState extends State<Workspace> {
   void _snapHorizontalToCenter(BoxConstraints constraints, double pageWidth) {
     final matrix = session.view.value.clone();
     final scale = matrix.getMaxScaleOnAxis();
-    final effectiveWidth = math.max(constraints.maxWidth, pageWidth);
     final paperWidth = pageWidth * scale;
 
     if (paperWidth <= constraints.maxWidth) {
-      // Don't allow left and right scrolls when paper fits in view; stay centered!
-      final totalWidth = effectiveWidth * scale;
-      final centeredTx = (constraints.maxWidth - totalWidth) / 2;
-      if ((matrix.storage[12] - centeredTx).abs() > 0.5) {
-        matrix.storage[12] = centeredTx;
+      // Don't allow side scrolls when paper fits in view; stay centered at 0.0
+      if (matrix.storage[12].abs() > 0.01) {
+        matrix.storage[12] = 0.0;
         session.view.value = matrix;
       }
     } else {
-      // When too big out of view, clamp left and right to the edges of the paper
-      final paperLeftInChild = (effectiveWidth - pageWidth) / 2 * scale;
-      final maxX = -paperLeftInChild;
-      final minX = constraints.maxWidth - (paperLeftInChild + paperWidth);
+      // When zoomed out of viewport, clamp left and right strictly to the edges of the paper
+      final minX = constraints.maxWidth - paperWidth;
+      const maxX = 0.0;
       final clampedTx = matrix.storage[12].clamp(minX, maxX);
-      if ((matrix.storage[12] - clampedTx).abs() > 0.5) {
+      if ((matrix.storage[12] - clampedTx).abs() > 0.01) {
         matrix.storage[12] = clampedTx;
         session.view.value = matrix;
       }
@@ -684,6 +674,11 @@ class _WorkspaceState extends State<Workspace> {
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   _lastConstraints = constraints;
+                  final scale = session.view.value.getMaxScaleOnAxis();
+                  final paperWidth = pageWidth * scale;
+                  final isFitting = paperWidth <= constraints.maxWidth;
+                  final childWidth = isFitting ? (constraints.maxWidth / scale) : pageWidth;
+                  final childHeight = math.max(constraints.maxHeight, pageHeight + 48);
                   return Listener(
                     onPointerSignal: (event) {
                       if (event is PointerScrollEvent) {
@@ -701,7 +696,8 @@ class _WorkspaceState extends State<Workspace> {
                       constrained: false,
                       minScale: 0.25,
                       maxScale: 3,
-                      boundaryMargin: const EdgeInsets.symmetric(horizontal: 50, vertical: 50),
+                      panAxis: isFitting ? PanAxis.vertical : PanAxis.free,
+                      boundaryMargin: const EdgeInsets.symmetric(horizontal: 0, vertical: 50),
                       panEnabled: tool == EditorTool.hand,
                       scaleEnabled: tool == EditorTool.hand,
                       onInteractionEnd: (_) {
@@ -709,10 +705,10 @@ class _WorkspaceState extends State<Workspace> {
                         setState(() {});
                       },
                     child: SizedBox(
-                      width: math.max(constraints.maxWidth, pageWidth),
-                      height: math.max(constraints.maxHeight, pageHeight + 48),
+                      width: childWidth,
+                      height: childHeight,
                       child: Align(
-                        alignment: Alignment.center,
+                        alignment: isFitting ? Alignment.center : Alignment.topCenter,
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 24),
                           child: SizedBox(
