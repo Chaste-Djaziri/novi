@@ -1206,6 +1206,101 @@ void main() {
   );
 
   testWidgets(
+    'overscroll page creation animates view into the new page and allows smooth continuous scrolling',
+    (tester) async {
+      final dir = Directory.systemTemp.createTempSync('novi_test_create_anim_');
+      final original = PathProviderPlatform.instance;
+      PathProviderPlatform.instance = TestPaths(dir.path);
+      addTearDown(() {
+        PathProviderPlatform.instance = original;
+        dir.deleteSync(recursive: true);
+      });
+      final store = LibraryStore('${dir.path}/novi.sqlite');
+      final note = Notebook(
+        id: 'test-create-anim',
+        title: 'Anim Create Note',
+        kind: 'Notebook',
+      );
+      store.save(note);
+      store.close();
+
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(const NoviApp());
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Anim Create Note').first);
+      await tester.pumpAndSettle();
+
+      final viewerFinder = find.byKey(ValueKey('view-${note.id}'));
+      final center = tester.getCenter(viewerFinder);
+
+      // Scroll to bottom
+      await tester.sendEventToBinding(
+        PointerScrollEvent(
+          position: center,
+          scrollDelta: const Offset(0, 3000),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final ivBefore = tester.widget<InteractiveViewer>(viewerFinder);
+      final tyBefore = ivBefore.transformationController!.value.storage[13];
+
+      // Pan past threshold to trigger page creation
+      await tester.sendEventToBinding(
+        PointerPanZoomStartEvent(position: center),
+      );
+      await tester.pump();
+      await tester.sendEventToBinding(
+        PointerPanZoomUpdateEvent(
+          position: center,
+          panDelta: const Offset(0, -200),
+        ),
+      );
+      await tester.pump();
+
+      // Page was added and animated glide begins
+      final checkStore = LibraryStore('${dir.path}/novi.sqlite');
+      final reloaded = checkStore.load().firstWhere((n) => n.id == note.id);
+      expect(reloaded.pages.length, equals(2));
+      checkStore.close();
+
+      // Advance animation halfway (150ms)
+      await tester.pump(const Duration(milliseconds: 150));
+      final ivMid = tester.widget<InteractiveViewer>(viewerFinder);
+      final tyMid = ivMid.transformationController!.value.storage[13];
+      // View has smoothly glided down towards the new page
+      expect(tyMid, lessThan(tyBefore));
+
+      // User continues continuous scrolling during the animation
+      await tester.sendEventToBinding(
+        PointerPanZoomUpdateEvent(
+          position: center,
+          panDelta: const Offset(0, -80),
+        ),
+      );
+      await tester.pump();
+
+      final ivContinuous = tester.widget<InteractiveViewer>(viewerFinder);
+      final tyContinuous = ivContinuous.transformationController!.value.storage[13];
+      // Continuous scroll was accepted and drove the canvas even further down
+      expect(tyContinuous, lessThan(tyMid));
+
+      await tester.sendEventToBinding(
+        PointerPanZoomEndEvent(position: center),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Page 3 created'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'trackpad overscroll release before threshold triggers bounce-back animation',
     (tester) async {
       final dir = Directory.systemTemp.createTempSync('novi_test_bounce_');

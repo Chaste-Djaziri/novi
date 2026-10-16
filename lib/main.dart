@@ -358,11 +358,21 @@ class _WorkspaceState extends State<Workspace>
   static const double _createPageThreshold = 180.0;
   AnimationController? _overscrollBounceController;
   Animation<double>? _overscrollBounceAnimation;
+  AnimationController? _pageCreationScrollController;
   int activeStrokePageIndex = 0;
   Ticker? _flingTicker;
   VelocityTracker _panVelocityTracker =
       VelocityTracker.withKind(PointerDeviceKind.trackpad);
   double _accumulatedPanY = 0.0;
+
+  void _stopPageCreationAnimation() {
+    if (_pageCreationScrollController != null) {
+      _pageCreationScrollController?.stop();
+      _pageCreationScrollController?.dispose();
+      _pageCreationScrollController = null;
+      _isCreatingPage = false;
+    }
+  }
 
   void _stopFling() {
     _flingTicker?.stop();
@@ -464,7 +474,7 @@ class _WorkspaceState extends State<Workspace>
     final hasCover = current?.kind == 'Notebook';
     final paperCount = current?.pages.length ?? 1;
     final totalSheets = (hasCover ? 1 : 0) + paperCount;
-    final loaderExtra = (_bottomOverscroll > 0 || _isCreatingPage) ? 72.0 : 0.0;
+    final loaderExtra = _bottomOverscroll > 0 ? 72.0 : 0.0;
     final totalContentHeight =
         totalSheets * pageHeight + (totalSheets + 1) * 24.0 + loaderExtra;
     final totalHeight = totalContentHeight * scale;
@@ -542,6 +552,15 @@ class _WorkspaceState extends State<Workspace>
               (minY - overscrollShift).clamp(minY - 140.0, 0.0);
           session.view.value = matrix;
         });
+      })
+      ..addStatusListener((s) {
+        if (s == AnimationStatus.completed || s == AnimationStatus.dismissed) {
+          if (mounted && _bottomOverscroll != 0.0) {
+            setState(() {
+              _bottomOverscroll = 0.0;
+            });
+          }
+        }
       });
     _overscrollBounceController!.forward(from: 0.0);
   }
@@ -552,7 +571,9 @@ class _WorkspaceState extends State<Workspace>
     double pageWidth,
     double pageHeight,
   ) {
-    if (_isCreatingPage) return;
+    if (_pageCreationScrollController?.isAnimating == true) {
+      _stopPageCreationAnimation();
+    }
     final matrix = session.view.value.clone();
     final scale = matrix.getMaxScaleOnAxis();
     final currentTx = matrix.storage[12];
@@ -562,7 +583,7 @@ class _WorkspaceState extends State<Workspace>
     final hasCover = current?.kind == 'Notebook';
     final paperCount = current?.pages.length ?? 1;
     final totalSheets = (hasCover ? 1 : 0) + paperCount;
-    final loaderExtra = (_bottomOverscroll > 0 || _isCreatingPage) ? 96.0 : 0.0;
+    final loaderExtra = _bottomOverscroll > 0 ? 96.0 : 0.0;
     final totalContentHeight =
         totalSheets * pageHeight + (totalSheets + 1) * 24.0 + loaderExtra;
     final totalHeight = totalContentHeight * scale;
@@ -602,7 +623,7 @@ class _WorkspaceState extends State<Workspace>
         }
       });
 
-      if (_bottomOverscroll >= _createPageThreshold) {
+      if (_bottomOverscroll >= _createPageThreshold && !_isCreatingPage) {
         _createNextPage(constraints, pageWidth, pageHeight);
         return;
       }
@@ -648,22 +669,67 @@ class _WorkspaceState extends State<Workspace>
     if (_isCreatingPage || current == null) return;
     _isCreatingPage = true;
     _overscrollResetTimer?.cancel();
+    _overscrollBounceController?.stop();
+    _stopFling();
+    _stopPageCreationAnimation();
     snapshot();
+
+    final hasCover = current!.kind == 'Notebook';
+    final paperCountBefore = current!.pages.length;
+    final newSheetIndex = (hasCover ? 1 : 0) + paperCountBefore;
+    final totalPagesAfter = (hasCover ? 1 : 0) + paperCountBefore + 1;
+
     setState(() {
       current!.pages.add(NotebookPage());
       save();
       _bottomOverscroll = 0.0;
+      status = 'Page $totalPagesAfter created';
     });
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || current == null) return;
-      setState(() {
-        _isCreatingPage = false;
-        final hasCover = current!.kind == 'Notebook';
-        final totalPages = (hasCover ? 1 : 0) + current!.pages.length;
-        status = 'Page $totalPages created';
-      });
-    });
+    final matrix = session.view.value.clone();
+    final scale = matrix.getMaxScaleOnAxis();
+    final totalSheets = totalPagesAfter;
+    final totalContentHeight =
+        totalSheets * pageHeight + (totalSheets + 1) * 24.0;
+    final totalHeight = totalContentHeight * scale;
+    final newMinY = totalHeight <= constraints.maxHeight
+        ? 0.0
+        : constraints.maxHeight - totalHeight;
+
+    final sheetTop = 24.0 + newSheetIndex * (pageHeight + 24.0);
+    final targetTy = (-sheetTop * scale + 24.0).clamp(newMinY, 0.0);
+    final startTy = matrix.storage[13];
+
+    if ((targetTy - startTy).abs() > 2.0) {
+      _pageCreationScrollController = AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 380),
+      );
+      final curve = CurvedAnimation(
+        parent: _pageCreationScrollController!,
+        curve: Curves.easeOutCubic,
+      );
+      final anim = Tween<double>(begin: startTy, end: targetTy).animate(curve);
+      anim
+        ..addListener(() {
+          if (!mounted || current == null) return;
+          final m = session.view.value.clone();
+          m.storage[13] = anim.value;
+          session.view.value = m;
+        })
+        ..addStatusListener((s) {
+          if (s == AnimationStatus.completed || s == AnimationStatus.dismissed) {
+            if (mounted) {
+              setState(() {
+                _isCreatingPage = false;
+              });
+            }
+          }
+        });
+      _pageCreationScrollController!.forward();
+    } else {
+      _isCreatingPage = false;
+    }
   }
 
   void _snapHorizontalToCenter(BoxConstraints constraints, double pageWidth) {
@@ -1002,6 +1068,7 @@ class _WorkspaceState extends State<Workspace>
     tablets.dispose();
     _overscrollResetTimer?.cancel();
     _overscrollBounceController?.dispose();
+    _stopPageCreationAnimation();
     _stopFling();
     for (final editor in sessions.values) {
       editor.dispose();
@@ -1272,6 +1339,7 @@ class _WorkspaceState extends State<Workspace>
                       },
                       onPointerDown: (event) {
                         _stopFling();
+                        _stopPageCreationAnimation();
                         if (event.kind == PointerDeviceKind.stylus ||
                             event.kind == PointerDeviceKind.invertedStylus) {
                           if (!hasStylus) {
@@ -1330,6 +1398,7 @@ class _WorkspaceState extends State<Workspace>
                       },
                       onPointerPanZoomStart: (event) {
                         _stopFling();
+                        _stopPageCreationAnimation();
                         _pinchScale = 1;
                         _accumulatedPanY = 0.0;
                         _panVelocityTracker =
@@ -1378,6 +1447,7 @@ class _WorkspaceState extends State<Workspace>
                       onPointerSignal: (event) {
                         if (event is PointerScrollEvent) {
                           _stopFling();
+                          _stopPageCreationAnimation();
                           _handleScrollDelta(
                             event.scrollDelta,
                             constraints,
@@ -1519,6 +1589,7 @@ class _WorkspaceState extends State<Workspace>
                           bottomOverscroll: _bottomOverscroll,
                           onScrollTo: (ty) {
                             _stopFling();
+                            _stopPageCreationAnimation();
                             final m = session.view.value.clone();
                             m.storage[13] = ty;
                             session.view.value = m;
@@ -2042,60 +2113,70 @@ class _PageCreationLoader extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 20, bottom: 8),
       child: Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          decoration: BoxDecoration(
-            color: const Color(0xff1e1e1e),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: isCreating || progress >= 1.0
-                  ? Colors.white.withValues(alpha: 0.35)
-                  : Colors.white.withValues(alpha: 0.12),
-              width: 0.8,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.35),
-                blurRadius: 14,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 18,
-                height: 18,
-                child: isCreating
-                    ? const CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      )
-                    : CircularProgressIndicator(
-                        value: progress.clamp(0.04, 1.0),
-                        strokeWidth: 2.2,
-                        backgroundColor: Colors.white.withValues(alpha: 0.15),
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          progress >= 1.0 ? Colors.white : Colors.white70,
-                        ),
-                      ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                isCreating
-                    ? 'Creating new page…'
-                    : progress >= 1.0
-                    ? 'Release or scroll to create page'
-                    : 'Scroll to add page $percent%',
-                style: TextStyle(
-                  color: progress >= 1.0 ? Colors.white : Colors.grey[300],
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 0.2,
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 180),
+          opacity: (progress > 0.02 || isCreating) ? 1.0 : 0.0,
+          child: AnimatedScale(
+            duration: const Duration(milliseconds: 180),
+            scale: (0.88 + 0.12 * progress).clamp(0.88, 1.0),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xff1e1e1e),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: isCreating || progress >= 1.0
+                      ? Colors.white.withValues(alpha: 0.35)
+                      : Colors.white.withValues(alpha: 0.12),
+                  width: 0.8,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-            ],
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: isCreating
+                        ? const CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
+                          )
+                        : CircularProgressIndicator(
+                            value: progress.clamp(0.04, 1.0),
+                            strokeWidth: 2.2,
+                            backgroundColor:
+                                Colors.white.withValues(alpha: 0.15),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              progress >= 1.0 ? Colors.white : Colors.white70,
+                            ),
+                          ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    isCreating
+                        ? 'Creating new page…'
+                        : progress >= 1.0
+                            ? 'Release or scroll to create page'
+                            : 'Scroll to add page $percent%',
+                    style: TextStyle(
+                      color: progress >= 1.0 ? Colors.white : Colors.grey[300],
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
