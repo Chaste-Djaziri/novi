@@ -47,8 +47,20 @@ extension FloatingToolControlsWritingtoolbar on FloatingToolControlsState {
                 : Colors.white70,
           ),
           onTap: () {
-            setState(() => session.writingMode = WritingMode.pencil);
-            widget.onSettings();
+            if (session.writingMode == WritingMode.pencil) {
+              showPencilMenu(
+                context,
+                targetRect: _rectForKey(_pencilModeKey),
+                session: session,
+                onUpdate: () {
+                  setState(() {});
+                  widget.onSettings();
+                },
+              );
+            } else {
+              setState(() => session.writingMode = WritingMode.pencil);
+              widget.onSettings();
+            }
           },
         ),
         const SizedBox(width: 4),

@@ -80,6 +80,8 @@ class EditorSession {
   WritingMode writingMode = WritingMode.pen;
   PenType penType = PenType.fountain;
   bool penHoldForLine = true;
+  bool pencilReduceLatency = true;
+  bool pencilDrawAndHold = false;
   bool shapeRequireHoldToSnap = false;
   bool shapeSnapToOtherShapes = true;
   bool shapeFillColor = true;
@@ -143,6 +145,8 @@ class EditorSession {
         : 1.0,
     'straight': tapeStraight,
     'holdForLine': penHoldForLine,
+    'pencilReduceLatency': pencilReduceLatency,
+    'pencilDrawAndHold': pencilDrawAndHold,
     'requireHold': shapeRequireHoldToSnap,
     'snapToShapes': shapeSnapToOtherShapes,
     'shapeFill': shapeFillColor,
