@@ -200,6 +200,17 @@ The first technical alpha is implemented. A reported native crash on New noteboo
 - [x] Regenerated visual preview artifact `build/ui-preview/library.png` confirming the balanced dual-row header layout with right-aligned search beneath `+ New`.
 - [ ] Hands-on interaction check in the running Mac app.
 
+## Home button on notebook write page — 2026-10-16
+- [x] Added dedicated Home button (`CupertinoIcons.house`) to `DesktopWindowHeader` in `lib/main.dart`:
+  - Positioned right before the previous and next route buttons (`<` and `>`), directly following the macOS traffic lights zone.
+  - Dynamically displayed when in the notebook write / editor page (`showTabs: true`), allowing one-click return to the documents library.
+  - Wired directly to `onOpenDocument` (cleans up active drawing strokes, unfocuses active text inputs, and navigates home).
+- [x] Added automated widget test `home button appears on notebook write page right before route buttons and returns to library` in `test/widget_test.dart`.
+- [x] `flutter analyze`: clean (0 issues).
+- [x] Unit and widget test suite: all 14 tests pass (`test/library_ui_test.dart`, `test/widget_test.dart`, `test/workspace_test.dart`).
+- [x] Regenerated visual preview artifact `build/ui-preview/editor.png` confirming the Home button placement alongside the traffic lights and navigation buttons.
+- [ ] Hands-on interaction check in the running Mac app.
+
 ## Next
 Perform hands-on visual and drag verification in the rebuilt Mac app. Continue the desktop acceptance checks listed in the checklist above, recording results here.
 
