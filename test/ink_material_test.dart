@@ -71,8 +71,8 @@ void main() {
     final reopened = LibraryStore('${dir.path}/notes.sqlite');
     addTearDown(reopened.close);
     expect(reopened.load().single.inkStyles, note.inkStyles);
-    expect(PortableNotes.decode(PortableNotes.document(note)).single.inkStyles, note.inkStyles);
-    expect(PortableNotes.decode(PortableNotes.backup([note])).single.inkStyles, note.inkStyles);
+    expect(decodePortable(encodePortable([note], backup: false), backup: false).single.inkStyles, note.inkStyles);
+    expect(decodePortable(encodePortable([note], backup: true), backup: true).single.inkStyles, note.inkStyles);
   });
 
   test('rendered materials are distinct, deterministic and marker joins stay uniform', () async {
