@@ -1,3 +1,6 @@
+import 'package:flutter/gestures.dart';
+import 'package:novi/paper_text_editor.dart';
+
 import 'desktop_test_support.dart';
 
 import 'dart:io';
@@ -140,6 +143,27 @@ void main() {
       await tester.tap(find.text('Save style'));
       await tester.pumpAndSettle();
       await capture('editor');
+      await tester.tap(find.byKey(const ValueKey('tool-text')));
+      await tester.pumpAndSettle();
+      final paperEditor = find.byType(PaperTextEditor).first;
+      final viewport = find.byType(InteractiveViewer);
+      final scrollToPaper =
+          tester.getTopLeft(paperEditor).dy -
+          tester.getTopLeft(viewport).dy -
+          24;
+      await tester.sendEventToBinding(
+        PointerScrollEvent(
+          position: tester.getCenter(viewport),
+          scrollDelta: Offset(0, scrollToPaper),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.descendant(of: paperEditor, matching: find.byType(EditableText)),
+        'A place for every idea.\nWrite naturally, aligned with the paper.',
+      );
+      await tester.pumpAndSettle();
+      await capture('typing-paper');
       tester.view.physicalSize = const Size(960, 640);
       await tester.pumpAndSettle();
       await capture('minimum-editor');
