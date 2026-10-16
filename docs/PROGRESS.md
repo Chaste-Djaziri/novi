@@ -559,6 +559,8 @@ Confirm material feel and pressure with a physical tablet in the normal Mac app.
 - [x] Verified analyzer, dialog boundary, and reusable popup tests after the pencil settings redesign.
 - [x] Added pen feature menus for Pen Settings, Writing Aids, and Math Assist, including working spelling, latency, gesture, and math suggestion toggles.
 - [x] Added a Math Assist equation preview and separate feature-menu boundary coverage; `flutter analyze` and dialog tests pass.
+- [x] Fixed tool menu runtime assertions by adding Material ancestors for interactive tiles and the reusable popup surface.
+- [x] Verified `flutter analyze`, popup rendering, and dialog boundary tests after the Material fix.
 - [ ] Finish reducing legacy editor files and add broader painter comparison coverage.
 
 
