@@ -563,6 +563,8 @@ Confirm material feel and pressure with a physical tablet in the normal Mac app.
 - [x] Verified `flutter analyze`, popup rendering, and dialog boundary tests after the Material fix.
 - [x] Pen feature links now navigate inside the existing popup with an animated content slide and back button instead of opening nested dialogs.
 - [x] Verified analyzer, popup rendering, and dialog boundary tests after the in-place navigation change.
+- [x] Added the Standard Pencil graphite preview curve to the pencil popup above its settings, matching the supplied design.
+- [x] Verified analyzer, popup rendering, and dialog boundary tests after the pencil preview update.
 - [ ] Finish reducing legacy editor files and add broader painter comparison coverage.
 
 
