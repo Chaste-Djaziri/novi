@@ -26,6 +26,10 @@ part 'features/editor/tools/text/text_popovers_impl.dart';
 part 'features/editor/widgets/color_palette_menu_impl.dart';
 part 'features/editor/widgets/editor_toolbar_impl.dart';
 part 'features/editor/widgets/floating_tool_controls_impl.dart';
+part 'features/editor/widgets/writing_controls_impl.dart';
+part 'features/editor/widgets/eraser_controls_impl.dart';
+part 'features/editor/widgets/text_controls_impl.dart';
+part 'features/editor/widgets/zoom_controls_impl.dart';
 
 void _drawDashedPath(
   Canvas canvas,
