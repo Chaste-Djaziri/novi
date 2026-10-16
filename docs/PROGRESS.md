@@ -543,6 +543,8 @@ Confirm material feel and pressure with a physical tablet in the normal Mac app.
 - [x] `flutter analyze`: clean. `flutter test`: all 41 tests pass.
 - [x] Extracted eraser, lasso, selection, and text icon painters into `features/editor/tools/common/editor_icon_painters.dart`.
 - [x] Added focused rendering coverage in `test/editor_icon_painters_test.dart`; the focused test and `flutter analyze` pass.
+- [x] Moved the color palette dialog into `features/editor/widgets/color_palette_menu_impl.dart` while preserving its public entrypoint and callbacks.
+- [x] Targeted dialog and workspace widget tests pass; `flutter analyze` remains clean.
 - [ ] Finish reducing legacy editor files and add broader painter comparison coverage.
 
 
