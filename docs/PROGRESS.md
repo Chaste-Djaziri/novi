@@ -493,3 +493,10 @@ Implemented Text Tool options and popovers matching the user's design reference 
 ## Next
 Confirm the new Text Tool floating bar, Font Size, Font Family, Alignment, Line Height, and Text Box Style popovers in the running Mac app. Verify custom background colors and borders on typed text on the canvas.
 
+
+## Writing materials and paper footprints — 2026-10-16
+- [x] Added shared nib geometry and distinct fountain, ballpoint, brush, graphite pencil, highlighter and paper tape renderers. New styles store pen subtype/material version; legacy styles retain their renderer.
+- [x] Tape responds to width presets; eraser radius is independent of writing width. Paper-local footprints use the active nib geometry and pressure in transformed paper coordinates.
+- [x] Connected hold-for-line, require-hold shape recognition and shape-vertex snapping; stroke completion reads captured options. Corrected eraser material filtering.
+- [x] Existing automated suite: 29 tests pass. Four added material tests pass: widths/geometry/pressure, deterministic distinct pixels and uniform marker joins, SQLite reopen and both portable formats, generated light/dark comparison.
+- Native macOS integration and workspace footprint regression coverage are in progress. Physical stylus and Windows/Linux remain unverified.
