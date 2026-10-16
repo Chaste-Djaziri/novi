@@ -11,9 +11,14 @@ enum EditorTool { pen, highlighter, eraser, select, text, hand }
 class EditorSession {
   EditorSession(Notebook note)
     : text = TextEditingController(text: note.text),
-      tool = note.kind == 'Text document' ? EditorTool.text : EditorTool.pen;
+      tool = note.kind == 'Text document' ? EditorTool.text : EditorTool.pen {
+    textFocus.addListener(() {
+      if (textFocus.hasFocus) activeTextPage = 0;
+    });
+  }
   final TextEditingController text;
   final FocusNode textFocus = FocusNode();
+  int activeTextPage = 0;
   final Map<int, TextEditingController> pageControllers = {};
   final Map<int, FocusNode> pageFocusNodes = {};
 
@@ -27,7 +32,13 @@ class EditorSession {
 
   FocusNode focusNodeForPage(int index) {
     if (index == 0) return textFocus;
-    return pageFocusNodes.putIfAbsent(index, () => FocusNode());
+    return pageFocusNodes.putIfAbsent(index, () {
+      final node = FocusNode();
+      node.addListener(() {
+        if (node.hasFocus) activeTextPage = index;
+      });
+      return node;
+    });
   }
 
   final TransformationController view = TransformationController();
