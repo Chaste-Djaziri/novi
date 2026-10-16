@@ -496,6 +496,14 @@ Implemented Text Tool options and popovers matching the user's design reference 
 ## Next
 Confirm material feel and pressure with a physical tablet in the normal Mac app. Continue the outstanding desktop acceptance checks.
 
+## Modular architecture guidance and compatibility boundaries — 2026-10-16
+- [x] Added `docs/CODE_ARCHITECTURE.md` with the preferred 200–400 line range, 500-line soft ceiling, responsibility boundaries, tool contract expectations, and migration rules.
+- [x] Added `docs/AI_CODING_GUIDE.md` with the required inspection, reuse, testing, file-size, commit, and progress-update checklist for AI-assisted changes.
+- [x] Added `tool/check_file_lengths.dart`. It reports existing Dart files above the soft ceiling without blocking builds and excludes generated/platform directories.
+- [x] Added compatibility boundaries under `lib/app`, `lib/core`, `lib/features`, and `lib/shared`, including the initial `ToolDefinition` contract. Existing serialization, rendering, and editor behavior remains unchanged while extraction proceeds incrementally.
+- [x] `flutter analyze`: no issues. `flutter test`: all 35 tests pass.
+- [ ] Extract the legacy `main.dart`, `workspace_tools.dart`, and `library_ui.dart` responsibilities into the new modules; the checker currently reports these known legacy files as warnings.
+
 
 ## Writing materials and paper footprints — 2026-10-16
 - [x] Added shared nib geometry and distinct fountain, ballpoint, brush, graphite pencil, highlighter and paper tape renderers. New styles store pen subtype/material version; legacy styles retain their renderer.
