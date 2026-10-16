@@ -1488,6 +1488,24 @@ class _WorkspaceState extends State<Workspace>
                           },
                         ),
                       ),
+                      Positioned(
+                        top: 14,
+                        left: 0,
+                        right: 0,
+                        child: Center(
+                          child: FloatingToolControls(
+                            session: session,
+                            note: note,
+                            onSettings: () => setState(() {}),
+                            onFontSize: (v) => formatText(size: v),
+                            onBold: () => formatText(bold: !note.boldText),
+                            onZoom: zoom,
+                            onDelete: session.selection.isEmpty
+                                ? null
+                                : deleteSelection,
+                          ),
+                        ),
+                      ),
                     ],
                   );
                 },
