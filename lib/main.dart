@@ -2493,6 +2493,26 @@ _RecognizedShape _recognizeAndFitShape(
     }
     final avgEllipseErr = sumDistFromEllipse / stroke.length;
 
+    // Angular loops should stay polygons instead of being forced into ellipses.
+    var edgeError = 0.0;
+    for (final p in stroke) {
+      edgeError += math.min(
+        math.min((p[0] - minX).abs(), (p[0] - maxX).abs()),
+        math.min((p[1] - minY).abs(), (p[1] - maxY).abs()),
+      );
+    }
+    edgeError /= stroke.length * math.max(1.0, maxDim);
+    if (edgeError < 0.14) {
+      final rectPoints = <List<double>>[
+        [minX, minY, first[2]],
+        [maxX, minY, first[2]],
+        [maxX, maxY, first[2]],
+        [minX, maxY, first[2]],
+        [minX, minY, first[2]],
+      ];
+      return _RecognizedShape(stroke: rectPoints, isClosed: true);
+    }
+
     if (avgEllipseErr < 0.28) {
       const count = 36;
       final ellipsePoints = <List<double>>[];
@@ -2507,14 +2527,17 @@ _RecognizedShape _recognizeAndFitShape(
       return _RecognizedShape(stroke: ellipsePoints, isClosed: true);
     }
 
-    final rectPoints = <List<double>>[
-      [minX, minY, first[2]],
-      [maxX, minY, first[2]],
-      [maxX, maxY, first[2]],
-      [minX, maxY, first[2]],
-      [minX, minY, first[2]],
+    // Remaining angular closed loops are represented by three stable extrema.
+    final top = stroke.reduce((a, b) => a[1] < b[1] ? a : b);
+    final right = stroke.reduce((a, b) => a[0] > b[0] ? a : b);
+    final left = stroke.reduce((a, b) => a[0] < b[0] ? a : b);
+    final trianglePoints = <List<double>>[
+      [top[0], top[1], first[2]],
+      [right[0], right[1], first[2]],
+      [left[0], left[1], first[2]],
+      [top[0], top[1], first[2]],
     ];
-    return _RecognizedShape(stroke: rectPoints, isClosed: true);
+    return _RecognizedShape(stroke: trianglePoints, isClosed: true);
   }
 
   // 1. Straight Line Check
