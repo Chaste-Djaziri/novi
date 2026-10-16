@@ -1038,6 +1038,15 @@ class DesktopWindowHeader extends StatelessWidget {
               const DragToMoveArea(
                 child: SizedBox(width: 78, height: 34),
               ),
+            if (showTabs) ...[
+              DesktopHeaderButton(
+                key: const Key('home-button'),
+                tooltip: 'Home',
+                icon: CupertinoIcons.house,
+                onPressed: onOpenDocument,
+              ),
+              const SizedBox(width: 2),
+            ],
             DesktopHeaderButton(
               tooltip: 'Back to documents',
               icon: CupertinoIcons.chevron_left,
