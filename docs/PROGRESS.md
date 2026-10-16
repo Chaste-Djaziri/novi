@@ -15,6 +15,9 @@
 - [ ] Step 11: Complete hands-on desktop acceptance checks listed below.
 
 ## Current
+Writing materials and paper indicators are implemented. All 35 automated tests pass and `flutter analyze` reports no issues. The latest complete native macOS run passed 30 tests; a final native rerun is checking the stationary-pointer scrolling and touch/filter refinements. Physical stylus and Windows/Linux verification remain pending.
+
+## Previous completed work — Text Tool
 Implemented Text Tool options and popovers matching the user's design reference screenshots:
 - **Text Tool Floating Bar & Anchored Popovers**:
   - **Color Popover (`TextColorMenuDialog`)**:
@@ -491,7 +494,7 @@ Implemented Text Tool options and popovers matching the user's design reference 
   - Added comprehensive automated test in [test/widget_test.dart](file:///Users/chastedjaziri/Documents/ChatGPT/novi/test/widget_test.dart) covering all 5 popovers, tool selection, font size changes, font family selection, alignment toggles, line height stepper/slider/switch, and text box preset/advanced switches and steppers.
 
 ## Next
-Confirm the new Text Tool floating bar, Font Size, Font Family, Alignment, Line Height, and Text Box Style popovers in the running Mac app. Verify custom background colors and borders on typed text on the canvas.
+Complete final native verification for writing materials, then confirm material feel and pressure with a physical tablet in the normal Mac app. Continue the outstanding desktop acceptance checks.
 
 
 ## Writing materials and paper footprints — 2026-10-16
@@ -499,4 +502,8 @@ Confirm the new Text Tool floating bar, Font Size, Font Family, Alignment, Line 
 - [x] Tape responds to width presets; eraser radius is independent of writing width. Paper-local footprints use the active nib geometry and pressure in transformed paper coordinates.
 - [x] Connected hold-for-line, require-hold shape recognition and shape-vertex snapping; stroke completion reads captured options. Corrected eraser material filtering.
 - [x] Existing automated suite: 29 tests pass. Four added material tests pass: widths/geometry/pressure, deterministic distinct pixels and uniform marker joins, SQLite reopen and both portable formats, generated light/dark comparison.
-- Native macOS integration and workspace footprint regression coverage are in progress. Physical stylus and Windows/Linux remain unverified.
+- [x] Workspace regression covers captured tape options, held pen/shape gestures, material filters, fast eraser crossing and undo/redo, independent toolbar sizes, footprint coordinates on two pages at 50%/100%/150%, stationary-pointer scrolling, Space navigation, paper exit and touch suppression.
+- [x] Added ink repaint invalidation coverage: unchanged content skips repaint; in-place points and style edits repaint. Footprints repaint separately from textured ink.
+- [x] Final automated suite: 35 tests pass; analysis is clean. Rendered and visually inspected `build/ui-preview/ink-materials.png` on light and dark paper.
+- [x] Native macOS integration passed 30 tests before the final stationary-pointer/touch refinements. Final native rerun is in progress.
+- [ ] Physical stylus pressure/hover, normal-app hands-on acceptance, and Windows/Linux remain unverified.
