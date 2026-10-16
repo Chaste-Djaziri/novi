@@ -531,6 +531,14 @@ Confirm material feel and pressure with a physical tablet in the normal Mac app.
 - [x] `flutter analyze`: clean. `flutter test`: all 41 tests pass.
 - [ ] Replace the compatibility exports with physically moved dialog implementations and extract the remaining eraser/lasso/text painters.
 
+## Incremental extraction: pen, tape, and shape dialogs — 2026-10-16
+- [x] Physically moved `PenMenuDialog` and `showPenMenu` into `features/editor/tools/pen/pen_menu_impl.dart`.
+- [x] Physically moved `TapeMenuDialog` and `showTapeMenu` into `features/editor/tools/tape/tape_menu_impl.dart`.
+- [x] Physically moved `DrawShapeMenuDialog` and `showDrawShapeMenu` into `features/editor/tools/shape/shape_menu_impl.dart`.
+- [x] Legacy `workspace_tools.dart` keeps compatibility exports and part wiring; toolbar behavior is unchanged.
+- [x] `flutter analyze`: clean. `flutter test`: all 41 tests pass. The file checker reports `workspace_tools.dart` reduced from 6,216 to 5,406 lines.
+- [ ] Physically move eraser, lasso, and text dialog implementations, then extract their remaining private painters.
+
 
 ## Writing materials and paper footprints — 2026-10-16
 - [x] Added shared nib geometry and distinct fountain, ballpoint, brush, graphite pencil, highlighter and paper tape renderers. New styles store pen subtype/material version; legacy styles retain their renderer.
