@@ -15,12 +15,11 @@
 - [ ] Step 11: Complete hands-on desktop acceptance checks listed below.
 
 ## Current
-Implemented natural inertial deceleration on trackpad release and eliminated frame skipping ("sipping"):
-- Added `FrictionSimulation(0.135, ...)` driven by a Flutter `Ticker` on `PointerPanZoomEndEvent`, using velocity tracked via `VelocityTracker.withKind(PointerDeviceKind.trackpad)`. When releasing two fingers from the trackpad, the canvas continues scrolling at release velocity and smoothly glides to a stop.
-- Interrupted flings immediately on any user contact (`onPointerDown`, new pan `onPointerPanZoomStart`, mouse wheel `onPointerSignal`, or scrollbar dragging `onScrollTo`).
-- Eliminated redundant `setState` calls during normal in-bounds scrolling in `_handleScrollDelta`: the canvas transforms directly via `InteractiveViewer`'s internal Matrix4 listener without re-rendering all page widgets, text fields, and ink strokes on every sub-pixel trackpad event.
-- Wrapped `CanvasScrollIndicator` in `ListenableBuilder(listenable: session.view)` so the scroll thumb glides at a buttery 120fps independently.
-- Added comprehensive automated test in `test/widget_test.dart` verifying inertial glide deceleration on release. All 25 automated tests pass and analysis is completely clean (0 issues).
+Implemented smooth overscroll page creation animation and continuous scrolling:
+- Smooth Page Creation Glide: Replaced abrupt snapping with a 380ms `Curves.easeOutCubic` glide animation that smoothly frames the newly created page into view with its 24px top margin.
+- Non-blocking Continuous Scrolling: Removed the blocking `_isCreatingPage` check from `_handleScrollDelta`. User scroll and trackpad events immediately take over or continue smoothly through page creation, driving the view deeper into the new sheet without frame drops or stutters.
+- Animated Progress Pill: Added `AnimatedOpacity` and `AnimatedScale` to `_PageCreationLoader` so the loader pill blooms and fades smoothly.
+- Automated Verification: Added widget test verifying animated glide into the new page and uninterrupted continuous scrolling during page creation. All 26 automated tests pass and analysis is completely clean (0 issues).
 - [x] Configured `EditorTool.select` as initial tool when opening notebooks/documents.
 - [x] Converted top toolbar items and sub-components to icon-only buttons with zero text clutter, passing text names and actions into tooltips.
 - [x] Moved all more controls / tool options out of the top header into `FloatingToolControls`, freeing header vertical space to a clean 44px.
