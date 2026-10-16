@@ -209,4 +209,95 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pumpAndSettle();
   });
+
+  testWidgets('custom color picker allows picking any hex color for notebook cover', (tester) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final directory = Directory.systemTemp.createTempSync('novi-color-test');
+    final original = PathProviderPlatform.instance;
+    PathProviderPlatform.instance = TestPaths(directory.path);
+    addTearDown(() {
+      PathProviderPlatform.instance = original;
+      directory.deleteSync(recursive: true);
+    });
+
+    await tester.pumpWidget(const NoviApp());
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 150)),
+    );
+    await tester.pumpAndSettle();
+
+    // Open New menu and select Notebook
+    await tester.tap(find.text('New'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Notebook').first);
+    await tester.pumpAndSettle();
+    expect(find.byType(CreateDocumentDialog), findsOneWidget);
+
+    // Scroll to and tap Custom Color button
+    await tester.ensureVisible(find.byKey(const Key('custom-color-button')));
+    await tester.tap(find.byKey(const Key('custom-color-button')));
+    await tester.pumpAndSettle();
+    expect(find.byType(CustomColorPickerDialog), findsOneWidget);
+
+    // Enter custom hex color
+    await tester.enterText(find.byKey(const Key('custom-hex-field')), 'FF5733');
+    await tester.pumpAndSettle();
+
+    // Confirm color selection
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    expect(find.byType(CustomColorPickerDialog), findsNothing);
+
+    // Enter name and create document
+    await tester.enterText(find.byKey(const Key('document-name')), 'Vibrant Notebook');
+    await tester.ensureVisible(find.text('Create'));
+    await tester.tap(find.text('Create'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Vibrant Notebook'), findsWidgets);
+
+    // Verify in SQLite storage
+    final store = LibraryStore('${directory.path}/novi.sqlite');
+    final saved = store.load().firstWhere((n) => n.title == 'Vibrant Notebook');
+    expect(saved.cover, 0xffff5733);
+    expect(saved.coverImage, isNull);
+    store.close();
+  });
+
+  testWidgets('notebook with image cover renders in DocumentCover and survives portable format', (tester) async {
+    const samplePng =
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    final note = Notebook(
+      id: 'img-note',
+      title: 'Art Journal',
+      cover: 0xff255492,
+      coverImage: samplePng,
+    );
+
+    // Verify DocumentCover widget renders without throwing
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 200,
+            height: 260,
+            child: DocumentCover(note),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Art Journal'), findsOneWidget);
+    expect(find.byType(Image), findsOneWidget);
+
+    // Verify survives export / import round trip
+    final encoded = encodePortable([note], backup: false);
+    final decoded = decodePortable(encoded, backup: false).single;
+    expect(decoded.coverImage, samplePng);
+    expect(decoded.cover, 0xff255492);
+    expect(decoded.title, 'Art Journal');
+  });
 }
