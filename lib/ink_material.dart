@@ -126,6 +126,8 @@ class InkFootprintPainter extends CustomPainter {
     required this.color,
     this.pressure = 1,
     this.eraserRadius,
+  // Keep the named position argument while exposing its resolved paint-time value.
+  // ignore: prefer_initializing_formals
   }) : _position = position;
   final Offset _position;
   final Offset Function()? resolvePosition;
