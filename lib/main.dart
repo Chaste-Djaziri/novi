@@ -2493,24 +2493,37 @@ _RecognizedShape _recognizeAndFitShape(
     }
     final avgEllipseErr = sumDistFromEllipse / stroke.length;
 
-    // Angular loops should stay polygons instead of being forced into ellipses.
-    var edgeError = 0.0;
-    for (final p in stroke) {
-      edgeError += math.min(
-        math.min((p[0] - minX).abs(), (p[0] - maxX).abs()),
-        math.min((p[1] - minY).abs(), (p[1] - maxY).abs()),
-      );
+    // Detect true corners from turn angles. Smooth circles have no sustained
+    // sharp turns, while triangles, rectangles, trapezia, and hexagons do.
+    final corners = <int>[];
+    final window = math.max(2, (stroke.length / 28).round());
+    for (var i = window; i < stroke.length - window; i++) {
+      final before = Offset(stroke[i - window][0], stroke[i - window][1]);
+      final current = Offset(stroke[i][0], stroke[i][1]);
+      final after = Offset(stroke[i + window][0], stroke[i + window][1]);
+      final a = before - current;
+      final b = after - current;
+      if (a.distance < 1 || b.distance < 1) continue;
+      final cosine = (a.dx * b.dx + a.dy * b.dy) / (a.distance * b.distance);
+      final angle = math.acos(cosine.clamp(-1.0, 1.0));
+      if (angle > 0.62) corners.add(i);
     }
-    edgeError /= stroke.length * math.max(1.0, maxDim);
-    if (edgeError < 0.14) {
-      final rectPoints = <List<double>>[
-        [minX, minY, first[2]],
-        [maxX, minY, first[2]],
-        [maxX, maxY, first[2]],
-        [minX, maxY, first[2]],
-        [minX, minY, first[2]],
-      ];
-      return _RecognizedShape(stroke: rectPoints, isClosed: true);
+    final cornerGroups = <List<int>>[];
+    for (final index in corners) {
+      if (cornerGroups.isEmpty || index - cornerGroups.last.last > window * 2) {
+        cornerGroups.add([index]);
+      } else {
+        cornerGroups.last.add(index);
+      }
+    }
+    if (cornerGroups.length >= 3 && cornerGroups.length <= 8) {
+      final polygon = <List<double>>[];
+      for (final group in cornerGroups) {
+        final index = group[group.length ~/ 2];
+        polygon.add([stroke[index][0], stroke[index][1], first[2]]);
+      }
+      polygon.add(List<double>.from(polygon.first));
+      return _RecognizedShape(stroke: polygon, isClosed: true);
     }
 
     if (avgEllipseErr < 0.28) {
@@ -2527,17 +2540,7 @@ _RecognizedShape _recognizeAndFitShape(
       return _RecognizedShape(stroke: ellipsePoints, isClosed: true);
     }
 
-    // Remaining angular closed loops are represented by three stable extrema.
-    final top = stroke.reduce((a, b) => a[1] < b[1] ? a : b);
-    final right = stroke.reduce((a, b) => a[0] > b[0] ? a : b);
-    final left = stroke.reduce((a, b) => a[0] < b[0] ? a : b);
-    final trianglePoints = <List<double>>[
-      [top[0], top[1], first[2]],
-      [right[0], right[1], first[2]],
-      [left[0], left[1], first[2]],
-      [top[0], top[1], first[2]],
-    ];
-    return _RecognizedShape(stroke: trianglePoints, isClosed: true);
+    return _RecognizedShape(stroke: stroke, isClosed: true);
   }
 
   // 1. Straight Line Check
