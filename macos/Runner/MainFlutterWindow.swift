@@ -27,6 +27,7 @@ private final class TabletMonitor: NSObject, FlutterStreamHandler {
   private var port: IONotificationPortRef?
   private var attached: io_iterator_t = 0
   private var removed: io_iterator_t = 0
+  private var monitoring = false
   private var sink: FlutterEventSink?
   private var methodChannel: FlutterMethodChannel!
   private var eventChannel: FlutterEventChannel!
@@ -50,10 +51,11 @@ private final class TabletMonitor: NSObject, FlutterStreamHandler {
       monitor.sink?(monitor.state())
     }
     let context = Unmanaged.passUnretained(self).toOpaque()
-    IOServiceAddMatchingNotification(port, kIOFirstMatchNotification, IOServiceMatching("IOHIDDevice"), callback, context, &attached)
+    let matchResult = IOServiceAddMatchingNotification(port, kIOFirstMatchNotification, IOServiceMatching("IOHIDDevice"), callback, context, &attached)
     while case let entry = IOIteratorNext(attached), entry != 0 { IOObjectRelease(entry) }
-    IOServiceAddMatchingNotification(port, kIOTerminatedNotification, IOServiceMatching("IOHIDDevice"), callback, context, &removed)
+    let removalResult = IOServiceAddMatchingNotification(port, kIOTerminatedNotification, IOServiceMatching("IOHIDDevice"), callback, context, &removed)
     while case let entry = IOIteratorNext(removed), entry != 0 { IOObjectRelease(entry) }
+    monitoring = matchResult == KERN_SUCCESS && removalResult == KERN_SUCCESS
   }
   private func property(_ device: io_registry_entry_t, _ key: String) -> Any? {
     IORegistryEntryCreateCFProperty(device, key as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue()
@@ -78,7 +80,7 @@ private final class TabletMonitor: NSObject, FlutterStreamHandler {
         if IORegistryEntryGetRegistryEntryID(device, &identifier) == KERN_SUCCESS { devices.insert(String(identifier)) }
       }
     }
-    return ["available": port != nil, "devices": devices.sorted()]
+    return ["available": monitoring, "devices": devices.sorted()]
   }
   func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
     sink = events
@@ -89,6 +91,6 @@ private final class TabletMonitor: NSObject, FlutterStreamHandler {
   deinit {
     if attached != 0 { IOObjectRelease(attached) }
     if removed != 0 { IOObjectRelease(removed) }
-    if let port = port { IONotificationPortDestroy(port) }
+    if let port = port { IONotificationPortSetDispatchQueue(port, nil); IONotificationPortDestroy(port) }
   }
 }
