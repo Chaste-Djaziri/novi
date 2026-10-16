@@ -126,7 +126,6 @@ class WorkspaceToolbar extends StatelessWidget {
     ),
     child: LayoutBuilder(
       builder: (context, bounds) {
-        final compact = bounds.maxWidth < 1100;
         final tools = EditorTool.values
             .where((tool) => tool != EditorTool.hand || hasStylus)
             .toList();
@@ -317,8 +316,6 @@ class FloatingToolControls extends StatefulWidget {
   @override
   State<FloatingToolControls> createState() => _FloatingToolControlsState();
 }
-
-typedef _HoveringContextControls = FloatingToolControls;
 
 class _FloatingToolControlsState extends State<FloatingToolControls> {
   bool _isHovered = false;
@@ -602,6 +599,7 @@ class _FloatingToolControlsState extends State<FloatingToolControls> {
       ),
     ),
   ),
+),
 );
   }
 }
