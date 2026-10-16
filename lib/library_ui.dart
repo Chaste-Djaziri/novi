@@ -427,7 +427,7 @@ class _LibraryViewState extends State<LibraryView> {
                     Text(
                       favorites ? 'Favorites' : 'Documents',
                       style: const TextStyle(
-                        fontSize: 22,
+                        fontSize: 24,
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
                       ),
@@ -449,22 +449,6 @@ class _LibraryViewState extends State<LibraryView> {
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    SizedBox(
-                      width: 180,
-                      child: DesktopTextField(
-                        prefix: const Padding(
-                          padding: EdgeInsets.only(left: 6, right: 2),
-                          child: Icon(
-                            CupertinoIcons.search,
-                            size: 14,
-                            color: Colors.grey,
-                          ),
-                        ),
-                        onChanged: (v) => setState(() => query = v),
-                        placeholder: 'Search documents',
                       ),
                     ),
                     const Expanded(
@@ -504,8 +488,9 @@ class _LibraryViewState extends State<LibraryView> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     DesktopPopupButton<String>(
                       value: filter,
@@ -521,6 +506,22 @@ class _LibraryViewState extends State<LibraryView> {
                           )
                           .toList(),
                       onChanged: (v) => setState(() => filter = v!),
+                    ),
+                    const Spacer(),
+                    SizedBox(
+                      width: 220,
+                      child: DesktopTextField(
+                        prefix: const Padding(
+                          padding: EdgeInsets.only(left: 6, right: 2),
+                          child: Icon(
+                            CupertinoIcons.search,
+                            size: 14,
+                            color: Colors.grey,
+                          ),
+                        ),
+                        onChanged: (v) => setState(() => query = v),
+                        placeholder: 'Search documents',
+                      ),
                     ),
                   ],
                 ),
