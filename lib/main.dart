@@ -1827,6 +1827,7 @@ class _WorkspaceState extends State<Workspace>
                         tool == EditorTool.text || tool == EditorTool.hand,
                     child: MouseRegion(
                       cursor: _showInkFootprint ? SystemMouseCursors.none : SystemMouseCursors.precise,
+                      onEnter: (e) => _trackInkPointer(e, pageIndex),
                       onHover: (e) => _trackInkPointer(e, pageIndex),
                       onExit: (_) => setState(() { _inkHover = null; _inkHoverPage = null; }),
                       child: Listener(
