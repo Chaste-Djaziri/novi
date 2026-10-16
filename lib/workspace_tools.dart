@@ -9,6 +9,7 @@ import 'library_ui.dart' show CustomColorPickerDialog;
 import 'notebook.dart';
 import 'ink_material.dart';
 import 'features/editor/tools/common/tool_types.dart';
+import 'features/editor/tools/common/writing_icon_painters.dart';
 
 // Temporary compatibility export for callers migrating from this legacy file.
 export 'features/editor/tools/common/tool_types.dart';
@@ -521,7 +522,7 @@ class _EraserIconPainter extends CustomPainter {
       oldDelegate.color != color || oldDelegate.accentColor != accentColor;
 }
 
-class _PenTipPainter extends CustomPainter {
+/* class _PenTipPainter extends CustomPainter {
   const _PenTipPainter({this.color = Colors.white});
   final Color color;
 
@@ -703,7 +704,7 @@ class _DrawShapePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _DrawShapePainter oldDelegate) =>
       oldDelegate.color != color;
-}
+} */
 
 class _LineHeightIconPainter extends CustomPainter {
   const _LineHeightIconPainter({this.color = Colors.white});
@@ -2358,7 +2359,7 @@ class _EraserAdvancedSettingsDialogState
                             children: [
                               _buildFilterRow(
                                 title: 'Pen',
-                                iconPainter: const _PenTipPainter(),
+                                iconPainter: const PenTipPainter(),
                               ),
                               Divider(
                                 height: 1,
@@ -2368,7 +2369,7 @@ class _EraserAdvancedSettingsDialogState
                               ),
                               _buildFilterRow(
                                 title: 'Pencil',
-                                iconPainter: const _PencilTipPainter(),
+                                iconPainter: const PencilTipPainter(),
                               ),
                               Divider(
                                 height: 1,
@@ -2378,7 +2379,7 @@ class _EraserAdvancedSettingsDialogState
                               ),
                               _buildFilterRow(
                                 title: 'Highlighter',
-                                iconPainter: const _HighlighterTipPainter(),
+                                iconPainter: const HighlighterTipPainter(),
                               ),
                               Divider(
                                 height: 1,
@@ -2388,7 +2389,7 @@ class _EraserAdvancedSettingsDialogState
                               ),
                               _buildFilterRow(
                                 title: 'Tape',
-                                iconPainter: const _TapeStripPainter(),
+                                iconPainter: const TapeStripPainter(),
                               ),
                             ],
                           ),
@@ -4928,7 +4929,7 @@ class _WorkspaceToolbarState extends State<WorkspaceToolbar> {
                               : switch (tool) {
                                   EditorTool.pen => CustomPaint(
                                     size: const Size(16, 16),
-                                    painter: _PenTipPainter(
+                                    painter: PenTipPainter(
                                       color: isSelected
                                           ? Colors.black
                                           : Colors.white70,
@@ -5240,7 +5241,7 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
           key: _penModeKey,
           mode: WritingMode.pen,
           tooltip: 'Pen',
-          iconPainter: _PenTipPainter(
+          iconPainter: PenTipPainter(
             color: session.writingMode == WritingMode.pen
                 ? Colors.black
                 : Colors.white70,
@@ -5267,7 +5268,7 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
           key: _pencilModeKey,
           mode: WritingMode.pencil,
           tooltip: 'Pencil',
-          iconPainter: _PencilTipPainter(
+          iconPainter: PencilTipPainter(
             color: session.writingMode == WritingMode.pencil
                 ? Colors.black
                 : Colors.white70,
@@ -5282,7 +5283,7 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
           key: _highlighterModeKey,
           mode: WritingMode.highlighter,
           tooltip: 'Highlighter',
-          iconPainter: _HighlighterTipPainter(
+          iconPainter: HighlighterTipPainter(
             color: session.writingMode == WritingMode.highlighter
                 ? Colors.black
                 : Colors.white70,
@@ -5297,7 +5298,7 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
           key: _tapeModeKey,
           mode: WritingMode.tape,
           tooltip: 'Tape (A)',
-          iconPainter: _TapeStripPainter(
+          iconPainter: TapeStripPainter(
             color: session.writingMode == WritingMode.tape
                 ? Colors.black
                 : Colors.white70,
@@ -5325,7 +5326,7 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
           key: _shapeModeKey,
           mode: WritingMode.drawShape,
           tooltip: 'Draw Shape (D)',
-          iconPainter: _DrawShapePainter(
+          iconPainter: DrawShapePainter(
             color: session.writingMode == WritingMode.drawShape
                 ? Colors.black
                 : Colors.white70,
