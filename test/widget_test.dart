@@ -638,17 +638,24 @@ void main() {
       final viewerBottom = tester.getBottomLeft(viewerFinder).dy;
       expect((viewerBottom - bottomReached - 24.0).abs(), lessThan(2.0));
 
-      // Scrolling down slightly at bottom overscrolls slightly within bounds
+      // Scrolling down slightly at bottom overscrolls within expanded bounds
       await tester.sendEventToBinding(
         PointerScrollEvent(
           position: viewerCenter,
           scrollDelta: const Offset(0, 30),
         ),
       );
+      await tester.pump();
+      expect(
+        (viewerBottom - tester.getBottomLeft(inkCanvasFinder).dy - 24.0).abs(),
+        lessThan(25.0),
+      );
+      // Wait for bounce-back animation to return
+      await tester.pump(const Duration(milliseconds: 600));
       await tester.pumpAndSettle();
       expect(
         (viewerBottom - tester.getBottomLeft(inkCanvasFinder).dy - 24.0).abs(),
-        lessThan(10.0),
+        lessThan(2.0),
       );
 
       // 5. Scroll all the way to the top: cover top leaves 24px gap below viewport top
@@ -856,19 +863,19 @@ void main() {
       await tester.sendEventToBinding(
         PointerScrollEvent(
           position: viewerCenter,
-          scrollDelta: const Offset(0, 40),
+          scrollDelta: const Offset(0, 90),
         ),
       );
       await tester.pump();
 
-      // Loader appears underneath showing progress!
-      expect(find.text('Scroll to add page 40%'), findsOneWidget);
+      // Loader appears underneath showing progress! (90 / 180 = 50%)
+      expect(find.text('Scroll to add page 50%'), findsOneWidget);
 
-      // Scroll down further past the 100 threshold
+      // Scroll down further past the 180 threshold (90 + 100 = 190 >= 180)
       await tester.sendEventToBinding(
         PointerScrollEvent(
           position: viewerCenter,
-          scrollDelta: const Offset(0, 70),
+          scrollDelta: const Offset(0, 100),
         ),
       );
       await tester.pump();
@@ -1110,23 +1117,32 @@ void main() {
   testWidgets(
     'trackpad two-finger scroll overscroll creates new page smoothly',
     (tester) async {
-      final dir = await Directory.systemTemp.createTemp('novi_test_trackpad_');
-      addTearDown(() => dir.deleteSync(recursive: true));
-      final store = LibraryStore('${dir.path}/test.db');
+      final dir = Directory.systemTemp.createTempSync('novi_test_trackpad_');
+      final original = PathProviderPlatform.instance;
+      PathProviderPlatform.instance = TestPaths(dir.path);
+      addTearDown(() {
+        PathProviderPlatform.instance = original;
+        dir.deleteSync(recursive: true);
+      });
+      final store = LibraryStore('${dir.path}/novi.sqlite');
       final note = Notebook(
         id: 'test-trackpad-scroll',
         title: 'Trackpad Note',
         kind: 'Notebook',
       );
       store.save(note);
+      store.close();
 
       await tester.binding.setSurfaceSize(const Size(1200, 800));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
       await tester.pumpWidget(const NoviApp());
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Trackpad Note'));
+      await tester.tap(find.text('Trackpad Note').first);
       await tester.pumpAndSettle();
 
       final viewerFinder = find.byKey(ValueKey('view-${note.id}'));
@@ -1162,19 +1178,22 @@ void main() {
       // Loader is visible with progress
       expect(find.byType(CircularProgressIndicator), findsWidgets);
 
-      // Pan further past threshold (panDelta.dy = -80 => scroll down 80, total 120 >= 100)
+      // Pan further past threshold (panDelta.dy = -150 => scroll down 150, total 190 >= 180)
       await tester.sendEventToBinding(
         PointerPanZoomUpdateEvent(
           position: center,
-          panDelta: const Offset(0, -80),
+          panDelta: const Offset(0, -150),
         ),
       );
+      await tester.pump();
       await tester.pumpAndSettle();
 
       // Reaching threshold creates a new page!
-      final reloaded = store.load().firstWhere((n) => n.id == note.id);
+      final checkStore = LibraryStore('${dir.path}/novi.sqlite');
+      final reloaded = checkStore.load().firstWhere((n) => n.id == note.id);
       expect(reloaded.pages.length, equals(2));
       expect(find.textContaining('Page 3 created'), findsOneWidget);
+      checkStore.close();
 
       await tester.sendEventToBinding(
         PointerPanZoomEndEvent(
@@ -1182,30 +1201,116 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
+    'trackpad overscroll release before threshold triggers bounce-back animation',
+    (tester) async {
+      final dir = Directory.systemTemp.createTempSync('novi_test_bounce_');
+      final original = PathProviderPlatform.instance;
+      PathProviderPlatform.instance = TestPaths(dir.path);
+      addTearDown(() {
+        PathProviderPlatform.instance = original;
+        dir.deleteSync(recursive: true);
+      });
+      final store = LibraryStore('${dir.path}/novi.sqlite');
+      final note = Notebook(
+        id: 'test-trackpad-bounce',
+        title: 'Bounce Note',
+        kind: 'Notebook',
+      );
+      store.save(note);
       store.close();
+
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(const NoviApp());
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Bounce Note').first);
+      await tester.pumpAndSettle();
+
+      final viewerFinder = find.byKey(ValueKey('view-${note.id}'));
+      final center = tester.getCenter(viewerFinder);
+
+      // Scroll to bottom first
+      await tester.sendEventToBinding(
+        PointerScrollEvent(
+          position: center,
+          scrollDelta: const Offset(0, 3000),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Pan up on trackpad (overscroll by 60, well below 180 threshold)
+      await tester.sendEventToBinding(
+        PointerPanZoomStartEvent(position: center),
+      );
+      await tester.pump();
+      await tester.sendEventToBinding(
+        PointerPanZoomUpdateEvent(
+          position: center,
+          panDelta: const Offset(0, -60),
+        ),
+      );
+      await tester.pump();
+
+      // Loader is visible showing progress (~33%)
+      expect(find.text('Scroll to add page 33%'), findsOneWidget);
+
+      // Release finger before threshold
+      await tester.sendEventToBinding(
+        PointerPanZoomEndEvent(position: center),
+      );
+      await tester.pump();
+
+      // Bounce-back animation smoothly restores overscroll
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+
+      // Overcroll is reset and no new page was created
+      final checkStore = LibraryStore('${dir.path}/novi.sqlite');
+      final reloaded = checkStore.load().firstWhere((n) => n.id == note.id);
+      expect(reloaded.pages.length, equals(1)); // Cover + 1 page
+      expect(find.textContaining('Scroll to add page'), findsNothing);
+      checkStore.close();
     },
   );
 
   testWidgets(
     'canvas scroll indicator appears on right edge and allows dragging to scroll smoothly',
     (tester) async {
-      final dir = await Directory.systemTemp.createTemp('novi_test_indicator_');
-      addTearDown(() => dir.deleteSync(recursive: true));
-      final store = LibraryStore('${dir.path}/test.db');
+      final dir = Directory.systemTemp.createTempSync('novi_test_indicator_');
+      final original = PathProviderPlatform.instance;
+      PathProviderPlatform.instance = TestPaths(dir.path);
+      addTearDown(() {
+        PathProviderPlatform.instance = original;
+        dir.deleteSync(recursive: true);
+      });
+      final store = LibraryStore('${dir.path}/novi.sqlite');
       final note = Notebook(
         id: 'test-scroll-indicator',
         title: 'Scroll Indicator Note',
         kind: 'Notebook',
       );
       store.save(note);
+      store.close();
 
       await tester.binding.setSurfaceSize(const Size(1200, 800));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
       await tester.pumpWidget(const NoviApp());
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Scroll Indicator Note'));
+      await tester.tap(find.text('Scroll Indicator Note').first);
       await tester.pumpAndSettle();
 
       // The notebook has cover + 1 page = 2 sheets (~2000px height > 800px viewport)
@@ -1223,31 +1328,38 @@ void main() {
       // Verify canvas scrolled down (cover moved up)
       final coverFinder = find.byKey(ValueKey('cover-page-${note.id}'));
       expect(tester.getTopLeft(coverFinder).dy, lessThan(0.0));
-
-      store.close();
     },
   );
 
   testWidgets(
     'content page manager collapses and opens, shows thumbnails, bookmarks, and allows adding pages and jumping',
     (tester) async {
-      final dir = await Directory.systemTemp.createTemp('novi_test_pages_');
-      addTearDown(() => dir.deleteSync(recursive: true));
-      final store = LibraryStore('${dir.path}/test.db');
+      final dir = Directory.systemTemp.createTempSync('novi_test_pages_');
+      final original = PathProviderPlatform.instance;
+      PathProviderPlatform.instance = TestPaths(dir.path);
+      addTearDown(() {
+        PathProviderPlatform.instance = original;
+        dir.deleteSync(recursive: true);
+      });
+      final store = LibraryStore('${dir.path}/novi.sqlite');
       final note = Notebook(
         id: 'test-pages-sidebar',
         title: 'Pages Manager Note',
         kind: 'Notebook',
       );
       store.save(note);
+      store.close();
 
       await tester.binding.setSurfaceSize(const Size(1200, 800));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
       await tester.pumpWidget(const NoviApp());
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Pages Manager Note'));
+      await tester.tap(find.text('Pages Manager Note').first);
       await tester.pumpAndSettle();
 
       // 1. Pages manager is initially closed
@@ -1284,8 +1396,10 @@ void main() {
         find.byKey(const ValueKey('sidebar-page-thumbnail-2')),
         findsOneWidget,
       );
-      final reloaded = store.load().firstWhere((n) => n.id == note.id);
+      final checkStore = LibraryStore('${dir.path}/novi.sqlite');
+      final reloaded = checkStore.load().firstWhere((n) => n.id == note.id);
       expect(reloaded.pages.length, equals(2)); // Cover + 2 pages = 3 total
+      checkStore.close();
 
       // 4. Tap thumbnail 0 to scroll to Page 1
       await tester.tap(find.byKey(const ValueKey('sidebar-page-thumbnail-0')));
@@ -1307,8 +1421,6 @@ void main() {
       await tester.tap(headerSidebarButton);
       await tester.pumpAndSettle();
       expect(find.byType(PagesSidebar), findsOneWidget);
-
-      store.close();
     },
   );
 }
