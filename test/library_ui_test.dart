@@ -51,7 +51,9 @@ void main() {
           ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
         await icons.load();
         final foruiInter = FontLoader('packages/forui/Inter')
-          ..addFont(rootBundle.load('packages/forui/assets/fonts/inter/Inter.ttf'));
+          ..addFont(
+            rootBundle.load('packages/forui/assets/fonts/inter/Inter.ttf'),
+          );
         await foruiInter.load();
         final foruiLucide = FontLoader('packages/forui_lucide/ForuiLucideIcons')
           ..addFont(rootBundle.load('packages/forui_lucide/assets/lucide.ttf'));
@@ -110,7 +112,8 @@ void main() {
       await tester.tap(find.text('New'));
       await tester.pumpAndSettle();
       await capture('new-popup');
-      await tester.tap(find.text('Whiteboard'));
+      expect(find.byTooltip('Whiteboard — Coming later'), findsOneWidget);
+      await tester.tap(find.text('Notebook').first);
       await tester.pumpAndSettle();
       await tester.enterText(
         find.byKey(const Key('document-name')),
@@ -123,7 +126,7 @@ void main() {
       await tester.tap(find.text('Create'));
       await tester.pumpAndSettle();
       expect(find.text('Design ideas'), findsOneWidget);
-      expect(find.text('Whiteboard / Squared'), findsOneWidget);
+      expect(find.text('Notebook / Squared'), findsOneWidget);
       await tester.tap(find.byTooltip('Document style'));
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('White paper'));
@@ -163,9 +166,9 @@ void main() {
       final created = reopened.load().firstWhere(
         (n) => n.title == 'Design ideas',
       );
-      expect(created.kind, 'Whiteboard');
+      expect(created.kind, 'Notebook');
       expect(created.paper, 'Squared');
-      expect(created.landscape, isTrue);
+      expect(created.landscape, isFalse);
       expect(created.favorite, isTrue);
       expect(created.tone, 'Dark');
       expect(created.cover, 0xffe0e0e0);
