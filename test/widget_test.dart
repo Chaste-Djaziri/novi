@@ -178,6 +178,13 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await tester.sendEventToBinding(
+      const PointerScrollEvent(
+        position: Offset(400, 300),
+        scrollDelta: Offset(0, 1100),
+      ),
+    );
+    await tester.pumpAndSettle();
     final inkCanvas = find.byWidgetPredicate(
       (w) => w is CustomPaint && w.painter is InkPainter,
     );
@@ -380,7 +387,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // 'Doc Alpha' is in tab
-    expect(find.text('Doc Alpha'), findsOneWidget);
+    expect(find.byTooltip('Close tab Doc Alpha'), findsOneWidget);
 
     // Go Home (back to library)
     await tester.tap(find.byKey(const Key('home-button')));
@@ -516,16 +523,26 @@ void main() {
     final inkCanvasFinder = find.byWidgetPredicate(
       (w) => w is CustomPaint && w.painter is InkPainter,
     );
+    final coverFinder = find.byWidgetPredicate(
+      (w) => w is SizedBox && w.key is ValueKey<String> && (w.key! as ValueKey<String>).value.startsWith('cover-page-'),
+    );
 
-    // 1. Verify paper is centered horizontally in the viewport
+    // 1. Verify cover (Page 1) and paper (Page 2) are centered horizontally in the viewport
     final viewerCenter = tester.getCenter(viewerFinder);
+    final coverCenter = tester.getCenter(coverFinder);
     final inkCenter = tester.getCenter(inkCanvasFinder);
+    expect((coverCenter.dx - viewerCenter.dx).abs(), lessThan(2.0));
     expect((inkCenter.dx - viewerCenter.dx).abs(), lessThan(2.0));
 
-    // Initially at top: top of paper has 24px gap below viewport top
-    final initialTop = tester.getTopLeft(inkCanvasFinder).dy;
+    // Initially at top: top of cover (Page 1) has 24px gap below viewport top
+    final initialTop = tester.getTopLeft(coverFinder).dy;
     final viewerTop = tester.getTopLeft(viewerFinder).dy;
     expect((initialTop - viewerTop - 24.0).abs(), lessThan(2.0));
+
+    // Paper (Page 2) is directly under cover with a 24px gap
+    final paperTop = tester.getTopLeft(inkCanvasFinder).dy;
+    final coverBottom = tester.getBottomLeft(coverFinder).dy;
+    expect((paperTop - coverBottom - 24.0).abs(), lessThan(2.0));
 
     // 2. Scrolling left or right MUST always keep paper centered horizontally!
     final initialIv = tester.widget<InteractiveViewer>(viewerFinder);
@@ -558,7 +575,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    final midScrollTop = tester.getTopLeft(inkCanvasFinder).dy;
+    final midScrollTop = tester.getTopLeft(coverFinder).dy;
     expect(midScrollTop, lessThan(initialTop));
 
     // 4. Scroll all the way to the bottom: paper bottom leaves 24px gap above viewport bottom
@@ -583,7 +600,7 @@ void main() {
     await tester.pumpAndSettle();
     expect((viewerBottom - tester.getBottomLeft(inkCanvasFinder).dy - 24.0).abs(), lessThan(2.0));
 
-    // 5. Scroll all the way to the top: paper top leaves 24px gap below viewport top
+    // 5. Scroll all the way to the top: cover top leaves 24px gap below viewport top
     await tester.sendEventToBinding(
       PointerScrollEvent(
         position: viewerCenter,
@@ -591,7 +608,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    final topReached = tester.getTopLeft(inkCanvasFinder).dy;
+    final topReached = tester.getTopLeft(coverFinder).dy;
     expect((topReached - viewerTop - 24.0).abs(), lessThan(2.0));
 
     // Scrolling up further still sticks to top gap (cannot scroll past top)
@@ -602,7 +619,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect((tester.getTopLeft(inkCanvasFinder).dy - viewerTop - 24.0).abs(), lessThan(2.0));
+    expect((tester.getTopLeft(coverFinder).dy - viewerTop - 24.0).abs(), lessThan(2.0));
 
     // 6. On zoom: make sure it is aligned center
     await tester.tap(find.byTooltip('Zoom in'));

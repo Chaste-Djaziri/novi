@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:novi/main.dart';
@@ -60,6 +61,13 @@ void main() {
         EditorTool.eraser,
       );
       await tester.sendKeyEvent(LogicalKeyboardKey.keyP);
+      await tester.pumpAndSettle();
+      await tester.sendEventToBinding(
+        PointerScrollEvent(
+          position: const Offset(400, 300),
+          scrollDelta: const Offset(0, 1004),
+        ),
+      );
       await tester.pumpAndSettle();
       await tester.dragFrom(point(100, 100), const Offset(100, 30));
       await tester.pumpAndSettle();
