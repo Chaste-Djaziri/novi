@@ -537,7 +537,9 @@ Confirm material feel and pressure with a physical tablet in the normal Mac app.
 - [x] Physically moved `DrawShapeMenuDialog` and `showDrawShapeMenu` into `features/editor/tools/shape/shape_menu_impl.dart`.
 - [x] Legacy `workspace_tools.dart` keeps compatibility exports and part wiring; toolbar behavior is unchanged.
 - [x] `flutter analyze`: clean. `flutter test`: all 41 tests pass. The file checker reports `workspace_tools.dart` reduced from 6,216 to 5,406 lines.
-- [ ] Physically move eraser, lasso, and text dialog implementations, then extract their remaining private painters.
+- [x] Physically moved eraser type and advanced settings dialogs into `features/editor/tools/eraser` with compatibility-preserving part wiring.
+- [x] `flutter analyze`: clean. `flutter test`: all 41 tests pass.
+- [ ] Physically move lasso and text dialog implementations, then extract their remaining private painters.
 
 
 ## Writing materials and paper footprints — 2026-10-16
