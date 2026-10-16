@@ -314,12 +314,12 @@ class FloatingToolControls extends StatefulWidget {
   final VoidCallback? onDelete;
 
   @override
-  State<FloatingToolControls> createState() => _FloatingToolControlsState();
+  State<FloatingToolControls> createState() => FloatingToolControlsState();
 }
 
-class _FloatingToolControlsState extends State<FloatingToolControls> {
+class FloatingToolControlsState extends State<FloatingToolControls> {
   bool _isHovered = false;
-  Offset _dragOffset = Offset.zero;
+  Offset dragOffset = Offset.zero;
 
   @override
   Widget build(BuildContext context) {
@@ -327,7 +327,7 @@ class _FloatingToolControlsState extends State<FloatingToolControls> {
     final note = widget.note;
 
     return Transform.translate(
-      offset: _dragOffset,
+      offset: dragOffset,
       child: MouseRegion(
         onEnter: (_) => setState(() => _isHovered = true),
         onExit: (_) => setState(() => _isHovered = false),
@@ -364,15 +364,17 @@ class _FloatingToolControlsState extends State<FloatingToolControls> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   GestureDetector(
+                    key: const Key('floating-drag-handle'),
                     behavior: HitTestBehavior.opaque,
+                    onPanStart: (_) {},
                     onPanUpdate: (details) {
                       setState(() {
-                        _dragOffset += details.delta;
+                        dragOffset += details.delta;
                       });
                     },
                     onDoubleTap: () {
                       setState(() {
-                        _dragOffset = Offset.zero;
+                        dragOffset = Offset.zero;
                       });
                     },
                     child: Tooltip(
