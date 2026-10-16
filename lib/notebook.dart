@@ -69,7 +69,7 @@ class Notebook {
     this.boldText = false,
     List<List<List<double>>>? strokes,
     List<NotebookPage>? pages,
-  }) : pages = pages ?? [
+  }) : _pages = pages ?? [
          NotebookPage(
            text: text,
            strokes: strokes ?? [],
@@ -88,7 +88,18 @@ class Notebook {
   bool favorite;
   double fontSize;
   bool boldText;
-  List<NotebookPage> pages;
+  List<NotebookPage>? _pages;
+
+  List<NotebookPage> get pages {
+    if (_pages == null || _pages!.isEmpty) {
+      _pages = [NotebookPage()];
+    }
+    return _pages!;
+  }
+
+  set pages(List<NotebookPage> value) {
+    _pages = value;
+  }
 
   String get text => pages.isNotEmpty ? pages.first.text : '';
   set text(String value) {
