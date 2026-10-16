@@ -433,6 +433,53 @@ void main() {
     // All tabs closed -> back in library, no tabs open
     expect(find.byTooltip('Close tab Doc Beta'), findsNothing);
   });
+
+  testWidgets('folder and 3 dots actions stay pinned to the right end of the top bar with or without tabs', (tester) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final directory = Directory.systemTemp.createTempSync('novi-topbar-test');
+    final original = PathProviderPlatform.instance;
+    PathProviderPlatform.instance = TestPaths(directory.path);
+    addTearDown(() {
+      PathProviderPlatform.instance = original;
+      directory.deleteSync(recursive: true);
+    });
+
+    await tester.pumpWidget(const NoviApp());
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 150)),
+    );
+    await tester.pumpAndSettle();
+
+    final menuFinder = find.byTooltip('Import, export and backup');
+    final folderFinder = find.byTooltip('Open document');
+
+    // Without tabs open in library
+    final menuRightNoTab = tester.getTopRight(menuFinder).dx;
+    final folderRightNoTab = tester.getTopRight(folderFinder).dx;
+    expect(menuRightNoTab, greaterThan(1150));
+    expect(folderRightNoTab, lessThan(menuRightNoTab));
+
+    // Open a notebook so tabs are active
+    await tester.tap(find.text('New'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Notebook').first);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('document-name')), 'Pinned Doc');
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Create'));
+    await tester.tap(find.text('Create'));
+    await tester.pumpAndSettle();
+
+    // With a tab open in the top bar: verify menu and folder remain pinned flush to the right end!
+    final menuRightWithTab = tester.getTopRight(menuFinder).dx;
+    final folderRightWithTab = tester.getTopRight(folderFinder).dx;
+    expect(menuRightWithTab, greaterThan(1150));
+    expect((menuRightWithTab - menuRightNoTab).abs(), lessThan(5.0));
+    expect((folderRightWithTab - folderRightNoTab).abs(), lessThan(5.0));
+  });
 }
 
 
