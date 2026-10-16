@@ -15,23 +15,29 @@
 - [ ] Step 11: Complete hands-on desktop acceptance checks listed below.
 
 ## Current
-Implemented Writing tool dropdowns and pixel-precise segment erasing with floating Eraser options:
-- **Writing Tool Modes & Anchored Popovers**:
-  - Consolidated Pen, Pencil, Highlighter, Tape, and Draw Shape into the primary Writing (`EditorTool.pen`) tool floating bar with an active pill capsule and down-chevron dropdown trigger.
-  - **Pen Popover (`PenMenuDialog`)**: Pen Type selection (Fountain, Ballpoint, Brush) and "Draw and Hold for Line" switch.
-  - **Tape Popover (`TapeMenuDialog`)**: Tape preview swatches, "Straight Tape" snap switch, and "Remove All Tape" action.
-  - **Draw Shape Popover (`DrawShapeMenuDialog`)**: "Require Hold to Snap", "Snap to Other Shapes", and "Fill Color" switch. Natural hand-drawing shape recognition fits lines (2 points), circles/ellipses (36 points), and rectangles (5 points), applying semi-transparent interior fills when enabled.
-  - **Color Palette Popover (`ColorPaletteMenuDialog`)**: Curated color swatches with active selection indicators and custom color picker dialog `(+)`.
-- **Eraser Tool Floating Bar & Anchored Popovers**:
-  - Replaced legacy slider with user screenshot layout:
-    - **Eraser Type Pill (`[ ⬭ Standard ˅ ]`)**: Opens `EraserTypeMenuDialog` displaying Precision Eraser, Standard Eraser, and Stroke Eraser cards with descriptive subtitles.
-    - **Tool Options Button (`[ ⊶ ]`)**: Opens `EraserAdvancedSettingsDialog` displaying ERASER FILTER toggles (`Pen`, `Pencil`, `Highlighter`, `Tape`), "Select all", "Clear Page" action, and "Auto-Deselect" switch.
-    - **Size Presets**: 3 concentric circular size buttons (Small, Medium, Large) with active blue indicator ring.
-- **Pixel-Precise Segment Erasing**:
-  - When erasing drawn strokes in Standard and Precision modes, strokes are no longer deleted as whole paths.
-  - Instead, the algorithm densifies stroke points along segments, tests points against the eraser radius, removes the erased points/pixels, and splits the remaining points into continuous sub-strokes with identical styles.
-  - Whole-stroke deletion is preserved when Stroke Eraser mode is selected.
-- **Automated Verification**: `flutter analyze` clean (0 issues) and all 28 automated tests pass across `test/widget_test.dart`, `test/workspace_test.dart`, and `test/library_ui_test.dart`.
+Implemented Text Tool options and popovers matching the user's design reference screenshots:
+- **Text Tool Floating Bar & Anchored Popovers**:
+  - **Color Popover (`TextColorMenuDialog`)**:
+    - Triggered by `( ▾ )` Color button (`Key('text-collapse-button')`) on the left of the Text floating toolbar.
+    - Features header with tune/sliders icon button, centered "Text Color" title, and "Edit" action pill.
+    - Segmented tabs: `Presets`, `Custom`, `History`.
+    - Three-row color palette: Row 1 vibrant colors (Red, Orange, Yellow, Green, Cyan, Blue, Purple, Pink); Row 2 muted/dark tones; Row 3 monochrome neutrals (White, Light Gray, Mid Gray, Dark Gray, Black) with active selection checkmark and a dotted circle `+` button for custom colors.
+  - **Font Size Popover (`FontSizeMenuDialog`)**:
+    - Triggered by `[ 24 ˅ ]` font size pill (`Key('text-font-size-button')`).
+    - Anchored capsule card with size value container `[ 24 ]`, dynamic slider with blue active track and white thumb knob, and `[ - | + ]` stepper pill.
+    - Horizontal preset chips (`12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 64`) that apply size and dismiss the popover immediately on tap.
+  - **Font Family Menu (`FontFamilyMenuDialog`)**:
+    - Triggered by `[ Modern ˅ ]` font family pill (`Key('text-font-family-button')`).
+    - Anchored dark card displaying `Modern` (sans-serif), `Classic` (serif), `Technical` (Courier monospace), with blue checkmarks for the active font and dividers, plus a bottom pill button `More Fonts...`.
+  - **Text Style Popover (`TextStyleMenuDialog`)**:
+    - Triggered by `[ B I ]` text style button (`Key('text-bold-italic-button')`, tooltip `Text Style`).
+    - Horizontal capsule menu with 4 style toggles: `B` (Bold), `I` (Italic), `U` (Underline), `S` (Strikethrough).
+    - Fully wired with `Notebook` persistence, `EditorSession`, and `PaperTextEditor` rendering with combined `TextDecoration` support.
+  - **Text Alignment, Line Height, and Text Box Style Popovers**:
+    - Preserved and harmonized with existing popover architecture.
+- **Automated Verification**:
+  - `flutter analyze`: clean (0 issues).
+  - `flutter test`: all 29 automated tests pass across `test/widget_test.dart`, `test/workspace_test.dart`, and `test/library_ui_test.dart`.
 - [x] Configured `EditorTool.select` as initial tool when opening notebooks/documents.
 - [x] Converted top toolbar items and sub-components to icon-only buttons with zero text clutter, passing text names and actions into tooltips.
 - [x] Moved all more controls / tool options out of the top header into `FloatingToolControls`, freeing header vertical space to a clean 44px.
