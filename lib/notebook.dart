@@ -98,6 +98,9 @@ class LibraryStore {
     db.execute(
       'CREATE TABLE IF NOT EXISTS notebooks (id TEXT PRIMARY KEY, data TEXT NOT NULL)',
     );
+    db.execute(
+      'CREATE TABLE IF NOT EXISTS app_state (key TEXT PRIMARY KEY, value TEXT NOT NULL)',
+    );
   }
   final Database db;
   List<Notebook> load() => db
@@ -112,6 +115,26 @@ class LibraryStore {
     'INSERT OR REPLACE INTO notebooks (id, data) VALUES (?, ?)',
     [note.id, jsonEncode(note.toJson())],
   );
+  List<String> loadOpenTabs() {
+    try {
+      final rows = db.select(
+        "SELECT value FROM app_state WHERE key = 'open_tabs'",
+      );
+      if (rows.isEmpty) return [];
+      final list = jsonDecode(rows.first['value'] as String) as List;
+      return list.map((e) => e.toString()).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+  void saveOpenTabs(List<String> ids) {
+    try {
+      db.execute(
+        'INSERT OR REPLACE INTO app_state (key, value) VALUES (?, ?)',
+        ['open_tabs', jsonEncode(ids)],
+      );
+    } catch (_) {}
+  }
   void merge(List<Notebook> notes) {
     db.execute('BEGIN');
     try {
