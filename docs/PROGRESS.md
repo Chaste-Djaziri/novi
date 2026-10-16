@@ -262,6 +262,18 @@ The first technical alpha is implemented. A reported native crash on New noteboo
 - [x] Regenerated visual preview artifact `build/ui-preview/editor.png` and verified 24px gaps and centered alignment.
 - [ ] Hands-on interaction check in the running Mac app.
 
+## Center-aligned zoom with conditional edge-clamped horizontal scroll — 2026-10-16
+- [x] Configured horizontal scrolling behavior in `lib/main.dart` based on paper width vs viewport width:
+  - When paper fits within the viewport horizontally (`paperWidth <= constraints.maxWidth`): left/right scrolling is strictly disallowed, locking `tx` to the horizontal center.
+  - On zoom: `zoom()` calculates `centeredTx = (constraints.maxWidth - (2 * paperLeftInChild + paperWidth)) / 2` so that zooming in or out always keeps the paper centered in the view.
+  - When zoomed in beyond view (`paperWidth > constraints.maxWidth`): left and right scrolling is fully enabled, clamped strictly between `minX = constraints.maxWidth - (paperLeftInChild + paperWidth)` and `maxX = -paperLeftInChild` so users can pan across the paper to its exact edges without drifting into whitespace.
+  - On gesture release (`onInteractionEnd`), `_snapHorizontalToCenter` smoothly clamps/snaps the horizontal offset within bounds (to center if within view, or to the paper edges if out of view).
+- [x] Extended automated test in `test/widget_test.dart` to verify that zoom centers the view, and once wider than the viewport, left and right scrolling smoothly reaches and sticks to each paper edge.
+- [x] `flutter analyze`: clean (0 issues).
+- [x] Unit and widget test suite: all 17 tests pass (`test/library_ui_test.dart`, `test/widget_test.dart`, `test/workspace_test.dart`).
+- [x] Regenerated visual preview artifact `build/ui-preview/editor.png` and verified centered sheet layout with 24px gaps.
+- [ ] Hands-on interaction check in the running Mac app.
+
 ## Next
 Perform hands-on visual and drag verification in the rebuilt Mac app. Continue the desktop acceptance checks listed in the checklist above, recording results here.
 
