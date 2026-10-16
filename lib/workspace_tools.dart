@@ -1,3 +1,4 @@
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 
 import 'desktop_ui.dart';
@@ -118,207 +119,184 @@ class WorkspaceToolbar extends StatelessWidget {
   );
   @override
   Widget build(BuildContext context) => Container(
+    height: 44,
     decoration: const BoxDecoration(
       color: Color(0xff1d1d20),
       border: Border(bottom: BorderSide(color: Color(0xff2d2d32), width: 0.8)),
     ),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          height: 44,
-          child: LayoutBuilder(
-            builder: (context, bounds) {
-              final tools = EditorTool.values
-                  .where((tool) => tool != EditorTool.hand || hasStylus)
-                  .toList();
-              final extras = bounds.maxWidth >= 1200
-                  ? futureTools.entries.take(5).toList()
-                  : bounds.maxWidth >= 1050
-                      ? futureTools.entries.take(3).toList()
-                      : <MapEntry<String, IconData>>[];
-              return Stack(
-                alignment: Alignment.center,
+    child: LayoutBuilder(
+      builder: (context, bounds) {
+        final compact = bounds.maxWidth < 1100;
+        final tools = EditorTool.values
+            .where((tool) => tool != EditorTool.hand || hasStylus)
+            .toList();
+        final extras = bounds.maxWidth >= 1200
+            ? futureTools.entries.take(5).toList()
+            : bounds.maxWidth >= 1050
+                ? futureTools.entries.take(3).toList()
+                : <MapEntry<String, IconData>>[];
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            Positioned(
+              left: 8,
+              top: 5,
+              bottom: 5,
+              child: Row(
                 children: [
-                  Positioned(
-                    left: 8,
-                    top: 5,
-                    bottom: 5,
-                    child: Row(
-                      children: [
-                        if (onTogglePages != null)
-                          DesktopIconButton(
-                            key: const Key('toolbar-toggle-pages'),
-                            tooltip:
-                                showPages ? 'Hide pages' : 'Page manager',
-                            onPressed: onTogglePages,
-                            icon: Icon(
-                              CupertinoIcons.sidebar_left,
-                              size: 18,
-                              color: showPages
-                                  ? const Color(0xff007aff)
-                                  : Colors.white70,
-                            ),
-                          ),
-                        DesktopIconButton(
-                          tooltip: 'Undo',
-                          onPressed: onUndo,
-                          icon: const Icon(
-                            CupertinoIcons.arrow_uturn_left,
-                            size: 18,
-                          ),
-                        ),
-                        DesktopIconButton(
-                          tooltip: 'Redo',
-                          onPressed: onRedo,
-                          icon: const Icon(
-                            CupertinoIcons.arrow_uturn_right,
-                            size: 18,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Center(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: (bounds.maxWidth - 240).clamp(
-                          0,
-                          double.infinity,
-                        ),
-                      ),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          key: const Key('centered-tools'),
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            ...tools.map(
-                              (tool) => Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 2.5,
-                                ),
-                                child: DesktopToolButton(
-                                  key: ValueKey('tool-${tool.name}'),
-                                  tooltip: switch (tool) {
-                                    EditorTool.pen => 'Draw',
-                                    EditorTool.highlighter => 'Highlight',
-                                    EditorTool.eraser => 'Erase',
-                                    EditorTool.select => 'Select',
-                                    EditorTool.text => 'Type',
-                                    EditorTool.hand => 'Hand',
-                                  },
-                                  avatar: Icon(switch (tool) {
-                                    EditorTool.pen => CupertinoIcons.pencil,
-                                    EditorTool.highlighter =>
-                                      CupertinoIcons.pencil_outline,
-                                    EditorTool.eraser =>
-                                      CupertinoIcons.pencil_slash,
-                                    EditorTool.select => CupertinoIcons.crop,
-                                    EditorTool.text =>
-                                      CupertinoIcons.textformat,
-                                    EditorTool.hand =>
-                                      CupertinoIcons.hand_raised,
-                                  }, size: 17),
-                                  selected: session.tool == tool,
-                                  onSelected: (_) => onTool(tool),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Container(
-                              width: 1,
-                              height: 18,
-                              color: const Color(0xff383840),
-                            ),
-                            const SizedBox(width: 6),
-                            ...extras.map(
-                              (entry) => planned(entry.key, entry.value),
-                            ),
-                            planned('Calculator', CupertinoIcons.number),
-                            DesktopPopupMenuButton<String>(
-                              tooltip: 'More Tools',
-                              onSelected: (_) {},
-                              itemBuilder: (_) => futureTools.keys
-                                  .map(
-                                    (name) => DesktopMenuItem(
-                                      value: name,
-                                      enabled: false,
-                                      child: Text('$name — Coming later'),
-                                    ),
-                                  )
-                                  .toList(),
-                            ),
-                          ],
-                        ),
+                  if (onTogglePages != null)
+                    DesktopIconButton(
+                      key: const Key('toolbar-toggle-pages'),
+                      tooltip:
+                          showPages ? 'Hide pages' : 'Page manager',
+                      onPressed: onTogglePages,
+                      icon: Icon(
+                        CupertinoIcons.sidebar_left,
+                        size: 18,
+                        color: showPages
+                            ? const Color(0xff007aff)
+                            : Colors.white70,
                       ),
                     ),
+                  DesktopIconButton(
+                    tooltip: 'Undo',
+                    onPressed: onUndo,
+                    icon: const Icon(
+                      CupertinoIcons.arrow_uturn_left,
+                      size: 18,
+                    ),
                   ),
-                  Positioned(
-                    right: 8,
-                    top: 5,
-                    bottom: 5,
-                    child: Row(
-                      children: [
-                        DesktopIconButton(
-                          tooltip: 'Add page',
-                          onPressed: onAddPage,
-                          icon: const Icon(CupertinoIcons.doc_append, size: 18),
-                        ),
-                        DesktopIconButton(
-                          tooltip: 'Document style',
-                          onPressed: onStyle,
-                          icon: const Icon(
-                            CupertinoIcons.slider_horizontal_3,
-                            size: 18,
-                          ),
-                        ),
-                        DesktopIconButton(
-                          tooltip: 'Export notebook',
-                          onPressed: onExport,
-                          icon: const Icon(
-                            CupertinoIcons.square_arrow_up,
-                            size: 18,
-                          ),
-                        ),
-                        DesktopIconButton(
-                          tooltip: 'Delete selected ink',
-                          onPressed: onDelete,
-                          icon: const Icon(CupertinoIcons.trash, size: 18),
-                        ),
-                      ],
+                  DesktopIconButton(
+                    tooltip: 'Redo',
+                    onPressed: onRedo,
+                    icon: const Icon(
+                      CupertinoIcons.arrow_uturn_right,
+                      size: 18,
                     ),
                   ),
                 ],
-              );
-            },
-          ),
-        ),
-        // Floating Hovering Sub-components Component
-        Padding(
-          padding: const EdgeInsets.only(top: 4, bottom: 8),
-          child: Center(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: _HoveringContextControls(
-                session: session,
-                note: note,
-                onSettings: onSettings,
-                onFontSize: onFontSize,
-                onBold: onBold,
-                onZoom: onZoom,
-                onDelete: onDelete,
               ),
             ),
-          ),
-        ),
-      ],
+            Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: (bounds.maxWidth - 240).clamp(
+                    0,
+                    double.infinity,
+                  ),
+                ),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    key: const Key('centered-tools'),
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ...tools.map(
+                        (tool) => Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 2.5,
+                          ),
+                          child: DesktopToolButton(
+                            key: ValueKey('tool-${tool.name}'),
+                            tooltip: switch (tool) {
+                              EditorTool.pen => 'Draw',
+                              EditorTool.highlighter => 'Highlight',
+                              EditorTool.eraser => 'Erase',
+                              EditorTool.select => 'Select',
+                              EditorTool.text => 'Type',
+                              EditorTool.hand => 'Hand',
+                            },
+                            avatar: Icon(switch (tool) {
+                              EditorTool.pen => CupertinoIcons.pencil,
+                              EditorTool.highlighter =>
+                                CupertinoIcons.pencil_outline,
+                              EditorTool.eraser =>
+                                CupertinoIcons.pencil_slash,
+                              EditorTool.select => CupertinoIcons.crop,
+                              EditorTool.text =>
+                                CupertinoIcons.textformat,
+                              EditorTool.hand =>
+                                CupertinoIcons.hand_raised,
+                            }, size: 17),
+                            selected: session.tool == tool,
+                            onSelected: (_) => onTool(tool),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        width: 1,
+                        height: 18,
+                        color: const Color(0xff383840),
+                      ),
+                      const SizedBox(width: 6),
+                      ...extras.map(
+                        (entry) => planned(entry.key, entry.value),
+                      ),
+                      planned('Calculator', CupertinoIcons.number),
+                      DesktopPopupMenuButton<String>(
+                        tooltip: 'More Tools',
+                        onSelected: (_) {},
+                        itemBuilder: (_) => futureTools.keys
+                            .map(
+                              (name) => DesktopMenuItem(
+                                value: name,
+                                enabled: false,
+                                child: Text('$name — Coming later'),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              right: 8,
+              top: 5,
+              bottom: 5,
+              child: Row(
+                children: [
+                  DesktopIconButton(
+                    tooltip: 'Add page',
+                    onPressed: onAddPage,
+                    icon: const Icon(CupertinoIcons.doc_append, size: 18),
+                  ),
+                  DesktopIconButton(
+                    tooltip: 'Document style',
+                    onPressed: onStyle,
+                    icon: const Icon(
+                      CupertinoIcons.slider_horizontal_3,
+                      size: 18,
+                    ),
+                  ),
+                  DesktopIconButton(
+                    tooltip: 'Export notebook',
+                    onPressed: onExport,
+                    icon: const Icon(
+                      CupertinoIcons.square_arrow_up,
+                      size: 18,
+                    ),
+                  ),
+                  DesktopIconButton(
+                    tooltip: 'Delete selected ink',
+                    onPressed: onDelete,
+                    icon: const Icon(CupertinoIcons.trash, size: 18),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     ),
   );
 }
 
-class _HoveringContextControls extends StatefulWidget {
-  const _HoveringContextControls({
+class FloatingToolControls extends StatefulWidget {
+  const FloatingToolControls({
+    super.key,
     required this.session,
     required this.note,
     required this.onSettings,
@@ -337,48 +315,86 @@ class _HoveringContextControls extends StatefulWidget {
   final VoidCallback? onDelete;
 
   @override
-  State<_HoveringContextControls> createState() =>
-      _HoveringContextControlsState();
+  State<FloatingToolControls> createState() => _FloatingToolControlsState();
 }
 
-class _HoveringContextControlsState extends State<_HoveringContextControls> {
+typedef _HoveringContextControls = FloatingToolControls;
+
+class _FloatingToolControlsState extends State<FloatingToolControls> {
   bool _isHovered = false;
+  Offset _dragOffset = Offset.zero;
 
   @override
   Widget build(BuildContext context) {
     final session = widget.session;
     final note = widget.note;
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        key: const Key('context-controls'),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-        decoration: BoxDecoration(
-          color: _isHovered
-              ? const Color(0xf528282c)
-              : const Color(0xee212124),
+    return Transform.translate(
+      offset: _dragOffset,
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        child: ClipRRect(
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: _isHovered
-                ? Colors.white.withValues(alpha: 0.22)
-                : Colors.white.withValues(alpha: 0.11),
-            width: 0.8,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: _isHovered ? 0.45 : 0.28),
-              blurRadius: _isHovered ? 16 : 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (session.tool == EditorTool.text) ...[
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              key: const Key('context-controls'),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: _isHovered
+                    ? const Color(0xf528282c)
+                    : const Color(0xee212124),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: _isHovered
+                      ? Colors.white.withValues(alpha: 0.25)
+                      : Colors.white.withValues(alpha: 0.12),
+                  width: 0.8,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(
+                      alpha: _isHovered ? 0.48 : 0.32,
+                    ),
+                    blurRadius: _isHovered ? 20 : 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onPanUpdate: (details) {
+                      setState(() {
+                        _dragOffset += details.delta;
+                      });
+                    },
+                    onDoubleTap: () {
+                      setState(() {
+                        _dragOffset = Offset.zero;
+                      });
+                    },
+                    child: Tooltip(
+                      message: 'Drag to move · Double click to reset',
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.grab,
+                          child: Icon(
+                            Icons.drag_indicator,
+                            size: 16,
+                            color: _isHovered ? Colors.white54 : Colors.white24,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  if (session.tool == EditorTool.text) ...[
               Tooltip(
                 message: 'Text size',
                 child: const Icon(
@@ -584,6 +600,8 @@ class _HoveringContextControlsState extends State<_HoveringContextControls> {
           ],
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 }
