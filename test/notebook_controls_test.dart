@@ -260,4 +260,82 @@ void main() {
       reopened.close();
     },
   );
+  testWidgets(
+    'blank paper guides are temporary and IME commit reflows with one undo',
+    (tester) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final directory = Directory.systemTemp.createTempSync('novi-ime');
+      final originalPaths = PathProviderPlatform.instance;
+      PathProviderPlatform.instance = TestPaths(directory.path);
+      addTearDown(() {
+        PathProviderPlatform.instance = originalPaths;
+        directory.deleteSync(recursive: true);
+      });
+      final store = LibraryStore('${directory.path}/novi.sqlite');
+      store.save(
+        Notebook(
+          id: 'ime',
+          title: 'Existing text document',
+          kind: 'Text document',
+          paper: 'Blank',
+          text: 'Before',
+        ),
+      );
+      store.close();
+      await tester.pumpWidget(const NoviApp());
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Existing text document').first);
+      await tester.pumpAndSettle();
+      PaperPainter background() => tester
+          .widgetList<CustomPaint>(find.byType(CustomPaint))
+          .map((p) => p.painter)
+          .whereType<PaperPainter>()
+          .first;
+      expect(background().guides, isTrue);
+      final input = find.byType(DesktopTextField).first;
+      await tester.showKeyboard(input);
+      final content = List.generate(90, (i) => 'Composing row $i').join('\n');
+      tester.testTextInput.updateEditingValue(
+        TextEditingValue(
+          text: content,
+          selection: TextSelection.collapsed(offset: content.length),
+          composing: TextRange(start: 0, end: content.length),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final dynamic state = tester.state(find.byType(Workspace));
+      expect((state.current as Notebook).pages, hasLength(1));
+      tester.testTextInput.updateEditingValue(
+        TextEditingValue(
+          text: content,
+          selection: TextSelection.collapsed(offset: content.length),
+          composing: TextRange.empty,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect((state.current as Notebook).pages.length, greaterThan(1));
+      expect(
+        (state.current as Notebook).pages.map((p) => p.text).join(),
+        content,
+      );
+      await tester.tap(find.byTooltip('Undo'));
+      await tester.pumpAndSettle();
+      expect((state.current as Notebook).pages.single.text, 'Before');
+      await tester.tap(find.byKey(const ValueKey('tool-pen')));
+      await tester.pumpAndSettle();
+      expect(background().guides, isFalse);
+      expect(
+        (state.current as Notebook).toJson().containsKey('guides'),
+        isFalse,
+      );
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    },
+  );
 }
