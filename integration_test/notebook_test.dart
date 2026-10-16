@@ -9,7 +9,11 @@ import '../test/widget_test.dart' as notebook_tests;
 import '../test/workspace_test.dart' as workspace_tests;
 
 void main() {
-  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  // Drive the native Flutter editor deterministically; avoid racing the OS IME
+  // against synthetic tester.enterText messages. Native file/tablet plugins remain real.
+  setUp(() => binding.testTextInput.register());
+  tearDown(() => binding.testTextInput.unregister());
   test(
     'native tablet monitor exposes initial connection and event snapshots',
     () async {
