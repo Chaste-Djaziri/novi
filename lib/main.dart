@@ -1038,106 +1038,112 @@ class DesktopWindowHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: const Color(0xff121212),
-      child: Container(
-        height: 34,
-        padding: const EdgeInsets.only(top: 1, bottom: 3),
-        child: Row(
-          children: [
-            if (defaultTargetPlatform == TargetPlatform.macOS)
-              const DragToMoveArea(
-                child: SizedBox(width: 78, height: 34),
-              ),
-            if (currentId != null) ...[
-              DesktopHeaderButton(
-                key: const Key('home-button'),
-                tooltip: 'Home',
-                icon: CupertinoIcons.house,
-                onPressed: onOpenDocument,
-              ),
-              const SizedBox(width: 2),
-            ],
-            DesktopHeaderButton(
-              tooltip: 'Back to documents',
-              icon: CupertinoIcons.chevron_left,
-              onPressed: canGoBack ? onBack : null,
-            ),
-            const SizedBox(width: 2),
-            DesktopHeaderButton(
-              tooltip: 'Forward',
-              icon: CupertinoIcons.chevron_right,
-              onPressed: canGoForward ? onForward : null,
-            ),
-            const SizedBox(width: 2),
-            DesktopHeaderButton(
-              tooltip: 'Toggle sidebar',
-              icon: CupertinoIcons.sidebar_left,
-              onPressed: onToggleSidebar,
-            ),
-            Container(
-              width: 1,
-              height: 16,
-              margin: const EdgeInsets.symmetric(horizontal: 8),
-              color: Colors.white.withValues(alpha: 0.1),
-            ),
-            if (showTabs)
-              Flexible(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      for (final id in openIds) ...[
-                        _buildTab(context, id),
-                        const SizedBox(width: 4),
-                      ],
-                      _buildCreateButton(),
-                    ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxTabsWidth = (constraints.maxWidth - 320).clamp(60.0, double.infinity);
+        return Material(
+          color: const Color(0xff121212),
+          child: Container(
+            height: 34,
+            padding: const EdgeInsets.only(top: 1, bottom: 3),
+            child: Row(
+              children: [
+                if (defaultTargetPlatform == TargetPlatform.macOS)
+                  const DragToMoveArea(
+                    child: SizedBox(width: 78, height: 34),
+                  ),
+                if (currentId != null) ...[
+                  DesktopHeaderButton(
+                    key: const Key('home-button'),
+                    tooltip: 'Home',
+                    icon: CupertinoIcons.house,
+                    onPressed: onOpenDocument,
+                  ),
+                  const SizedBox(width: 2),
+                ],
+                DesktopHeaderButton(
+                  tooltip: 'Back to documents',
+                  icon: CupertinoIcons.chevron_left,
+                  onPressed: canGoBack ? onBack : null,
+                ),
+                const SizedBox(width: 2),
+                DesktopHeaderButton(
+                  tooltip: 'Forward',
+                  icon: CupertinoIcons.chevron_right,
+                  onPressed: canGoForward ? onForward : null,
+                ),
+                const SizedBox(width: 2),
+                DesktopHeaderButton(
+                  tooltip: 'Toggle sidebar',
+                  icon: CupertinoIcons.sidebar_left,
+                  onPressed: onToggleSidebar,
+                ),
+                Container(
+                  width: 1,
+                  height: 16,
+                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                  color: Colors.white.withValues(alpha: 0.1),
+                ),
+                if (showTabs)
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: maxTabsWidth),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          for (final id in openIds) ...[
+                            _buildTab(context, id),
+                            const SizedBox(width: 4),
+                          ],
+                          _buildCreateButton(),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  _buildCreateButton(),
+                const Expanded(
+                  child: DragToMoveArea(
+                    child: SizedBox(
+                      height: 34,
+                      width: double.infinity,
+                    ),
                   ),
                 ),
-              )
-            else
-              _buildCreateButton(),
-            const Expanded(
-              child: DragToMoveArea(
-                child: SizedBox(
-                  height: 34,
-                  width: double.infinity,
+                DesktopIconButton(
+                  tooltip: 'Open document',
+                  onPressed: onOpenDocument,
+                  icon: const Icon(CupertinoIcons.folder_open, size: 18),
                 ),
-              ),
-            ),
-            DesktopIconButton(
-              tooltip: 'Open document',
-              onPressed: onOpenDocument,
-              icon: const Icon(CupertinoIcons.folder_open, size: 18),
-            ),
-            DesktopPopupMenuButton<String>(
-              tooltip: 'Import, export and backup',
-              onSelected: onTransfer,
-              itemBuilder: (_) => const [
-                DesktopMenuItem(
-                  value: 'export',
-                  child: Text('Export notebook'),
+                DesktopPopupMenuButton<String>(
+                  tooltip: 'Import, export and backup',
+                  onSelected: onTransfer,
+                  itemBuilder: (_) => const [
+                    DesktopMenuItem(
+                      value: 'export',
+                      child: Text('Export notebook'),
+                    ),
+                    DesktopMenuItem(
+                      value: 'backup',
+                      child: Text('Back up library'),
+                    ),
+                    DesktopMenuItem(
+                      value: 'import',
+                      child: Text('Import .novi file'),
+                    ),
+                    DesktopMenuItem(
+                      value: 'restore',
+                      child: Text('Restore backup'),
+                    ),
+                  ],
                 ),
-                DesktopMenuItem(
-                  value: 'backup',
-                  child: Text('Back up library'),
-                ),
-                DesktopMenuItem(
-                  value: 'import',
-                  child: Text('Import .novi file'),
-                ),
-                DesktopMenuItem(
-                  value: 'restore',
-                  child: Text('Restore backup'),
-                ),
+                const SizedBox(width: 6),
               ],
             ),
-            const SizedBox(width: 6),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
