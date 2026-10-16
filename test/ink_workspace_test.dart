@@ -82,6 +82,7 @@ void main() {
     workspace.chooseTool(EditorTool.eraser);
     session.eraserType = EraserType.stroke;
     session.eraserFilters.updateAll((key, value) => key == 'Highlighter');
+    note.pages.first.inkStyles.firstWhere((s) => s['kind'] == 'pencil')['opacity'] = 0.6;
     final before = note.pages.first.strokes.length;
     workspace.eraseAt(const Offset(130, 104), pageIndex: 0);
     expect(note.pages.first.strokes.length, before - 1);
@@ -173,6 +174,9 @@ void main() {
     await tester.pump();
     expect(overlay(0).foregroundPainter, isNull);
     await mouse.removePointer();
+    await tester.tapAt(const Offset(500, 400));
+    await tester.pump();
+    expect(overlay(1).foregroundPainter, isNull);
     await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
     await tester.pumpAndSettle();
     expect(overlay(0).foregroundPainter, isNull);
