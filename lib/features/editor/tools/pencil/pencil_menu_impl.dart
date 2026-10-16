@@ -75,7 +75,13 @@ class _PencilMenuDialogState extends State<PencilMenuDialog> {
           ),
         ),
       ),
-      const SizedBox(height: 18),
+      const SizedBox(height: 10),
+      const SizedBox(
+        height: 150,
+        width: double.infinity,
+        child: CustomPaint(painter: _PencilPreviewPainter()),
+      ),
+      const SizedBox(height: 8),
       const Text(
         'Settings',
         style: TextStyle(
@@ -199,4 +205,51 @@ class _PencilMenuDialogState extends State<PencilMenuDialog> {
       ),
     ),
   );
+}
+
+class _PencilPreviewPainter extends CustomPainter {
+  const _PencilPreviewPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..moveTo(size.width * 0.08, size.height * 0.58)
+      ..cubicTo(
+        size.width * 0.27,
+        size.height * 0.96,
+        size.width * 0.35,
+        size.height * 0.16,
+        size.width * 0.72,
+        size.height * 0.34,
+      )
+      ..cubicTo(
+        size.width * 0.84,
+        size.height * 0.4,
+        size.width * 0.9,
+        size.height * 0.54,
+        size.width * 0.94,
+        size.height * 0.64,
+      );
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.56)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.2
+      ..strokeCap = StrokeCap.round;
+    canvas.drawPath(path, paint);
+    for (final metric in path.computeMetrics()) {
+      for (var distance = 0.0; distance < metric.length; distance += 7) {
+        final point = metric.getTangentForOffset(distance)?.position;
+        if (point != null) {
+          canvas.drawCircle(
+            point,
+            1.2,
+            Paint()..color = Colors.white.withValues(alpha: 0.22),
+          );
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _PencilPreviewPainter oldDelegate) => false;
 }
