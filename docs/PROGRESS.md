@@ -15,13 +15,22 @@
 - [ ] Step 11: Complete hands-on desktop acceptance checks listed below.
 
 ## Current
-Fixed overscroll glitch during new page creation and stabilized gesture physics:
-- Eliminated 72-96px boundary jumps: Removed `loaderExtra` shifts from `_getCanvasScrollBounds`, `_handleScrollDelta`, `LayoutBuilder`, and `CanvasScrollIndicator`. Content bounds and `minY` are now strictly stable across all states.
-- Asymptotic Rubber-Band Damping: Implemented `_calculateOverscrollShift` using smooth exponential damping ($110 \cdot (1 - e^{-\text{overscroll}/150})$), providing natural resistance without hard clamps or sudden jumps.
-- Resolved Trackpad Gesture Conflicts: Gated the 350ms bounce-back timer with `!_isTrackpadPanning` so it never fires or fights the user while fingers are resting or moving on the trackpad.
-- Non-oscillating Bounce-back: Replaced `Curves.easeOutBack` with `Curves.easeOutCubic`, eliminating spring overshooting/vibration when returning from overscroll.
-- Stable Headroom for Loader: Added permanent layout headroom in `childHeight` so `RenderFlex` never overflows and layout never shifts dynamically.
-- Automated Verification: All 26 automated tests pass and analysis is completely clean (0 issues).
+Repositioned Select (Lasso) tool to be first on the toolbar line and added anchored Lasso Tool popover:
+- **First on the Line**: Reordered toolbar tools so `EditorTool.select` leads the line (`Select`, `Pen`, `Highlighter`, `Eraser`, `Text`, `Hand`), displaying custom dashed selection rectangle icon with down chevron (`[ ⬚ ˅ ]`) and tooltip `Lasso Selection (V)`.
+- **Eliminated Floating Submenu for Select**: Put aside previous floating options; when `session.tool == EditorTool.select`, `FloatingToolControls` returns `const SizedBox.shrink()` so no floating bar obstructs the document canvas.
+- **Anchored Lasso Tool Dropdown Popover**: Clicking the Select button while already selected (or clicking dropdown) displays an anchored macOS-styled popover beneath the select button with top caret triangle pointer:
+  - Header: Centered bold "Lasso Tool".
+  - Section "Lasso Type": Side-by-side selectable cards for "Rectangular" (dashed rectangle icon) and "Freehand" (dashed freehand squiggle loop icon), switching `session.lassoType`.
+  - Section "Included in Selection": Grouped rounded card with 8 iOS/macOS green toggle switches (`CupertinoSwitch` with `activeTrackColor: Color(0xFF34C759)`):
+    - Handwriting
+    - Images
+    - Shapes
+    - Arrows
+    - Text Boxes
+    - Equations
+    - Tape
+    - Sticky Notes
+- **Automated Verification**: `flutter analyze` clean (0 issues) and all 26 automated tests pass across `test/widget_test.dart`, `test/workspace_test.dart`, and `test/library_ui_test.dart`.
 - [x] Configured `EditorTool.select` as initial tool when opening notebooks/documents.
 - [x] Converted top toolbar items and sub-components to icon-only buttons with zero text clutter, passing text names and actions into tooltips.
 - [x] Moved all more controls / tool options out of the top header into `FloatingToolControls`, freeing header vertical space to a clean 44px.
