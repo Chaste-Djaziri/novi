@@ -1,11 +1,13 @@
 import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/cupertino.dart' show CupertinoIcons, CupertinoSwitch;
 import 'package:flutter/material.dart';
 
 import 'desktop_ui.dart';
 import 'library_ui.dart' show CustomColorPickerDialog;
 import 'notebook.dart';
+import 'ink_material.dart';
 
 enum LassoType { rectangular, freehand }
 
@@ -30,8 +32,8 @@ class EditorSession {
       textAlign = note.textAlign == 'center'
           ? TextAlign.center
           : note.textAlign == 'right'
-              ? TextAlign.right
-              : TextAlign.left,
+          ? TextAlign.right
+          : TextAlign.left,
       lineHeight = note.lineHeight ?? 28.0,
       lineHeightAuto = note.lineHeightAuto,
       textBoxBgColor = note.textBoxBgColor,
@@ -77,6 +79,35 @@ class EditorSession {
   EditorTool tool;
   EditorTool previousTool = EditorTool.select;
   double width = 3;
+  double eraserRadius = 14;
+
+  String get inkKind => tool == EditorTool.highlighter
+      ? 'highlighter'
+      : switch (writingMode) {
+          WritingMode.pen => 'pen',
+          WritingMode.pencil => 'pencil',
+          WritingMode.highlighter => 'highlighter',
+          WritingMode.tape => 'tape',
+          WritingMode.drawShape => 'shape',
+        };
+
+  Map<String, dynamic> inkStyle({double? baseWidth}) => {
+    'kind': inkKind,
+    'penType': penType.name,
+    'materialVersion': 1,
+    'width': InkMaterial.toolWidth(inkKind, baseWidth ?? width),
+    'color': color,
+    'opacity': inkKind == 'highlighter'
+        ? 0.35
+        : inkKind == 'tape'
+        ? 0.95
+        : 1.0,
+    'straight': tapeStraight,
+    'holdForLine': penHoldForLine,
+    'requireHold': shapeRequireHoldToSnap,
+    'snapToShapes': shapeSnapToOtherShapes,
+    'shapeFill': shapeFillColor,
+  };
   int? color;
   LassoType lassoType = LassoType.rectangular;
   final Map<String, bool> lassoIncludes = {
@@ -404,8 +435,10 @@ class _LassoToolMenuDialogState extends State<LassoToolMenuDialog> {
                       ),
                     ],
                   ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -474,7 +507,11 @@ class _LassoToolMenuDialogState extends State<LassoToolMenuDialog> {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              for (int i = 0; i < includedItems.length; i++) ...[
+                              for (
+                                int i = 0;
+                                i < includedItems.length;
+                                i++
+                              ) ...[
                                 if (i > 0)
                                   Divider(
                                     height: 1,
@@ -1180,8 +1217,10 @@ class _DrawShapeMenuDialogState extends State<DrawShapeMenuDialog> {
                       ),
                     ],
                   ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1446,8 +1485,10 @@ class _TapeMenuDialogState extends State<TapeMenuDialog> {
                       ),
                     ],
                   ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1723,8 +1764,10 @@ class _PenMenuDialogState extends State<PenMenuDialog> {
                       ),
                     ],
                   ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1851,8 +1894,8 @@ class _PenMenuDialogState extends State<PenMenuDialog> {
                 type == PenType.fountain
                     ? CupertinoIcons.pencil
                     : type == PenType.ballpoint
-                        ? CupertinoIcons.pencil_outline
-                        : CupertinoIcons.paintbrush,
+                    ? CupertinoIcons.pencil_outline
+                    : CupertinoIcons.paintbrush,
                 size: 20,
                 color: isSelected ? Colors.white : Colors.white60,
               ),
@@ -1945,8 +1988,7 @@ class ColorPaletteMenuDialog extends StatelessWidget {
     const arrowWidth = 18.0;
     const arrowHeight = 9.0;
 
-    final buttonCenterX =
-        targetRect.left + (targetRect.width / 2);
+    final buttonCenterX = targetRect.left + (targetRect.width / 2);
     final cardLeft = (buttonCenterX - (cardWidth / 2)).clamp(
       12.0,
       screenSize.width - cardWidth - 12.0,
@@ -2002,8 +2044,10 @@ class ColorPaletteMenuDialog extends StatelessWidget {
                       ),
                     ],
                   ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 14,
+                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -2063,8 +2107,10 @@ class ColorPaletteMenuDialog extends StatelessWidget {
                           ),
                           label: const Text(
                             'Custom Color...',
-                            style:
-                                TextStyle(color: Colors.white70, fontSize: 13),
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                       ),
@@ -2195,8 +2241,10 @@ class _EraserTypeMenuDialogState extends State<EraserTypeMenuDialog> {
                       ),
                     ],
                   ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 18,
+                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -2240,8 +2288,8 @@ class _EraserTypeMenuDialogState extends State<EraserTypeMenuDialog> {
                         widget.session.eraserType == EraserType.precision
                             ? 'Precise erasing of exact touched pixels'
                             : widget.session.eraserType == EraserType.standard
-                                ? 'Efficient erasing without leaving any marks'
-                                : 'Erases the entire stroke upon touch',
+                            ? 'Efficient erasing without leaving any marks'
+                            : 'Erases the entire stroke upon touch',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: Colors.white60,
@@ -2436,8 +2484,10 @@ class _EraserAdvancedSettingsDialogState
                       ),
                     ],
                   ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -2520,7 +2570,9 @@ class _EraserAdvancedSettingsDialogState
                       GestureDetector(
                         onTap: () {
                           setState(() {
-                            widget.session.eraserFilters.updateAll((k, v) => true);
+                            widget.session.eraserFilters.updateAll(
+                              (k, v) => true,
+                            );
                           });
                           widget.onUpdate();
                         },
@@ -2536,10 +2588,7 @@ class _EraserAdvancedSettingsDialogState
                       const SizedBox(height: 4),
                       const Text(
                         "The eraser ignores marks from any tool that's turned off.",
-                        style: TextStyle(
-                          color: Colors.white38,
-                          fontSize: 11,
-                        ),
+                        style: TextStyle(color: Colors.white38, fontSize: 11),
                       ),
                       const SizedBox(height: 16),
                       Container(
@@ -2563,7 +2612,9 @@ class _EraserAdvancedSettingsDialogState
                                   key: const Key('eraser-clear-page-button'),
                                   style: TextButton.styleFrom(
                                     alignment: Alignment.centerLeft,
-                                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                    ),
                                   ),
                                   onPressed: () {
                                     Navigator.of(context).pop();
@@ -2589,7 +2640,10 @@ class _EraserAdvancedSettingsDialogState
                               ),
                               Container(
                                 height: 44,
-                                padding: const EdgeInsets.only(left: 14, right: 8),
+                                padding: const EdgeInsets.only(
+                                  left: 14,
+                                  right: 8,
+                                ),
                                 child: Row(
                                   children: [
                                     const Expanded(
@@ -2605,12 +2659,18 @@ class _EraserAdvancedSettingsDialogState
                                       scale: 0.74,
                                       alignment: Alignment.centerRight,
                                       child: CupertinoSwitch(
-                                        key: const ValueKey('switch-auto-deselect'),
-                                        value: widget.session.eraserAutoDeselect,
-                                        activeTrackColor: const Color(0xff34c759),
+                                        key: const ValueKey(
+                                          'switch-auto-deselect',
+                                        ),
+                                        value:
+                                            widget.session.eraserAutoDeselect,
+                                        activeTrackColor: const Color(
+                                          0xff34c759,
+                                        ),
                                         onChanged: (val) {
                                           setState(() {
-                                            widget.session.eraserAutoDeselect = val;
+                                            widget.session.eraserAutoDeselect =
+                                                val;
                                           });
                                           widget.onUpdate();
                                         },
@@ -2644,10 +2704,7 @@ class _EraserAdvancedSettingsDialogState
       padding: const EdgeInsets.only(left: 14, right: 8),
       child: Row(
         children: [
-          CustomPaint(
-            size: const Size(16, 16),
-            painter: iconPainter,
-          ),
+          CustomPaint(size: const Size(16, 16), painter: iconPainter),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -2853,14 +2910,14 @@ class _FontSizeMenuDialogState extends State<FontSizeMenuDialog> {
                                 data: SliderTheme.of(context).copyWith(
                                   trackHeight: 3.5,
                                   activeTrackColor: const Color(0xff007aff),
-                                  inactiveTrackColor:
-                                      Colors.white.withValues(alpha: 0.18),
+                                  inactiveTrackColor: Colors.white.withValues(
+                                    alpha: 0.18,
+                                  ),
                                   thumbColor: Colors.white,
                                   thumbShape: const RoundSliderThumbShape(
                                     enabledThumbRadius: 8.5,
                                   ),
-                                  overlayShape:
-                                      const RoundSliderOverlayShape(
+                                  overlayShape: const RoundSliderOverlayShape(
                                     overlayRadius: 14,
                                   ),
                                 ),
@@ -2886,8 +2943,7 @@ class _FontSizeMenuDialogState extends State<FontSizeMenuDialog> {
                                   InkWell(
                                     key: const Key('font-size-minus'),
                                     onTap: () => _setSize(_size - 2),
-                                    borderRadius:
-                                        const BorderRadius.horizontal(
+                                    borderRadius: const BorderRadius.horizontal(
                                       left: Radius.circular(16),
                                     ),
                                     child: const Padding(
@@ -2910,8 +2966,7 @@ class _FontSizeMenuDialogState extends State<FontSizeMenuDialog> {
                                   InkWell(
                                     key: const Key('font-size-plus'),
                                     onTap: () => _setSize(_size + 2),
-                                    borderRadius:
-                                        const BorderRadius.horizontal(
+                                    borderRadius: const BorderRadius.horizontal(
                                       right: Radius.circular(16),
                                     ),
                                     child: const Padding(
@@ -2940,53 +2995,43 @@ class _FontSizeMenuDialogState extends State<FontSizeMenuDialog> {
                           bottom: 8,
                         ),
                         child: Row(
-                          children: [
-                            12,
-                            14,
-                            16,
-                            18,
-                            20,
-                            24,
-                            28,
-                            32,
-                            36,
-                            48,
-                            64,
-                          ].map((s) {
-                            final isSel = _size.round() == s;
-                            return GestureDetector(
-                              key: Key('font-size-$s'),
-                              onTap: () {
-                                _setSize(s.toDouble());
-                                Navigator.of(context).pop();
-                              },
-                              child: Container(
-                                margin: const EdgeInsets.only(right: 6),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 7,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isSel
-                                      ? const Color(0xff007aff)
-                                      : const Color(0xff2c2c2e),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  '$s',
-                                  style: TextStyle(
-                                    color: isSel
-                                        ? Colors.white
-                                        : Colors.white70,
-                                    fontSize: 11,
-                                    fontWeight: isSel
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
+                          children: [12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 64]
+                              .map((s) {
+                                final isSel = _size.round() == s;
+                                return GestureDetector(
+                                  key: Key('font-size-$s'),
+                                  onTap: () {
+                                    _setSize(s.toDouble());
+                                    Navigator.of(context).pop();
+                                  },
+                                  child: Container(
+                                    margin: const EdgeInsets.only(right: 6),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 7,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: isSel
+                                          ? const Color(0xff007aff)
+                                          : const Color(0xff2c2c2e),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      '$s',
+                                      style: TextStyle(
+                                        color: isSel
+                                            ? Colors.white
+                                            : Colors.white70,
+                                        fontSize: 11,
+                                        fontWeight: isSel
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ),
-                            );
-                          }).toList(),
+                                );
+                              })
+                              .toList(),
                         ),
                       ),
                     ],
@@ -3321,8 +3366,10 @@ class _TextStyleMenuDialogState extends State<TextStyleMenuDialog> {
                 Container(
                   width: cardWidth,
                   height: 48,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xff1e1e22),
                     borderRadius: BorderRadius.circular(24),
@@ -3700,16 +3747,12 @@ class _TextColorMenuDialogState extends State<TextColorMenuDialog> {
                       const SizedBox(height: 14),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          for (final c in row1) _buildColorCircle(c),
-                        ],
+                        children: [for (final c in row1) _buildColorCircle(c)],
                       ),
                       const SizedBox(height: 10),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          for (final c in row2) _buildColorCircle(c),
-                        ],
+                        children: [for (final c in row2) _buildColorCircle(c)],
                       ),
                       const SizedBox(height: 10),
                       Row(
@@ -3792,7 +3835,8 @@ class _TextColorMenuDialogState extends State<TextColorMenuDialog> {
   }
 
   Widget _buildColorCircle(int argb) {
-    final isSelected = widget.session.textColor == argb ||
+    final isSelected =
+        widget.session.textColor == argb ||
         (widget.session.textColor == null && argb == 0xff000000);
     return GestureDetector(
       key: Key('text-color-swatch-$argb'),
@@ -3825,7 +3869,8 @@ class _TextColorMenuDialogState extends State<TextColorMenuDialog> {
                 child: Icon(
                   CupertinoIcons.checkmark,
                   size: 14,
-                  color: (argb == 0xffffffff ||
+                  color:
+                      (argb == 0xffffffff ||
                           argb == 0xffe5e5ea ||
                           argb == 0xffffcc00)
                       ? Colors.black
@@ -3943,7 +3988,10 @@ class _TextAlignmentMenuDialogState extends State<TextAlignmentMenuDialog> {
                 Container(
                   width: cardWidth,
                   height: 48,
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xff1e1e22),
                     borderRadius: BorderRadius.circular(24),
@@ -4002,8 +4050,8 @@ class _TextAlignmentMenuDialogState extends State<TextAlignmentMenuDialog> {
           widget.note.textAlign = align == TextAlign.center
               ? 'center'
               : align == TextAlign.right
-                  ? 'right'
-                  : 'left';
+              ? 'right'
+              : 'left';
         });
         widget.onUpdate();
       },
@@ -4229,8 +4277,11 @@ class _LineHeightMenuDialogState extends State<LineHeightMenuDialog> {
                                   key: const Key('line-height-minus'),
                                   onTap: () {
                                     setState(() {
-                                      final val = (widget.session.lineHeight - 2)
-                                          .clamp(16.0, 64.0);
+                                      final val =
+                                          (widget.session.lineHeight - 2).clamp(
+                                            16.0,
+                                            64.0,
+                                          );
                                       widget.session.lineHeight = val;
                                       widget.note.lineHeight = val;
                                     });
@@ -4257,8 +4308,11 @@ class _LineHeightMenuDialogState extends State<LineHeightMenuDialog> {
                                   key: const Key('line-height-plus'),
                                   onTap: () {
                                     setState(() {
-                                      final val = (widget.session.lineHeight + 2)
-                                          .clamp(16.0, 64.0);
+                                      final val =
+                                          (widget.session.lineHeight + 2).clamp(
+                                            16.0,
+                                            64.0,
+                                          );
                                       widget.session.lineHeight = val;
                                       widget.note.lineHeight = val;
                                     });
@@ -4559,16 +4613,12 @@ class _TextBoxStyleMenuDialogState extends State<TextBoxStyleMenuDialog> {
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            for (var i = 0; i < 5; i++) _buildPresetSwatch(i),
-          ],
+          children: [for (var i = 0; i < 5; i++) _buildPresetSwatch(i)],
         ),
         const SizedBox(height: 10),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            for (var i = 5; i < 10; i++) _buildPresetSwatch(i),
-          ],
+          children: [for (var i = 5; i < 10; i++) _buildPresetSwatch(i)],
         ),
       ],
     );
@@ -4829,8 +4879,7 @@ class _TextBoxStyleMenuDialogState extends State<TextBoxStyleMenuDialog> {
                 InkWell(
                   key: Key(minusKey),
                   onTap: () {
-                    final next =
-                        (value - (max > 10 ? 2 : 1)).clamp(min, max);
+                    final next = (value - (max > 10 ? 2 : 1)).clamp(min, max);
                     onChanged(next);
                   },
                   child: const Padding(
@@ -4846,8 +4895,7 @@ class _TextBoxStyleMenuDialogState extends State<TextBoxStyleMenuDialog> {
                 InkWell(
                   key: Key(plusKey),
                   onTap: () {
-                    final next =
-                        (value + (max > 10 ? 2 : 1)).clamp(min, max);
+                    final next = (value + (max > 10 ? 2 : 1)).clamp(min, max);
                     onChanged(next);
                   },
                   child: const Padding(
@@ -4936,12 +4984,7 @@ class _WorkspaceToolbarState extends State<WorkspaceToolbar> {
     final box = _selectKey.currentContext?.findRenderObject() as RenderBox?;
     final rect = box != null && box.hasSize
         ? (box.localToGlobal(Offset.zero) & box.size)
-        : Rect.fromLTWH(
-            MediaQuery.of(context).size.width / 2 - 20,
-            44,
-            40,
-            30,
-          );
+        : Rect.fromLTWH(MediaQuery.of(context).size.width / 2 - 20, 44, 40, 30);
     showLassoToolMenu(
       context,
       targetRect: rect,
@@ -4960,15 +5003,17 @@ class _WorkspaceToolbarState extends State<WorkspaceToolbar> {
     child: LayoutBuilder(
       builder: (context, bounds) {
         final tools = EditorTool.values
-            .where((tool) =>
-                tool != EditorTool.highlighter &&
-                (tool != EditorTool.hand || widget.hasStylus))
+            .where(
+              (tool) =>
+                  tool != EditorTool.highlighter &&
+                  (tool != EditorTool.hand || widget.hasStylus),
+            )
             .toList();
         final extras = bounds.maxWidth >= 1200
             ? WorkspaceToolbar.futureTools.entries.take(5).toList()
             : bounds.maxWidth >= 1050
-                ? WorkspaceToolbar.futureTools.entries.take(3).toList()
-                : <MapEntry<String, IconData>>[];
+            ? WorkspaceToolbar.futureTools.entries.take(3).toList()
+            : <MapEntry<String, IconData>>[];
         return Stack(
           alignment: Alignment.center,
           children: [
@@ -4981,8 +5026,7 @@ class _WorkspaceToolbarState extends State<WorkspaceToolbar> {
                   if (widget.onTogglePages != null)
                     DesktopIconButton(
                       key: const Key('toolbar-toggle-pages'),
-                      tooltip:
-                          widget.showPages ? 'Hide pages' : 'Page manager',
+                      tooltip: widget.showPages ? 'Hide pages' : 'Page manager',
                       onPressed: widget.onTogglePages,
                       icon: Icon(
                         CupertinoIcons.sidebar_left,
@@ -4995,10 +5039,7 @@ class _WorkspaceToolbarState extends State<WorkspaceToolbar> {
                   DesktopIconButton(
                     tooltip: 'Undo',
                     onPressed: widget.onUndo,
-                    icon: const Icon(
-                      CupertinoIcons.arrow_uturn_left,
-                      size: 18,
-                    ),
+                    icon: const Icon(CupertinoIcons.arrow_uturn_left, size: 18),
                   ),
                   DesktopIconButton(
                     tooltip: 'Redo',
@@ -5014,10 +5055,7 @@ class _WorkspaceToolbarState extends State<WorkspaceToolbar> {
             Center(
               child: ConstrainedBox(
                 constraints: BoxConstraints(
-                  maxWidth: (bounds.maxWidth - 240).clamp(
-                    0,
-                    double.infinity,
-                  ),
+                  maxWidth: (bounds.maxWidth - 240).clamp(0, double.infinity),
                 ),
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -5025,110 +5063,106 @@ class _WorkspaceToolbarState extends State<WorkspaceToolbar> {
                     key: const Key('centered-tools'),
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      ...tools.map(
-                        (tool) {
-                          final isSelect = tool == EditorTool.select;
-                          final isSelected = widget.session.tool == tool;
-                          final button = DesktopToolButton(
-                            tooltip: switch (tool) {
-                              EditorTool.select => 'Lasso Selection (V)',
-                              EditorTool.pen => 'Writing (W)',
-                              EditorTool.highlighter => 'Highlight',
-                              EditorTool.eraser => 'Erase',
-                              EditorTool.text => 'Type',
-                              EditorTool.hand => 'Hand',
-                            },
-                            avatar: isSelect
-                                ? Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      CustomPaint(
-                                        size: const Size(15, 12),
-                                        painter: _DashedRectPainter(
-                                          color: isSelected
-                                              ? Colors.white
-                                              : Colors.white70,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 3),
-                                      Icon(
-                                        Icons.keyboard_arrow_down,
-                                        size: 11,
+                      ...tools.map((tool) {
+                        final isSelect = tool == EditorTool.select;
+                        final isSelected = widget.session.tool == tool;
+                        final button = DesktopToolButton(
+                          tooltip: switch (tool) {
+                            EditorTool.select => 'Lasso Selection (V)',
+                            EditorTool.pen => 'Writing (W)',
+                            EditorTool.highlighter => 'Highlight',
+                            EditorTool.eraser => 'Erase',
+                            EditorTool.text => 'Type',
+                            EditorTool.hand => 'Hand',
+                          },
+                          avatar: isSelect
+                              ? Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    CustomPaint(
+                                      size: const Size(15, 12),
+                                      painter: _DashedRectPainter(
                                         color: isSelected
                                             ? Colors.white
                                             : Colors.white70,
                                       ),
-                                    ],
-                                  )
-                                : switch (tool) {
-                                    EditorTool.pen => CustomPaint(
-                                        size: const Size(16, 16),
-                                        painter: _PenTipPainter(
-                                          color: isSelected
-                                              ? Colors.black
-                                              : Colors.white70,
-                                        ),
-                                      ),
-                                    EditorTool.eraser => CustomPaint(
-                                        size: const Size(16, 16),
-                                        painter: _EraserIconPainter(
-                                          color: isSelected
-                                              ? Colors.black
-                                              : Colors.white70,
-                                        ),
-                                      ),
-                                    EditorTool.text => Icon(
-                                        CupertinoIcons.textbox,
-                                        size: 17,
-                                        color: isSelected
-                                            ? Colors.black
-                                            : Colors.white70,
-                                      ),
-                                    EditorTool.hand => Icon(
-                                        CupertinoIcons.hand_raised,
-                                        size: 17,
-                                        color: isSelected
-                                            ? Colors.black
-                                            : Colors.white70,
-                                      ),
-                                    _ => Icon(
-                                        CupertinoIcons.pencil,
-                                        size: 17,
-                                        color: isSelected
-                                            ? Colors.black
-                                            : Colors.white70,
-                                      ),
-                                  },
-                            selected: isSelected,
-                            onSelected: (_) {
-                              if (isSelect &&
-                                  widget.session.tool == EditorTool.select) {
-                                _showLassoMenu(context);
-                              } else {
-                                widget.onTool(tool);
-                              }
-                            },
-                          );
-
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 2.5,
-                            ),
-                            child: isSelect
-                                ? KeyedSubtree(
-                                    key: const ValueKey('tool-select'),
-                                    child: KeyedSubtree(
-                                      key: _selectKey,
-                                      child: button,
                                     ),
-                                  )
-                                : KeyedSubtree(
-                                    key: ValueKey('tool-${tool.name}'),
+                                    const SizedBox(width: 3),
+                                    Icon(
+                                      Icons.keyboard_arrow_down,
+                                      size: 11,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : Colors.white70,
+                                    ),
+                                  ],
+                                )
+                              : switch (tool) {
+                                  EditorTool.pen => CustomPaint(
+                                    size: const Size(16, 16),
+                                    painter: _PenTipPainter(
+                                      color: isSelected
+                                          ? Colors.black
+                                          : Colors.white70,
+                                    ),
+                                  ),
+                                  EditorTool.eraser => CustomPaint(
+                                    size: const Size(16, 16),
+                                    painter: _EraserIconPainter(
+                                      color: isSelected
+                                          ? Colors.black
+                                          : Colors.white70,
+                                    ),
+                                  ),
+                                  EditorTool.text => Icon(
+                                    CupertinoIcons.textbox,
+                                    size: 17,
+                                    color: isSelected
+                                        ? Colors.black
+                                        : Colors.white70,
+                                  ),
+                                  EditorTool.hand => Icon(
+                                    CupertinoIcons.hand_raised,
+                                    size: 17,
+                                    color: isSelected
+                                        ? Colors.black
+                                        : Colors.white70,
+                                  ),
+                                  _ => Icon(
+                                    CupertinoIcons.pencil,
+                                    size: 17,
+                                    color: isSelected
+                                        ? Colors.black
+                                        : Colors.white70,
+                                  ),
+                                },
+                          selected: isSelected,
+                          onSelected: (_) {
+                            if (isSelect &&
+                                widget.session.tool == EditorTool.select) {
+                              _showLassoMenu(context);
+                            } else {
+                              widget.onTool(tool);
+                            }
+                          },
+                        );
+
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 2.5),
+                          child: isSelect
+                              ? KeyedSubtree(
+                                  key: const ValueKey('tool-select'),
+                                  child: KeyedSubtree(
+                                    key: _selectKey,
                                     child: button,
                                   ),
-                          );
-                        },
-                      ),
+                                )
+                              : KeyedSubtree(
+                                  key: ValueKey('tool-${tool.name}'),
+                                  child: button,
+                                ),
+                        );
+                      }),
                       const SizedBox(width: 6),
                       Container(
                         width: 1,
@@ -5136,23 +5170,20 @@ class _WorkspaceToolbarState extends State<WorkspaceToolbar> {
                         color: const Color(0xff383840),
                       ),
                       const SizedBox(width: 6),
-                      ...extras.map(
-                        (entry) => planned(entry.key, entry.value),
-                      ),
+                      ...extras.map((entry) => planned(entry.key, entry.value)),
                       planned('Calculator', CupertinoIcons.number),
                       DesktopPopupMenuButton<String>(
                         tooltip: 'More Tools',
                         onSelected: (_) {},
-                        itemBuilder: (_) =>
-                            WorkspaceToolbar.futureTools.keys
-                                .map(
-                                  (name) => DesktopMenuItem(
-                                    value: name,
-                                    enabled: false,
-                                    child: Text('$name — Coming later'),
-                                  ),
-                                )
-                                .toList(),
+                        itemBuilder: (_) => WorkspaceToolbar.futureTools.keys
+                            .map(
+                              (name) => DesktopMenuItem(
+                                value: name,
+                                enabled: false,
+                                child: Text('$name — Coming later'),
+                              ),
+                            )
+                            .toList(),
                       ),
                     ],
                   ),
@@ -5181,10 +5212,7 @@ class _WorkspaceToolbarState extends State<WorkspaceToolbar> {
                   DesktopIconButton(
                     tooltip: 'Export notebook',
                     onPressed: widget.onExport,
-                    icon: const Icon(
-                      CupertinoIcons.square_arrow_up,
-                      size: 18,
-                    ),
+                    icon: const Icon(CupertinoIcons.square_arrow_up, size: 18),
                   ),
                   DesktopIconButton(
                     tooltip: 'Delete selected ink',
@@ -5515,15 +5543,9 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
         const SizedBox(width: 10),
 
         // Color Presets: Red, Blue, Active Dropdown, Custom Picker (+)
-        _buildColorDot(
-          colorValue: 0xffef4444,
-          tooltip: 'Red ink',
-        ),
+        _buildColorDot(colorValue: 0xffef4444, tooltip: 'Red ink'),
         const SizedBox(width: 6),
-        _buildColorDot(
-          colorValue: 0xff3b82f6,
-          tooltip: 'Blue ink',
-        ),
+        _buildColorDot(colorValue: 0xff3b82f6, tooltip: 'Blue ink'),
         const SizedBox(width: 6),
         GestureDetector(
           key: _colorDropdownKey,
@@ -5596,11 +5618,7 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
                 ),
               ),
               child: const Center(
-                child: Icon(
-                  Icons.add,
-                  size: 13,
-                  color: Colors.white70,
-                ),
+                child: Icon(Icons.add, size: 13, color: Colors.white70),
               ),
             ),
           ),
@@ -5635,10 +5653,7 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CustomPaint(
-                size: const Size(17, 17),
-                painter: iconPainter,
-              ),
+              CustomPaint(size: const Size(17, 17), painter: iconPainter),
               if (isSelected) ...[
                 const SizedBox(width: 3),
                 const Icon(
@@ -5660,7 +5675,15 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
     double strokeHeight,
     String tooltip,
   ) {
-    final isSelected = widget.session.selectedWidthIndex == index;
+    final isSelected =
+        (widget.session.width -
+                [
+                  widget.session.thinWidth,
+                  widget.session.mediumWidth,
+                  widget.session.thickWidth,
+                ][index])
+            .abs() <
+        0.01;
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -5686,7 +5709,17 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
           child: Center(
             child: Container(
               width: lineLength,
-              height: strokeHeight,
+              height: math.min(
+                18,
+                InkMaterial.toolWidth(
+                  widget.session.inkKind,
+                  [
+                    widget.session.thinWidth,
+                    widget.session.mediumWidth,
+                    widget.session.thickWidth,
+                  ][index],
+                ),
+              ),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(strokeHeight / 2),
@@ -5698,10 +5731,7 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
     );
   }
 
-  Widget _buildColorDot({
-    required int colorValue,
-    required String tooltip,
-  }) {
+  Widget _buildColorDot({required int colorValue, required String tooltip}) {
     final isSelected = widget.session.color == colorValue;
     return GestureDetector(
       onTap: () {
@@ -5776,8 +5806,8 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
                     session.eraserType == EraserType.precision
                         ? 'Precision'
                         : session.eraserType == EraserType.standard
-                            ? 'Standard'
-                            : 'Stroke',
+                        ? 'Standard'
+                        : 'Stroke',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 13,
@@ -5831,11 +5861,26 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
         const SizedBox(width: 10),
 
         // 3 Eraser Size dots: Small, Medium, Large
-        _buildEraserSizeCircle(0, 6.0, session.eraserSmallRadius, 'Small eraser'),
+        _buildEraserSizeCircle(
+          0,
+          6.0,
+          session.eraserSmallRadius,
+          'Small eraser',
+        ),
         const SizedBox(width: 6),
-        _buildEraserSizeCircle(1, 11.0, session.eraserMediumRadius, 'Medium eraser'),
+        _buildEraserSizeCircle(
+          1,
+          11.0,
+          session.eraserMediumRadius,
+          'Medium eraser',
+        ),
         const SizedBox(width: 6),
-        _buildEraserSizeCircle(2, 17.0, session.eraserLargeRadius, 'Large eraser'),
+        _buildEraserSizeCircle(
+          2,
+          17.0,
+          session.eraserLargeRadius,
+          'Large eraser',
+        ),
       ],
     );
   }
@@ -5851,7 +5896,7 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
       onTap: () {
         setState(() {
           widget.session.selectedEraserSizeIndex = index;
-          widget.session.width = radiusValue;
+          widget.session.eraserRadius = radiusValue;
         });
         widget.onSettings();
       },
@@ -5863,9 +5908,7 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
           height: 30,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: isSelected
-                ? const Color(0xff2c2c30)
-                : Colors.transparent,
+            color: isSelected ? const Color(0xff2c2c30) : Colors.transparent,
             border: Border.all(
               color: isSelected
                   ? const Color(0xff007aff)
@@ -6072,7 +6115,8 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
               key: _textStyleKey,
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
               decoration: BoxDecoration(
-                color: (note.boldText ||
+                color:
+                    (note.boldText ||
                         session.italicText ||
                         session.underlineText ||
                         session.strikethroughText)
@@ -6317,10 +6361,7 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
         Tooltip(
           message: 'Current zoom',
           child: Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 7,
-              vertical: 2.5,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(10),
