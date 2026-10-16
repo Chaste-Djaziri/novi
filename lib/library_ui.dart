@@ -422,54 +422,78 @@ class _LibraryViewState extends State<LibraryView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Expanded(
-                      child: DragToMoveArea(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              favorites ? 'Favorites' : 'Documents',
-                              style: const TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 5),
-                            Text(
-                              '${widget.notes.length} documents · A little room for every idea',
-                              style: const TextStyle(
-                                color: Colors.grey,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
+                    Text(
+                      favorites ? 'Favorites' : 'Documents',
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${widget.notes.length}',
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
+                    const SizedBox(width: 16),
                     SizedBox(
-                      width: 220,
+                      width: 180,
                       child: DesktopTextField(
+                        prefix: const Padding(
+                          padding: EdgeInsets.only(left: 6, right: 2),
+                          child: Icon(
+                            CupertinoIcons.search,
+                            size: 14,
+                            color: Colors.grey,
+                          ),
+                        ),
                         onChanged: (v) => setState(() => query = v),
                         placeholder: 'Search documents',
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 28),
-                Row(
-                  children: [
+                    const Expanded(
+                      child: DragToMoveArea(
+                        child: SizedBox(height: 32),
+                      ),
+                    ),
                     DesktopButton.icon(
                       onPressed: widget.enabled
                           ? () => widget.onTransfer('import')
                           : null,
                       icon: const Icon(
                         CupertinoIcons.arrow_down_to_line,
-                        size: 16,
+                        size: 15,
                       ),
                       label: const Text('Import'),
                     ),
-                    const Spacer(),
+                    const SizedBox(width: 10),
+                    DesktopIconButton(
+                      tooltip: grid ? 'List view' : 'Grid view',
+                      onPressed: () => setState(() => grid = !grid),
+                      icon: Icon(
+                        grid
+                            ? CupertinoIcons.list_bullet
+                            : CupertinoIcons.square_grid_2x2,
+                        size: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
                     Builder(
                       builder: (btnContext) => NewPillButton(
                         enabled: widget.enabled,
@@ -480,12 +504,11 @@ class _LibraryViewState extends State<LibraryView> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     DesktopPopupButton<String>(
                       value: filter,
-
                       items: ['All', ...documentKinds]
                           .map(
                             (v) => DesktopMenuItem(
@@ -499,20 +522,10 @@ class _LibraryViewState extends State<LibraryView> {
                           .toList(),
                       onChanged: (v) => setState(() => filter = v!),
                     ),
-                    const Spacer(),
-                    DesktopIconButton(
-                      tooltip: grid ? 'List view' : 'Grid view',
-                      onPressed: () => setState(() => grid = !grid),
-                      icon: Icon(
-                        grid
-                            ? CupertinoIcons.list_bullet
-                            : CupertinoIcons.square_grid_2x2,
-                        size: 19,
-                      ),
-                    ),
                   ],
                 ),
-                const Divider(color: Color(0xff262626)),
+                const SizedBox(height: 12),
+                const Divider(color: Color(0xff262626), height: 1),
                 const SizedBox(height: 16),
                 Expanded(
                   child: notes.isEmpty
