@@ -373,8 +373,22 @@ The first technical alpha is implemented. A reported native crash on New noteboo
 - [x] Unit and widget test suite: all 19 tests pass (`test/library_ui_test.dart`, `test/widget_test.dart`, `test/workspace_test.dart`).
 - [ ] Hands-on interaction check in the running Mac app.
 
+## Full screen top header left alignment — 2026-10-16
+- [x] Full screen window state tracking:
+  - Added `WindowListener` mixin to `_WorkspaceState`, listening to `onWindowEnterFullScreen` and `onWindowLeaveFullScreen`, and querying `windowManager.isFullScreen()` during startup.
+- [x] Top header dynamic positioning:
+  - Passed `isFullScreen` to [DesktopWindowHeader](file:///Users/chastedjaziri/Documents/ChatGPT/novi/lib/main.dart).
+  - In normal windowed mode on macOS, preserved the 78px `DragToMoveArea` spacer on the left to leave room for macOS window controls (traffic light close/minimize/maximize buttons).
+  - In full screen mode (`isFullScreen: true`), removed the 78px left spacer so the Home button, back/forward buttons, sidebar toggle, and tabs start directly from the very left edge (0.0).
+- [x] Test coverage:
+  - Added automated test in `test/widget_test.dart` asserting that when `isFullScreen: false` the header begins at 78px, and when `isFullScreen: true` the Home button, back/forward buttons, and tabs start at x=0.0.
+- [x] `flutter analyze`: clean (0 issues).
+- [x] Unit and widget test suite: all 20 tests pass (`test/library_ui_test.dart`, `test/widget_test.dart`, `test/workspace_test.dart`).
+- [ ] Hands-on interaction check in the running Mac app.
+
 ## Next
 Perform hands-on visual and drag verification in the rebuilt Mac app. Continue the desktop acceptance checks listed in the checklist above, recording results here.
+
 
 
 
