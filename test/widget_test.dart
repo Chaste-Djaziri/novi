@@ -1538,6 +1538,24 @@ void main() {
       expect(find.byTooltip('Automatic ink contrast'), findsOneWidget);
       expect(find.byTooltip('Ink shade 1'), findsOneWidget);
       expect(find.byTooltip('Ink shade 4'), findsOneWidget);
+
+      // 6. More controls are out of the header toolbar and floating over the canvas
+      expect(
+        find.descendant(of: toolbarFinder, matching: contextControlsFinder),
+        findsNothing,
+      );
+      expect(find.byType(FloatingToolControls), findsOneWidget);
+
+      // 7. Floating controls can be dragged around the screen
+      final dragGrip = find.byKey(const Key('floating-drag-handle'));
+      expect(dragGrip, findsOneWidget);
+      await tester.drag(dragGrip, const Offset(60, 40));
+      await tester.pumpAndSettle();
+      final floatingState = tester.state<FloatingToolControlsState>(
+        find.byType(FloatingToolControls),
+      );
+      expect(floatingState.dragOffset.dx, greaterThan(0));
+      expect(floatingState.dragOffset.dy, greaterThan(0));
     },
   );
 }
