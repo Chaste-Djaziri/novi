@@ -100,7 +100,8 @@ class Workspace extends StatefulWidget {
   State<Workspace> createState() => _WorkspaceState();
 }
 
-class _WorkspaceState extends State<Workspace> with WindowListener {
+class _WorkspaceState extends State<Workspace>
+    with WindowListener, TickerProviderStateMixin {
   LibraryStore? store;
   List<Notebook> notes = [];
   Notebook? current;
