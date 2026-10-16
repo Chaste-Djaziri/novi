@@ -274,6 +274,27 @@ The first technical alpha is implemented. A reported native crash on New noteboo
 - [x] Regenerated visual preview artifact `build/ui-preview/editor.png` and verified centered sheet layout with 24px gaps.
 - [ ] Hands-on interaction check in the running Mac app.
 
+## Strict side-scroll disallowance when fitting and edge-clamped scrolling when zoomed — 2026-10-16
+- [x] Strictly disallowed side scrolling when paper fits within the viewport horizontally (`paperWidth <= constraints.maxWidth`):
+  - Dynamic `InteractiveViewer.panAxis` set to `PanAxis.vertical`, blocking horizontal drag interactions while fitting.
+  - Horizontal boundary margin set to `0.0` (`boundaryMargin: const EdgeInsets.symmetric(horizontal: 0, vertical: 50)`), preventing drag past bounds.
+  - In `_handleCanvasScroll`, horizontal scroll delta is ignored when fitting (`minX = maxX = 0.0`), locking horizontal translation strictly to center.
+  - Child width adapts to `constraints.maxWidth / scale` when fitting, keeping the paper centered with zero horizontal drift or slack.
+- [x] Clamped scrolling strictly to paper edges without scrolling past into empty whitespace when zoomed out of view (`paperWidth > constraints.maxWidth`):
+  - `InteractiveViewer.panAxis` dynamically switches to `PanAxis.free`.
+  - Child width is set to `pageWidth`, eliminating horizontal margins inside the child so child boundaries match paper boundaries exactly.
+  - Horizontal translation is clamped strictly between `minX = constraints.maxWidth - paperWidth` and `maxX = 0.0`. Left and right edge scrolling stops flush with the viewport edges with zero margin or overshoot.
+  - `_snapHorizontalToCenter` clamps within `[minX, 0.0]` on interaction end.
+- [x] Updated automated widget test in `test/widget_test.dart` to verify:
+  - `panAxis == PanAxis.vertical` and `boundaryMargin.horizontal == 0.0` when fitting in view.
+  - Horizontal scrolling attempts while fitting maintain center position.
+  - `panAxis == PanAxis.free` and `boundaryMargin.horizontal == 0.0` when zoomed beyond viewport.
+  - Large scroll deltas to the right clamp to right edge of paper without exceeding it.
+  - Large scroll deltas to the left clamp to left edge of paper without exceeding it.
+- [x] `flutter analyze`: clean (0 issues).
+- [x] Unit and widget test suite: all 17 tests pass (`test/library_ui_test.dart`, `test/widget_test.dart`, `test/workspace_test.dart`).
+- [ ] Hands-on interaction check in the running Mac app.
+
 ## Next
 Perform hands-on visual and drag verification in the rebuilt Mac app. Continue the desktop acceptance checks listed in the checklist above, recording results here.
 
