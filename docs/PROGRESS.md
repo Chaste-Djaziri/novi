@@ -551,6 +551,8 @@ Confirm material feel and pressure with a physical tablet in the normal Mac app.
 - [x] Verified editor boundary, ink workspace, and widget suites: 25 tests pass; `flutter analyze` is clean.
 - [x] Added a working pencil dropdown with Standard Pencil settings for Reduce Latency and Draw and Hold, including serializable session style metadata.
 - [x] Added pencil dialog boundary coverage; workspace/widget tests pass and `flutter analyze` is clean.
+- [x] Restyled the pencil popup to match the pen popup’s card, arrow, border, shadow, spacing, and transition design while keeping a separate pencil implementation.
+- [x] Verified the pencil dialog boundary test and `flutter analyze` after the visual update.
 - [ ] Finish reducing legacy editor files and add broader painter comparison coverage.
 
 
