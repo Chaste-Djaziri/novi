@@ -80,28 +80,102 @@ class DesktopButton extends StatelessWidget {
   );
 }
 
-class DesktopToolButton extends StatelessWidget {
+class DesktopToolButton extends StatefulWidget {
   const DesktopToolButton({
     super.key,
-    required this.label,
+    this.label = const SizedBox.shrink(),
     this.avatar,
     required this.selected,
     required this.onSelected,
+    this.tooltip,
   });
   final Widget label;
   final Widget? avatar;
   final bool selected;
   final ValueChanged<bool> onSelected;
+  final String? tooltip;
+
   @override
-  Widget build(BuildContext context) => FButton(
-    onPress: () => onSelected(!selected),
-    selected: selected,
-    variant: selected ? FButtonVariant.secondary : FButtonVariant.ghost,
-    size: FButtonSizeVariant.sm,
-    mainAxisSize: MainAxisSize.min,
-    prefix: avatar,
-    child: label,
-  );
+  State<DesktopToolButton> createState() => _DesktopToolButtonState();
+}
+
+class _DesktopToolButtonState extends State<DesktopToolButton> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasText = widget.label is! SizedBox ||
+        (widget.label is SizedBox &&
+            (widget.label as SizedBox).width != null &&
+            (widget.label as SizedBox).width! > 0);
+
+    Widget content = MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        padding: EdgeInsets.symmetric(
+          horizontal: hasText ? 10 : 8,
+          vertical: 5,
+        ),
+        decoration: BoxDecoration(
+          color: widget.selected
+              ? const Color(0xff3e3e44)
+              : _isHovered
+                  ? const Color(0xff2d2d32)
+                  : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: widget.selected
+                ? const Color(0xff5a5a64)
+                : _isHovered
+                    ? const Color(0xff404046)
+                    : Colors.transparent,
+            width: 0.8,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (widget.avatar != null)
+              IconTheme(
+                data: IconThemeData(
+                  color: widget.selected ? Colors.white : Colors.white70,
+                  size: 17,
+                ),
+                child: widget.avatar!,
+              ),
+            if (hasText) ...[
+              const SizedBox(width: 6),
+              DefaultTextStyle(
+                style: TextStyle(
+                  color: widget.selected ? Colors.white : Colors.white70,
+                  fontSize: 12,
+                  fontWeight:
+                      widget.selected ? FontWeight.w600 : FontWeight.normal,
+                ),
+                child: widget.label,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+
+    content = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => widget.onSelected(!widget.selected),
+      child: content,
+    );
+
+    if (widget.tooltip != null) {
+      return Tooltip(
+        message: widget.tooltip!,
+        child: content,
+      );
+    }
+    return content;
+  }
 }
 
 class DesktopMenuItem<T> extends StatelessWidget {
