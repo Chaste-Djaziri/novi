@@ -220,6 +220,18 @@ The first technical alpha is implemented. A reported native crash on New noteboo
 - [x] Unit and widget test suite: all 15 tests pass (`test/library_ui_test.dart`, `test/widget_test.dart`, `test/workspace_test.dart`).
 - [ ] Hands-on interaction check in the running Mac app.
 
+## Pin folder and 3-dots actions to the right end in top bar — 2026-10-16
+- [x] Identified layout cause: in `DesktopWindowHeader`, wrapping tabs in `Flexible(fit: FlexFit.loose)` alongside `Expanded(child: DragToMoveArea)` caused Flutter's `RenderFlex` to divide the remaining width equally between them upfront. Unused loose space from the tabs was not reallocated, leaving trailing actions stranded near the middle with a blank void on the right.
+- [x] Solved layout in `lib/main.dart` using `LayoutBuilder`:
+  - Wrapped tabs in `ConstrainedBox(constraints: BoxConstraints(maxWidth: maxTabsWidth))` (calculated from `constraints.maxWidth - 320`) so tabs only take their natural content width.
+  - Designated `DragToMoveArea` as the sole `Expanded` in the header `Row`, absorbing 100% of all remaining horizontal space.
+  - Pinned the `DesktopIconButton` (Open document folder) and `DesktopPopupMenuButton` (••• ⌵ Import, export and backup) completely flush to the right window edge with a clean 6px margin.
+- [x] Added automated widget test `folder and 3 dots actions stay pinned to the right end of the top bar with or without tabs` in `test/widget_test.dart`.
+- [x] `flutter analyze`: clean (0 issues).
+- [x] Unit and widget test suite: all 16 tests pass (`test/library_ui_test.dart`, `test/widget_test.dart`, `test/workspace_test.dart`).
+- [x] Regenerated visual preview artifact `build/ui-preview/editor.png` and visually verified that the folder and 3-dots buttons sit flush against the far right edge of the top bar above the content panel.
+- [ ] Hands-on interaction check in the running Mac app.
+
 ## Next
 Perform hands-on visual and drag verification in the rebuilt Mac app. Continue the desktop acceptance checks listed in the checklist above, recording results here.
 
