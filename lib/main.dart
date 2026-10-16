@@ -286,7 +286,11 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
       _pushNav(note.id);
     }
     if (session.tool == EditorTool.text) {
-      session.textFocus.requestFocus();
+      session
+          .focusNodeForPage(
+            session.activeTextPage.clamp(0, current!.pages.length - 1),
+          )
+          .requestFocus();
     } else {
       workspaceFocus.requestFocus();
     }
@@ -303,7 +307,11 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
       selectionBox = null;
     });
     if (tool == EditorTool.text) {
-      session.textFocus.requestFocus();
+      session
+          .focusNodeForPage(
+            session.activeTextPage.clamp(0, current!.pages.length - 1),
+          )
+          .requestFocus();
     } else {
       workspaceFocus.requestFocus();
     }
@@ -568,10 +576,10 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
     });
     final width = current!.landscape ? 980.0 : 760.0;
     final height = current!.landscape ? 760.0 : 980.0;
-    final focusedPage = List.generate(
-      current!.pages.length,
-      (i) => i,
-    ).firstWhere((i) => session.focusNodeForPage(i).hasFocus, orElse: () => 0);
+    final focusedPage = session.activeTextPage.clamp(
+      0,
+      current!.pages.length - 1,
+    );
     _paperChanged(
       0,
       current!.pages.first.text,
