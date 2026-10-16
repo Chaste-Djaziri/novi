@@ -21,6 +21,7 @@ import 'package:window_manager/window_manager.dart';
 import 'notebook.dart';
 import 'library_ui.dart';
 import 'workspace_tools.dart';
+import 'pages_sidebar.dart';
 
 import 'package:flutter/services.dart';
 
@@ -121,6 +122,7 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
   bool get drawing => session.tool != EditorTool.text;
   bool inLibrary = true;
   bool showSidebar = true;
+  bool showPagesSidebar = false;
   final tablets = TabletConnection();
   bool get hasStylus => tablets.showHand;
   double _pinchScale = 1;
@@ -570,6 +572,111 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
     }
   }
 
+  void _scrollToPage(
+    int sheetIndex,
+    BoxConstraints constraints,
+    double pageWidth,
+    double pageHeight,
+  ) {
+    if (current == null) return;
+    final scale = session.view.value.getMaxScaleOnAxis();
+    final sheetTop = 24.0 + sheetIndex * (pageHeight + 24.0);
+
+    final hasCover = current?.kind == 'Notebook';
+    final paperCount = current?.pages.length ?? 1;
+    final totalSheets = (hasCover ? 1 : 0) + paperCount;
+    final totalContentHeight =
+        totalSheets * pageHeight + (totalSheets + 1) * 24.0;
+    final totalHeight = totalContentHeight * scale;
+
+    final minY = totalHeight <= constraints.maxHeight
+        ? 0.0
+        : constraints.maxHeight - totalHeight;
+
+    final targetTy = (-sheetTop * scale + 24.0).clamp(minY, 0.0);
+
+    final matrix = session.view.value.clone();
+    matrix.storage[13] = targetTy;
+    session.view.value = matrix;
+    setState(() {});
+  }
+
+  int _getCurrentActivePageIndex(double pageHeight) {
+    if (current == null) return 0;
+    final scale = session.view.value.getMaxScaleOnAxis();
+    final currentTy = session.view.value.storage[13];
+    final hasCover = current!.kind == 'Notebook';
+    final paperCount = current!.pages.length;
+    final totalSheets = (hasCover ? 1 : 0) + paperCount;
+    if (scale <= 0) return 0;
+    final offset = -currentTy / scale;
+    return (offset / (pageHeight + 24.0)).round().clamp(0, totalSheets - 1);
+  }
+
+  void _toggleBookmark(int sheetIndex) {
+    if (current == null) return;
+    snapshot();
+    setState(() {
+      final hasCover = current!.kind == 'Notebook';
+      if (hasCover && sheetIndex == 0) {
+        current!.coverBookmarked = !current!.coverBookmarked;
+      } else {
+        final paperIdx = hasCover ? sheetIndex - 1 : sheetIndex;
+        if (paperIdx >= 0 && paperIdx < current!.pages.length) {
+          current!.pages[paperIdx].isBookmarked =
+              !current!.pages[paperIdx].isBookmarked;
+        }
+      }
+      save();
+    });
+  }
+
+  void _duplicatePage(
+    int sheetIndex,
+    BoxConstraints constraints,
+    double pageWidth,
+    double pageHeight,
+  ) {
+    if (current == null) return;
+    final hasCover = current!.kind == 'Notebook';
+    final paperIdx = hasCover ? sheetIndex - 1 : sheetIndex;
+    if (paperIdx >= 0 && paperIdx < current!.pages.length) {
+      snapshot();
+      setState(() {
+        final original = current!.pages[paperIdx];
+        current!.pages.insert(paperIdx + 1, original.copy());
+        save();
+        status = 'Page duplicated';
+      });
+      _scrollToPage(sheetIndex + 1, constraints, pageWidth, pageHeight);
+    }
+  }
+
+  void _deletePage(
+    int sheetIndex,
+    BoxConstraints constraints,
+    double pageWidth,
+    double pageHeight,
+  ) {
+    if (current == null || current!.pages.length <= 1) return;
+    final hasCover = current!.kind == 'Notebook';
+    final paperIdx = hasCover ? sheetIndex - 1 : sheetIndex;
+    if (paperIdx >= 0 && paperIdx < current!.pages.length) {
+      snapshot();
+      setState(() {
+        current!.pages.removeAt(paperIdx);
+        save();
+        status = 'Page deleted';
+      });
+      _scrollToPage(
+        math.max(0, sheetIndex - 1),
+        constraints,
+        pageWidth,
+        pageHeight,
+      );
+    }
+  }
+
   void formatText({double? size, bool? bold}) {
     snapshot();
     setState(() {
@@ -795,7 +902,13 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
           canGoForward: canGoForward,
           onBack: navigateBack,
           onForward: navigateForward,
-          onToggleSidebar: () => setState(() => showSidebar = !showSidebar),
+          onToggleSidebar: () => setState(() {
+            if (inLibrary) {
+              showSidebar = !showSidebar;
+            } else {
+              showPagesSidebar = !showPagesSidebar;
+            }
+          }),
           notes: notes,
           openIds: openIds,
           currentId: inLibrary ? null : current?.id,
@@ -917,28 +1030,88 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
             ),
           ),
           clipBehavior: Clip.antiAlias,
-          child: Column(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              WorkspaceToolbar(
-                session: session,
-                note: note,
-                onTool: chooseTool,
-                onSettings: () => setState(() {}),
-                onUndo: undo.isEmpty ? null : () => history(true),
-                onRedo: redo.isEmpty ? null : () => history(false),
-                onDelete: session.selection.isEmpty ? null : deleteSelection,
-                onZoom: zoom,
-                onStyle: styleDocument,
-                onFontSize: (v) => formatText(size: v),
-                onBold: () => formatText(bold: !note.boldText),
-                hasStylus: hasStylus,
-                onAddPage: () {
-                  if (_lastConstraints != null) {
-                    _createNextPage(_lastConstraints!, pageWidth, pageHeight);
-                  }
-                },
-                onExport: () => transfer('export'),
-              ),
+              if (showPagesSidebar)
+                PagesSidebar(
+                  note: note,
+                  session: session,
+                  onClose: () => setState(() => showPagesSidebar = false),
+                  onSelectPage: (idx) {
+                    if (_lastConstraints != null) {
+                      _scrollToPage(
+                        idx,
+                        _lastConstraints!,
+                        pageWidth,
+                        pageHeight,
+                      );
+                    }
+                  },
+                  onAddPage: () {
+                    if (_lastConstraints != null) {
+                      _createNextPage(
+                        _lastConstraints!,
+                        pageWidth,
+                        pageHeight,
+                      );
+                    }
+                  },
+                  currentPageIndex: _getCurrentActivePageIndex(pageHeight),
+                  onDeletePage: (idx) {
+                    if (_lastConstraints != null) {
+                      _deletePage(
+                        idx,
+                        _lastConstraints!,
+                        pageWidth,
+                        pageHeight,
+                      );
+                    }
+                  },
+                  onDuplicatePage: (idx) {
+                    if (_lastConstraints != null) {
+                      _duplicatePage(
+                        idx,
+                        _lastConstraints!,
+                        pageWidth,
+                        pageHeight,
+                      );
+                    }
+                  },
+                  onToggleBookmark: _toggleBookmark,
+                ),
+              Expanded(
+                child: Column(
+                  children: [
+                    WorkspaceToolbar(
+                      session: session,
+                      note: note,
+                      onTool: chooseTool,
+                      onSettings: () => setState(() {}),
+                      onUndo: undo.isEmpty ? null : () => history(true),
+                      onRedo: redo.isEmpty ? null : () => history(false),
+                      onDelete:
+                          session.selection.isEmpty ? null : deleteSelection,
+                      onZoom: zoom,
+                      onStyle: styleDocument,
+                      onFontSize: (v) => formatText(size: v),
+                      onBold: () => formatText(bold: !note.boldText),
+                      hasStylus: hasStylus,
+                      onAddPage: () {
+                        if (_lastConstraints != null) {
+                          _createNextPage(
+                            _lastConstraints!,
+                            pageWidth,
+                            pageHeight,
+                          );
+                        }
+                      },
+                      onExport: () => transfer('export'),
+                      onTogglePages: () => setState(
+                        () => showPagesSidebar = !showPagesSidebar,
+                      ),
+                      showPages: showPagesSidebar,
+                    ),
               Expanded(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
@@ -967,8 +1140,11 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
                             totalContentHeight,
                           )
                         : totalContentHeight;
-                    return Listener(
-                      behavior: HitTestBehavior.translucent,
+                    return Stack(
+                      children: [
+                        Positioned.fill(
+                          child: Listener(
+                            behavior: HitTestBehavior.translucent,
                       onPointerHover: (event) {
                         if (event.kind == PointerDeviceKind.stylus ||
                             event.kind == PointerDeviceKind.invertedStylus) {
@@ -1218,8 +1394,31 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
                           ),
                         ),
                       ),
-                    );
-                  },
+                    ),
+                  ),
+                  Positioned(
+                        top: 6,
+                        bottom: 6,
+                        right: 4,
+                        child: CanvasScrollIndicator(
+                          session: session,
+                          constraints: constraints,
+                          pageWidth: pageWidth,
+                          pageHeight: pageHeight,
+                          note: note,
+                          isCreatingPage: _isCreatingPage,
+                          bottomOverscroll: _bottomOverscroll,
+                          onScrollTo: (ty) {
+                            final m = session.view.value.clone();
+                            m.storage[13] = ty;
+                            session.view.value = m;
+                            setState(() {});
+                          },
+                        ),
+                      ),
+                    ],
+                  );
+                },
                 ),
               ),
               Padding(
@@ -1264,6 +1463,9 @@ class _WorkspaceState extends State<Workspace> with WindowListener {
               ),
             ],
           ),
+        ),
+      ],
+    ),
         ),
       ),
     );
@@ -1764,6 +1966,130 @@ class _PageCreationLoader extends StatelessWidget {
                   fontSize: 11.5,
                   fontWeight: FontWeight.w500,
                   letterSpacing: 0.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class CanvasScrollIndicator extends StatefulWidget {
+  const CanvasScrollIndicator({
+    super.key,
+    required this.session,
+    required this.constraints,
+    required this.pageWidth,
+    required this.pageHeight,
+    required this.note,
+    required this.onScrollTo,
+    this.isCreatingPage = false,
+    this.bottomOverscroll = 0.0,
+  });
+
+  final EditorSession session;
+  final BoxConstraints constraints;
+  final double pageWidth;
+  final double pageHeight;
+  final Notebook note;
+  final ValueChanged<double> onScrollTo;
+  final bool isCreatingPage;
+  final double bottomOverscroll;
+
+  @override
+  State<CanvasScrollIndicator> createState() => _CanvasScrollIndicatorState();
+}
+
+class _CanvasScrollIndicatorState extends State<CanvasScrollIndicator> {
+  bool _isHovered = false;
+  bool _isDragging = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final scale = widget.session.view.value.getMaxScaleOnAxis();
+    final hasCover = widget.note.kind == 'Notebook';
+    final paperCount = widget.note.pages.length;
+    final totalSheets = (hasCover ? 1 : 0) + paperCount;
+    final loaderExtra =
+        (widget.bottomOverscroll > 0 || widget.isCreatingPage) ? 72.0 : 0.0;
+    final totalContentHeight =
+        totalSheets * widget.pageHeight +
+        (totalSheets + 1) * 24.0 +
+        loaderExtra;
+    final totalHeight = totalContentHeight * scale;
+    final viewportHeight = widget.constraints.maxHeight;
+
+    if (totalHeight <= viewportHeight + 1.0) {
+      return const SizedBox.shrink();
+    }
+
+    final minY = viewportHeight - totalHeight;
+    final currentTy =
+        widget.session.view.value.storage[13].clamp(minY, 0.0);
+    final scrollFraction = (-currentTy / -minY).clamp(0.0, 1.0);
+
+    final trackHeight = math.max(40.0, viewportHeight - 16.0);
+    final thumbHeight =
+        ((viewportHeight / totalHeight) * trackHeight).clamp(32.0, trackHeight - 10.0);
+    final travelSpace = math.max(1.0, trackHeight - thumbHeight);
+    final thumbTop = scrollFraction * travelSpace;
+
+    final isActive = _isHovered || _isDragging;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        key: const Key('canvas-scroll-indicator'),
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (details) {
+          final targetTop = (details.localPosition.dy - thumbHeight / 2)
+              .clamp(0.0, travelSpace);
+          final frac = targetTop / travelSpace;
+          final targetTy = -frac * -minY;
+          widget.onScrollTo(targetTy);
+        },
+        onVerticalDragStart: (_) => setState(() => _isDragging = true),
+        onVerticalDragEnd: (_) => setState(() => _isDragging = false),
+        onVerticalDragCancel: () => setState(() => _isDragging = false),
+        onVerticalDragUpdate: (details) {
+          final deltaY = details.delta.dy;
+          final deltaFrac = deltaY / travelSpace;
+          final currentFrac = (-currentTy / -minY).clamp(0.0, 1.0);
+          final newFrac = (currentFrac + deltaFrac).clamp(0.0, 1.0);
+          final targetTy = -newFrac * -minY;
+          widget.onScrollTo(targetTy);
+        },
+        child: Container(
+          width: isActive ? 10.0 : 7.0,
+          height: trackHeight,
+          margin: const EdgeInsets.only(right: 3),
+          decoration: BoxDecoration(
+            color: isActive
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(5),
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                top: thumbTop,
+                left: 1.0,
+                right: 1.0,
+                height: thumbHeight,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? Colors.white.withValues(alpha: 0.50)
+                        : Colors.white.withValues(alpha: 0.24),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      width: 0.5,
+                    ),
+                  ),
                 ),
               ),
             ],
