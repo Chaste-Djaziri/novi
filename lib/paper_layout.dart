@@ -44,7 +44,7 @@ class PaperLayout {
     final p = painter(text, width, style, scaler);
     final capacity = math.max(
       1,
-      ((height - spacing) / lineHeight(style.fontSize!)).floor(),
+      ((height - edge) / lineHeight(style.fontSize!)).floor(),
     );
     if (p.computeLineMetrics().length <= capacity) {
       p.dispose();
