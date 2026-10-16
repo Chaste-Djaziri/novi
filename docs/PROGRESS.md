@@ -191,6 +191,18 @@ The first technical alpha is implemented. A reported native crash on New noteboo
 - [x] Visual preview artifact regenerated and verified: `build/ui-preview/creation.png`.
 - [ ] Hands-on interaction check in the running Mac app.
 
+## Unified single-line documents header layout — 2026-10-16
+- [x] Streamlined `LibraryView` header into a single horizontal row (`Row` with `crossAxisAlignment: CrossAxisAlignment.center`):
+  - Left: Title `Text('Documents')` / `Favorites` (font size 22, bold) with count badge container (`${notes.length}`).
+  - Left-mid: Compact search textfield `DesktopTextField` (width 180, search icon prefix, placeholder 'Search documents').
+  - Center: `Expanded` `DragToMoveArea` for native macOS window dragging affordance across empty header space.
+  - Right: `DesktopButton.icon` ('Import', with download arrow), `DesktopIconButton` (Grid/List view toggle), and `NewPillButton` ('+ New' capsule button with popover menu builder).
+- [x] Positioned document kind filter dropdown (`DesktopPopupButton<String>`) in a sub-header row above the divider and document gallery, keeping the main toolbar sleek, responsive, and completely free of horizontal overflow across all window sizes down to the minimum 960×640 dimensions.
+- [x] `flutter analyze`: clean (0 issues).
+- [x] Unit and widget test suite: all 13 tests pass (`test/library_ui_test.dart`, `test/widget_test.dart`, `test/workspace_test.dart`).
+- [x] Regenerated visual preview artifacts in `build/ui-preview/` (`library.png`, `minimum-dialog.png`); visually verified unified toolbar alignment and popover anchoring.
+- [ ] Hands-on interaction check in the running Mac app.
+
 ## Next
 Perform hands-on visual and drag verification in the rebuilt Mac app. Continue the desktop acceptance checks listed in the checklist above, recording results here.
 
