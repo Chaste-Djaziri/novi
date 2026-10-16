@@ -15,7 +15,20 @@
 - [ ] Step 11: Complete hands-on desktop acceptance checks listed below.
 
 ## Current
-Notebook-only development: centered desktop controls, paper-aligned typing with page continuation, mouse/trackpad navigation in every tool, and native macOS tablet monitoring are implemented and verified in automated checks. Future creation types/tools remain visible but disabled. Physical tablet/driver and normal-app hands-on acceptance remain pending.
+Icon-only toolbar with tooltips, floating hovering context controls for sub-components, and Select tool as the initial document tool are implemented and verified with automated test suites (`flutter test`: 24 passing, `flutter analyze`: clean).
+
+## Toolbar Icon-Only Design, Hovering Sub-Components, and Select Tool — 2026-10-16
+- [x] Configured `EditorTool.select` as initial tool when opening notebooks/documents.
+- [x] Converted top toolbar items and sub-components to icon-only buttons with zero text clutter, passing text names and actions into tooltips.
+- [x] Designed `_HoveringContextControls` floating/hovering component with elevation, shadow, mouse hover animation (`_isHovered`), and dark glassmorphic container (`Key('context-controls')`).
+- [x] Added contextual icon-based sub-controls for all active tools:
+  - `select`: select mode indicator, delete selected ink, clear selection.
+  - `pen` & `highlighter`: stroke width slider, dynamic width preview dot, auto contrast wand, ink shade selector pills.
+  - `eraser`: eraser radius slider, radius preview, delete selected ink.
+  - `text`: font size selector, bold toggle button.
+  - `hand`: hand/pan mode indicator.
+  - zoom & view: zoom in, zoom out, current zoom percentage pill, reset view icon button.
+- [x] `flutter analyze`: clean (0 issues). Full test suite: all 24 tests pass.
 
 ## Verification — 2026-10-15
 - `flutter analyze`: no issues.
