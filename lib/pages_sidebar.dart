@@ -49,7 +49,7 @@ class _PagesSidebarState extends State<PagesSidebar> {
     final totalSheets = (hasCover ? 1 : 0) + paperCount;
 
     return Container(
-      width: 250,
+      width: 260,
       decoration: const BoxDecoration(
         color: Color(0xff181818),
         border: Border(
@@ -159,22 +159,27 @@ class _PagesSidebarState extends State<PagesSidebar> {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             child: Row(
               children: [
-                DesktopPopupButton<String>(
-                  value: _filter,
-                  items: const [
-                    DesktopMenuItem(value: 'All Pages', child: Text('All Pages')),
-                    DesktopMenuItem(
-                      value: 'Bookmarked',
-                      child: Text('Bookmarked'),
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: DesktopPopupButton<String>(
+                      value: _filter,
+                      items: const [
+                        DesktopMenuItem(value: 'All Pages', child: Text('All Pages')),
+                        DesktopMenuItem(
+                          value: 'Bookmarked',
+                          child: Text('Bookmarked'),
+                        ),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() => _filter = val);
+                        }
+                      },
                     ),
-                  ],
-                  onChanged: (val) {
-                    if (val != null) {
-                      setState(() => _filter = val);
-                    }
-                  },
+                  ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 8),
                 Text(
                   '$totalSheets ${totalSheets == 1 ? "page" : "pages"}',
                   style: TextStyle(
