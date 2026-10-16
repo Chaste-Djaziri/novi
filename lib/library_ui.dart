@@ -1,3 +1,8 @@
+import 'dart:convert';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
@@ -14,6 +19,21 @@ const coverColors = [
   0xff909090,
   0xffbcbcbc,
   0xffe0e0e0,
+];
+
+const vibrantCoverColors = [
+  0xff8e283b, // Merlot
+  0xffd95c43, // Terracotta
+  0xffc8822d, // Amber Ochre
+  0xff2a5c3f, // Forest Pine
+  0xff1c656d, // Deep Teal
+  0xff255492, // Classic Cobalt
+  0xff483d8b, // Indigo
+  0xff6a3b68, // Plum
+  0xff9b5d73, // Rose
+  0xff634832, // Saddle Brown
+  0xff4a5d3f, // Sage Olive
+  0xff162032, // Midnight
 ];
 IconData kindIcon(String kind) => switch (kind) {
   'Whiteboard' => CupertinoIcons.rectangle_grid_2x2,
@@ -84,9 +104,18 @@ class DocumentCover extends StatelessWidget {
   final Notebook note;
   @override
   Widget build(BuildContext context) {
-    final foreground = Color(note.cover).computeLuminance() > 0.45
-        ? Colors.black87
-        : Colors.white;
+    final hasImage = note.coverImage != null && note.coverImage!.isNotEmpty;
+    Uint8List? imageBytes;
+    if (hasImage) {
+      try {
+        imageBytes = base64Decode(note.coverImage!);
+      } catch (_) {}
+    }
+    final foreground = hasImage
+        ? Colors.white
+        : (Color(note.cover).computeLuminance() > 0.45
+            ? Colors.black87
+            : Colors.white);
     return Container(
       decoration: BoxDecoration(
         color: Color(note.cover),
@@ -96,6 +125,30 @@ class DocumentCover extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
+          if (imageBytes != null)
+            Positioned.fill(
+              child: Image.memory(
+                imageBytes,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) =>
+                    Container(color: Color(note.cover)),
+              ),
+            ),
+          if (imageBytes != null)
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.2),
+                      Colors.black.withValues(alpha: 0.65),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           Positioned(
             left: 12,
             top: 0,
@@ -120,6 +173,15 @@ class DocumentCover extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     color: foreground,
                     fontSize: 18,
+                    shadows: hasImage
+                        ? const [
+                            Shadow(
+                              color: Colors.black87,
+                              offset: Offset(0, 1),
+                              blurRadius: 4,
+                            ),
+                          ]
+                        : null,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -128,9 +190,18 @@ class DocumentCover extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: foreground.withValues(alpha: 0.65),
+                    color: foreground.withValues(alpha: 0.75),
                     fontSize: 9,
                     letterSpacing: 1.4,
+                    shadows: hasImage
+                        ? const [
+                            Shadow(
+                              color: Colors.black87,
+                              offset: Offset(0, 1),
+                              blurRadius: 3,
+                            ),
+                          ]
+                        : null,
                   ),
                 ),
               ],
@@ -514,12 +585,14 @@ class _LibraryViewState extends State<LibraryView> {
                                                 ? CupertinoIcons.star_fill
                                                 : CupertinoIcons.star,
                                             size: 18,
-                                            color:
-                                                Color(n.cover)
-                                                        .computeLuminance() >
-                                                    0.45
-                                                ? Colors.black87
-                                                : Colors.white70,
+                                            color: (n.coverImage != null &&
+                                                    n.coverImage!.isNotEmpty)
+                                                ? Colors.white70
+                                                : (Color(n.cover)
+                                                            .computeLuminance() >
+                                                        0.45
+                                                    ? Colors.black87
+                                                    : Colors.white70),
                                           ),
                                         ),
                                       ),
@@ -677,8 +750,76 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
     0xff909090 => 'Silver',
     0xffbcbcbc => 'Bright',
     0xffe0e0e0 => 'Alabaster',
-    _ => 'Custom',
+    0xff8e283b => 'Merlot',
+    0xffd95c43 => 'Terracotta',
+    0xffc8822d => 'Amber',
+    0xff2a5c3f => 'Forest',
+    0xff1c656d => 'Teal',
+    0xff255492 => 'Cobalt',
+    0xff483d8b => 'Indigo',
+    0xff6a3b68 => 'Plum',
+    0xff9b5d73 => 'Rose',
+    0xff634832 => 'Espresso',
+    0xff4a5d3f => 'Sage',
+    0xff162032 => 'Midnight',
+    _ => '#${(color & 0xffffff).toRadixString(16).padLeft(6, '0').toUpperCase()}',
   };
+
+  Future<void> _pickCoverImage() async {
+    try {
+      const typeGroup = XTypeGroup(
+        label: 'Images',
+        extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'],
+      );
+      final file = await openFile(acceptedTypeGroups: [typeGroup]);
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
+      if (bytes.isEmpty) return;
+
+      String base64Str;
+      try {
+        final codec = await ui.instantiateImageCodec(bytes, targetWidth: 800);
+        final frame = await codec.getNextFrame();
+        final byteData =
+            await frame.image.toByteData(format: ui.ImageByteFormat.png);
+        frame.image.dispose();
+        if (byteData != null) {
+          base64Str = base64Encode(byteData.buffer.asUint8List());
+        } else {
+          base64Str = base64Encode(bytes);
+        }
+      } catch (_) {
+        base64Str = base64Encode(bytes);
+      }
+
+      setState(() {
+        draft.coverImage = base64Str;
+        selectedTab = 'cover';
+      });
+    } catch (e) {
+      debugPrint('Error picking cover image: $e');
+    }
+  }
+
+  void _removeCoverImage() {
+    setState(() {
+      draft.coverImage = null;
+    });
+  }
+
+  Future<void> _showCustomColorPicker() async {
+    final selected = await showDialog<Color>(
+      context: context,
+      builder: (ctx) => CustomColorPickerDialog(initialColor: draft.cover),
+    );
+    if (selected != null) {
+      setState(() {
+        draft.cover = selected.toARGB32();
+        draft.coverImage = null;
+        selectedTab = 'cover';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -782,7 +923,9 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
                         label: 'COVER',
                         isSelected: selectedTab == 'cover',
                         onTap: () => setState(() => selectedTab = 'cover'),
-                        bottomLabel: _coverName(draft.cover),
+                        bottomLabel: draft.coverImage != null
+                            ? 'Custom Image'
+                            : _coverName(draft.cover),
                         child: Container(
                           width: 108,
                           height: 136,
@@ -800,6 +943,32 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
                           clipBehavior: Clip.antiAlias,
                           child: Stack(
                             children: [
+                              if (draft.coverImage != null &&
+                                  draft.coverImage!.isNotEmpty)
+                                Positioned.fill(
+                                  child: Image.memory(
+                                    base64Decode(draft.coverImage!),
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) =>
+                                        Container(color: Color(draft.cover)),
+                                  ),
+                                ),
+                              if (draft.coverImage != null &&
+                                  draft.coverImage!.isNotEmpty)
+                                Positioned.fill(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                        colors: [
+                                          Colors.black.withValues(alpha: 0.2),
+                                          Colors.black.withValues(alpha: 0.7),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               Positioned(
                                 left: 0,
                                 top: 0,
@@ -838,13 +1007,14 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
                                     Icon(
                                       kindIcon(draft.kind),
                                       size: 18,
-                                      color:
-                                          Color(
-                                                draft.cover,
-                                              ).computeLuminance() >
-                                              0.45
-                                          ? Colors.black87
-                                          : Colors.white,
+                                      color: draft.coverImage != null
+                                          ? Colors.white
+                                          : (Color(
+                                                    draft.cover,
+                                                  ).computeLuminance() >
+                                                  0.45
+                                              ? Colors.black87
+                                              : Colors.white),
                                     ),
                                     const Spacer(),
                                     Text(
@@ -856,13 +1026,23 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
                                       style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
-                                        color:
-                                            Color(
-                                                  draft.cover,
-                                                ).computeLuminance() >
-                                                0.45
-                                            ? Colors.black87
-                                            : Colors.white,
+                                        color: draft.coverImage != null
+                                            ? Colors.white
+                                            : (Color(
+                                                      draft.cover,
+                                                    ).computeLuminance() >
+                                                    0.45
+                                                ? Colors.black87
+                                                : Colors.white),
+                                        shadows: draft.coverImage != null
+                                            ? const [
+                                                Shadow(
+                                                  color: Colors.black87,
+                                                  offset: Offset(0, 1),
+                                                  blurRadius: 3,
+                                                ),
+                                              ]
+                                            : null,
                                       ),
                                     ),
                                   ],
@@ -1192,9 +1372,9 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
               const SizedBox(height: 24),
               const Divider(color: Color(0xff28282c), height: 1),
               const SizedBox(height: 18),
-              const Row(
+              Row(
                 children: [
-                  Text(
+                  const Text(
                     'Cover Styles',
                     style: TextStyle(
                       fontSize: 18,
@@ -1202,13 +1382,51 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
                       color: Colors.white,
                     ),
                   ),
-                  Spacer(),
-                  Text(
-                    'Edit',
-                    style: TextStyle(
-                      color: Color(0xff007aff),
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w500,
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: _pickCoverImage,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: draft.coverImage != null
+                            ? const Color(0xff007aff).withValues(alpha: 0.18)
+                            : const Color(0xff222226),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: draft.coverImage != null
+                              ? const Color(0xff007aff)
+                              : Colors.white.withValues(alpha: 0.12),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            CupertinoIcons.photo_on_rectangle,
+                            size: 13,
+                            color: draft.coverImage != null
+                                ? const Color(0xff007aff)
+                                : Colors.white70,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            draft.coverImage != null
+                                ? 'Cover Image Active'
+                                : 'Upload Image...',
+                            style: TextStyle(
+                              color: draft.coverImage != null
+                                  ? const Color(0xff007aff)
+                                  : Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -1224,15 +1442,114 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
               ),
               const SizedBox(height: 14),
               _buildCoverStylesRow(),
-              const SizedBox(height: 16),
-              const Text(
-                'More templates',
-                style: TextStyle(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  const Text(
+                    'Color Palettes',
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xff007aff).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      'ANY COLOR',
+                      style: TextStyle(
+                        color: Color(0xff007aff),
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    key: const Key('custom-color-button'),
+                    onTap: _showCustomColorPicker,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xff222226),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            CupertinoIcons.eyedropper,
+                            size: 13,
+                            color: Color(0xff007aff),
+                          ),
+                          SizedBox(width: 5),
+                          Text(
+                            'Custom Hex / Picker...',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
+              const SizedBox(height: 14),
+              _buildColorPaletteRow(),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  const Text(
+                    'Cover Image',
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xff34c759).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      'IMAGE UPLOAD',
+                      style: TextStyle(
+                        color: Color(0xff34c759),
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _buildImageCoverSection(),
             ],
           ),
         ),
@@ -1455,14 +1772,17 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
       children: coverColors.asMap().entries.map((entry) {
         final index = entry.key;
         final color = entry.value;
-        final isSelected = draft.cover == color;
+        final isSelected = draft.cover == color && draft.coverImage == null;
         return Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Tooltip(
               message: 'Cover ${index + 1}',
               child: GestureDetector(
-                onTap: () => setState(() => draft.cover = color),
+                onTap: () => setState(() {
+                  draft.cover = color;
+                  draft.coverImage = null;
+                }),
                 child: Column(
                   children: [
                     Container(
@@ -1552,6 +1872,960 @@ class _CreateDocumentDialogState extends State<CreateDocumentDialog> {
           ),
         );
       }).toList(),
+    );
+  }
+
+  Widget _buildColorPaletteRow() {
+    final colors = vibrantCoverColors.take(6).toList();
+    final isCustomSelected = draft.coverImage == null &&
+        !coverColors.contains(draft.cover) &&
+        !vibrantCoverColors.contains(draft.cover);
+    return Column(
+      children: [
+        Row(
+          children: colors.map((color) {
+            final isSelected = draft.cover == color && draft.coverImage == null;
+            return Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Tooltip(
+                  message: _coverName(color),
+                  child: GestureDetector(
+                    onTap: () => setState(() {
+                      draft.cover = color;
+                      draft.coverImage = null;
+                    }),
+                    child: Column(
+                      children: [
+                        Container(
+                          height: 110,
+                          decoration: BoxDecoration(
+                            color: Color(color),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isSelected
+                                  ? const Color(0xff007aff)
+                                  : Colors.white.withValues(alpha: 0.12),
+                              width: isSelected ? 2 : 0.8,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.3),
+                                blurRadius: 8,
+                                offset: const Offset(1, 3),
+                              ),
+                            ],
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: Stack(
+                            children: [
+                              Positioned(
+                                left: 0,
+                                top: 0,
+                                bottom: 0,
+                                child: Container(
+                                  width: 6,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Colors.black.withValues(alpha: 0.4),
+                                        Colors.transparent,
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                right: 8,
+                                top: 0,
+                                bottom: 0,
+                                child: Container(
+                                  width: 8,
+                                  color: Colors.black.withValues(alpha: 0.2),
+                                ),
+                              ),
+                              if (isSelected)
+                                Positioned(
+                                  bottom: 8,
+                                  left: 0,
+                                  right: 0,
+                                  child: Center(
+                                    child: Container(
+                                      width: 22,
+                                      height: 22,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xff007aff),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        CupertinoIcons.checkmark,
+                                        size: 13,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          _coverName(color),
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            ...vibrantCoverColors.skip(6).take(5).map((color) {
+              final isSelected =
+                  draft.cover == color && draft.coverImage == null;
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Tooltip(
+                    message: _coverName(color),
+                    child: GestureDetector(
+                      onTap: () => setState(() {
+                        draft.cover = color;
+                        draft.coverImage = null;
+                      }),
+                      child: Column(
+                        children: [
+                          Container(
+                            height: 110,
+                            decoration: BoxDecoration(
+                              color: Color(color),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: isSelected
+                                    ? const Color(0xff007aff)
+                                    : Colors.white.withValues(alpha: 0.12),
+                                width: isSelected ? 2 : 0.8,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(1, 3),
+                                ),
+                              ],
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: Stack(
+                              children: [
+                                Positioned(
+                                  left: 0,
+                                  top: 0,
+                                  bottom: 0,
+                                  child: Container(
+                                    width: 6,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Colors.black.withValues(alpha: 0.4),
+                                          Colors.transparent,
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  right: 8,
+                                  top: 0,
+                                  bottom: 0,
+                                  child: Container(
+                                    width: 8,
+                                    color: Colors.black.withValues(alpha: 0.2),
+                                  ),
+                                ),
+                                if (isSelected)
+                                  Positioned(
+                                    bottom: 8,
+                                    left: 0,
+                                    right: 0,
+                                    child: Center(
+                                      child: Container(
+                                        width: 22,
+                                        height: 22,
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xff007aff),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          CupertinoIcons.checkmark,
+                                          size: 13,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            _coverName(color),
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Tooltip(
+                  message: 'Pick any custom color',
+                  child: GestureDetector(
+                    onTap: _showCustomColorPicker,
+                    child: Column(
+                      children: [
+                        Container(
+                          height: 110,
+                          decoration: BoxDecoration(
+                            color: isCustomSelected
+                                ? Color(draft.cover)
+                                : const Color(0xff222226),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isCustomSelected
+                                  ? const Color(0xff007aff)
+                                  : Colors.white.withValues(alpha: 0.15),
+                              width: isCustomSelected ? 2 : 0.8,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.3),
+                                blurRadius: 8,
+                                offset: const Offset(1, 3),
+                              ),
+                            ],
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: Stack(
+                            children: [
+                              if (!isCustomSelected)
+                                Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        width: 34,
+                                        height: 34,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          gradient: const SweepGradient(
+                                            colors: [
+                                              Colors.red,
+                                              Colors.amber,
+                                              Colors.green,
+                                              Colors.teal,
+                                              Colors.blue,
+                                              Colors.purple,
+                                              Colors.red,
+                                            ],
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(
+                                                alpha: 0.3,
+                                              ),
+                                              blurRadius: 4,
+                                            ),
+                                          ],
+                                        ),
+                                        child: const Center(
+                                          child: Icon(
+                                            CupertinoIcons.plus,
+                                            size: 16,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      const Text(
+                                        'Custom',
+                                        style: TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              else ...[
+                                Positioned(
+                                  left: 0,
+                                  top: 0,
+                                  bottom: 0,
+                                  child: Container(
+                                    width: 6,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Colors.black.withValues(alpha: 0.4),
+                                          Colors.transparent,
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  right: 8,
+                                  top: 0,
+                                  bottom: 0,
+                                  child: Container(
+                                    width: 8,
+                                    color: Colors.black.withValues(alpha: 0.2),
+                                  ),
+                                ),
+                                Positioned(
+                                  bottom: 8,
+                                  left: 0,
+                                  right: 0,
+                                  child: Center(
+                                    child: Container(
+                                      width: 22,
+                                      height: 22,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xff007aff),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        CupertinoIcons.checkmark,
+                                        size: 13,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          isCustomSelected
+                              ? _coverName(draft.cover)
+                              : 'Custom...',
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildImageCoverSection() {
+    if (draft.coverImage != null && draft.coverImage!.isNotEmpty) {
+      Uint8List? bytes;
+      try {
+        bytes = base64Decode(draft.coverImage!);
+      } catch (_) {}
+
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xff1f1f23),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: const Color(0xff007aff).withValues(alpha: 0.6),
+            width: 1.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xff007aff).withValues(alpha: 0.1),
+              blurRadius: 12,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 52,
+              height: 66,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    blurRadius: 6,
+                    offset: const Offset(1, 2),
+                  ),
+                ],
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: bytes != null
+                  ? Image.memory(bytes, fit: BoxFit.cover)
+                  : Container(color: Colors.grey),
+            ),
+            const SizedBox(width: 16),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        CupertinoIcons.checkmark_seal_fill,
+                        size: 15,
+                        color: Color(0xff007aff),
+                      ),
+                      SizedBox(width: 6),
+                      Text(
+                        'Custom Cover Image Active',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Your uploaded image is active for this notebook and saved locally.',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            DesktopButton(
+              onPressed: _pickCoverImage,
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(CupertinoIcons.arrow_2_circlepath, size: 13),
+                  SizedBox(width: 5),
+                  Text('Change Image', style: TextStyle(fontSize: 12)),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            DesktopIconButton(
+              tooltip: 'Remove photo (Use color instead)',
+              onPressed: _removeCoverImage,
+              icon: const Icon(
+                CupertinoIcons.trash,
+                size: 16,
+                color: Color(0xffff5252),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: _pickCoverImage,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+        decoration: BoxDecoration(
+          color: const Color(0xff1d1d21),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.08),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: const Color(0xff007aff).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                CupertinoIcons.photo_on_rectangle,
+                color: Color(0xff007aff),
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 16),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Upload custom cover photo or artwork',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13.5,
+                    ),
+                  ),
+                  SizedBox(height: 3),
+                  Text(
+                    'Select any PNG, JPG, or WEBP image to embed directly in this notebook.',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              decoration: BoxDecoration(
+                color: const Color(0xff007aff),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xff007aff).withValues(alpha: 0.35),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(CupertinoIcons.plus, size: 13, color: Colors.white),
+                  SizedBox(width: 5),
+                  Text(
+                    'Choose Image',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class CustomColorPickerDialog extends StatefulWidget {
+  const CustomColorPickerDialog({super.key, required this.initialColor});
+  final int initialColor;
+
+  @override
+  State<CustomColorPickerDialog> createState() =>
+      _CustomColorPickerDialogState();
+}
+
+class _CustomColorPickerDialogState extends State<CustomColorPickerDialog> {
+  late Color currentColor;
+  late final TextEditingController hexController;
+  late int red;
+  late int green;
+  late int blue;
+
+  static const List<Color> curatedSpectrum = [
+    // Reds & Corals
+    Color(0xffe63946),
+    Color(0xffd90429),
+    Color(0xffef233c),
+    Color(0xfff72585),
+    Color(0xffe07a5f),
+    Color(0xfff3722c),
+    // Oranges & Yellows
+    Color(0xfff8961e),
+    Color(0xfff9844a),
+    Color(0xfff9c74f),
+    Color(0xfff2cc8f),
+    Color(0xffd4a373),
+    Color(0xffbc6c25),
+    // Greens & Teals
+    Color(0xff90be6d),
+    Color(0xff52b788),
+    Color(0xff43aa8b),
+    Color(0xff2d6a4f),
+    Color(0xff1b4332),
+    Color(0xff0077b6),
+    // Blues & Cyans
+    Color(0xff48cae4),
+    Color(0xff0096c7),
+    Color(0xff023e8a),
+    Color(0xff1d3557),
+    Color(0xff184e77),
+    Color(0xff1e6091),
+    // Purples & Violets
+    Color(0xff7209b7),
+    Color(0xff560bad),
+    Color(0xff480ca8),
+    Color(0xff3f37c9),
+    Color(0xff7b2cbf),
+    Color(0xff9d4edd),
+    // Pinks, Earth & Neutrals
+    Color(0xffb5179e),
+    Color(0xff8338ec),
+    Color(0xff3d405b),
+    Color(0xff6d597a),
+    Color(0xff4a3528),
+    Color(0xff2b2d42),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    currentColor = Color(widget.initialColor);
+    red = (currentColor.r * 255).round().clamp(0, 255);
+    green = (currentColor.g * 255).round().clamp(0, 255);
+    blue = (currentColor.b * 255).round().clamp(0, 255);
+    hexController = TextEditingController(text: _colorToHex(currentColor));
+  }
+
+  @override
+  void dispose() {
+    hexController.dispose();
+    super.dispose();
+  }
+
+  String _colorToHex(Color color) {
+    final r = (color.r * 255).round().clamp(0, 255);
+    final g = (color.g * 255).round().clamp(0, 255);
+    final b = (color.b * 255).round().clamp(0, 255);
+    return '${r.toRadixString(16).padLeft(2, '0')}${g.toRadixString(16).padLeft(2, '0')}${b.toRadixString(16).padLeft(2, '0')}'
+        .toUpperCase();
+  }
+
+  void _updateFromRgb(int r, int g, int b) {
+    setState(() {
+      red = r;
+      green = g;
+      blue = b;
+      currentColor = Color.fromARGB(255, red, green, blue);
+      hexController.text = _colorToHex(currentColor);
+    });
+  }
+
+  void _onHexChanged(String text) {
+    final clean = text.replaceAll('#', '').trim();
+    if (clean.length == 6) {
+      final val = int.tryParse(clean, radix: 16);
+      if (val != null) {
+        setState(() {
+          currentColor = Color(0xff000000 | val);
+          red = (currentColor.r * 255).round().clamp(0, 255);
+          green = (currentColor.g * 255).round().clamp(0, 255);
+          blue = (currentColor.b * 255).round().clamp(0, 255);
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final lum = currentColor.computeLuminance();
+    final isDark = lum < 0.45;
+    return DesktopDialog(
+      child: Container(
+        width: 460,
+        decoration: BoxDecoration(
+          color: const Color(0xff18181a),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.1),
+            width: 0.8,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.6),
+              blurRadius: 30,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(22, 18, 22, 22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  DesktopIconButton(
+                    tooltip: 'Cancel',
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(CupertinoIcons.xmark, size: 16),
+                  ),
+                  const Expanded(
+                    child: Text(
+                      'Custom Cover Color',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                  onTap: () => Navigator.pop(context, currentColor),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xff007aff),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Text(
+                      'Done',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xff222226),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white12),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: currentColor,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.white24, width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: currentColor.withValues(alpha: 0.35),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Icon(
+                        isDark
+                            ? CupertinoIcons.moon_fill
+                            : CupertinoIcons.sun_max_fill,
+                        size: 16,
+                        color: isDark ? Colors.white70 : Colors.black87,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'HEX COLOR CODE',
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Text(
+                              '#',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: DesktopTextField(
+                                key: const Key('custom-hex-field'),
+                                controller: hexController,
+                                onChanged: _onHexChanged,
+                                placeholder: '3A86FF',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'SPECTRUM PALETTE',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.8,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 7,
+              runSpacing: 7,
+              children: curatedSpectrum.map((color) {
+                final isSelected = currentColor.toARGB32() == color.toARGB32();
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      currentColor = color;
+                      red = (color.r * 255).round().clamp(0, 255);
+                      green = (color.g * 255).round().clamp(0, 255);
+                      blue = (color.b * 255).round().clamp(0, 255);
+                      hexController.text = _colorToHex(color);
+                    });
+                  },
+                  child: Container(
+                    width: 27,
+                    height: 27,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: isSelected
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: 0.15),
+                        width: isSelected ? 2 : 0.8,
+                      ),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: color.withValues(alpha: 0.6),
+                                blurRadius: 6,
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: isSelected
+                        ? Icon(
+                            CupertinoIcons.checkmark,
+                            size: 14,
+                            color: color.computeLuminance() > 0.45
+                                ? Colors.black87
+                                : Colors.white,
+                          )
+                        : null,
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'RGB ADJUSTMENT',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.8,
+              ),
+            ),
+            const SizedBox(height: 6),
+            _buildRgbSlider('Red', red, const Color(0xffef4444), (v) {
+              _updateFromRgb(v.round(), green, blue);
+            }),
+            _buildRgbSlider('Green', green, const Color(0xff22c55e), (v) {
+              _updateFromRgb(red, v.round(), blue);
+            }),
+            _buildRgbSlider('Blue', blue, const Color(0xff3b82f6), (v) {
+              _updateFromRgb(red, green, v.round());
+            }),
+          ],
+        ),
+      ),
+    ),
+  );
+  }
+
+  Widget _buildRgbSlider(
+    String label,
+    int value,
+    Color accent,
+    ValueChanged<double> onChanged,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 44,
+            child: Text(
+              label,
+              style: const TextStyle(color: Colors.white70, fontSize: 11),
+            ),
+          ),
+          Expanded(
+            child: DesktopSlider(
+              value: value.toDouble(),
+              min: 0,
+              max: 255,
+              onChanged: onChanged,
+            ),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 32,
+            child: Text(
+              '$value',
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                color: Colors.grey,
+                fontSize: 11,
+                fontFamily: 'monospace',
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
