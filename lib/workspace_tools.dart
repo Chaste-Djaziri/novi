@@ -80,6 +80,8 @@ class WorkspaceToolbar extends StatelessWidget {
     this.hasStylus = false,
     this.onAddPage,
     this.onExport,
+    this.onTogglePages,
+    this.showPages = false,
   });
   final EditorSession session;
   final Notebook note;
@@ -95,6 +97,8 @@ class WorkspaceToolbar extends StatelessWidget {
   final bool hasStylus;
   final VoidCallback? onAddPage;
   final VoidCallback? onExport;
+  final VoidCallback? onTogglePages;
+  final bool showPages;
   static const futureTools = <String, IconData>{
     'Shapes': CupertinoIcons.square,
     'Images': CupertinoIcons.photo,
@@ -140,6 +144,20 @@ class WorkspaceToolbar extends StatelessWidget {
                     bottom: 5,
                     child: Row(
                       children: [
+                        if (onTogglePages != null)
+                          DesktopIconButton(
+                            key: const Key('toolbar-toggle-pages'),
+                            tooltip:
+                                showPages ? 'Hide pages' : 'Page manager',
+                            onPressed: onTogglePages,
+                            icon: Icon(
+                              CupertinoIcons.sidebar_left,
+                              size: 18,
+                              color: showPages
+                                  ? const Color(0xff007aff)
+                                  : Colors.white70,
+                            ),
+                          ),
                         DesktopIconButton(
                           tooltip: 'Undo',
                           onPressed: onUndo,
