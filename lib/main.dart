@@ -97,7 +97,7 @@ class Workspace extends StatefulWidget {
   State<Workspace> createState() => _WorkspaceState();
 }
 
-class _WorkspaceState extends State<Workspace> {
+class _WorkspaceState extends State<Workspace> with WindowListener {
   LibraryStore? store;
   List<Notebook> notes = [];
   Notebook? current;
@@ -121,6 +121,7 @@ class _WorkspaceState extends State<Workspace> {
   bool showSidebar = true;
   bool hasStylus = false;
   bool _isPanning = false;
+  bool isFullScreen = false;
   Offset? _panStartPos;
   Matrix4? _panStartMatrix;
   final List<String?> _navHistory = [];
@@ -129,7 +130,28 @@ class _WorkspaceState extends State<Workspace> {
   @override
   void initState() {
     super.initState();
+    windowManager.addListener(this);
+    _checkFullScreen();
     initialize();
+  }
+
+  Future<void> _checkFullScreen() async {
+    try {
+      final fs = await windowManager.isFullScreen();
+      if (mounted && isFullScreen != fs) {
+        setState(() => isFullScreen = fs);
+      }
+    } catch (_) {}
+  }
+
+  @override
+  void onWindowEnterFullScreen() {
+    setState(() => isFullScreen = true);
+  }
+
+  @override
+  void onWindowLeaveFullScreen() {
+    setState(() => isFullScreen = false);
   }
 
   void _pushNav(String? id) {
@@ -672,6 +694,7 @@ class _WorkspaceState extends State<Workspace> {
 
   @override
   void dispose() {
+    windowManager.removeListener(this);
     _overscrollResetTimer?.cancel();
     for (final editor in sessions.values) {
       editor.dispose();
@@ -706,6 +729,7 @@ class _WorkspaceState extends State<Workspace> {
           },
           onTransfer: transfer,
           onStatus: (msg) => setState(() => status = msg),
+          isFullScreen: isFullScreen,
         ),
         const SizedBox(height: 4),
         Expanded(
@@ -1579,6 +1603,7 @@ class DesktopWindowHeader extends StatelessWidget {
     required this.onOpenDocument,
     required this.onTransfer,
     this.onStatus,
+    this.isFullScreen = false,
   });
 
   final bool canGoBack;
@@ -1596,6 +1621,7 @@ class DesktopWindowHeader extends StatelessWidget {
   final VoidCallback onOpenDocument;
   final ValueChanged<String> onTransfer;
   final ValueChanged<String>? onStatus;
+  final bool isFullScreen;
 
   @override
   Widget build(BuildContext context) {
@@ -1609,7 +1635,7 @@ class DesktopWindowHeader extends StatelessWidget {
             padding: const EdgeInsets.only(top: 1, bottom: 3),
             child: Row(
               children: [
-                if (defaultTargetPlatform == TargetPlatform.macOS)
+                if (defaultTargetPlatform == TargetPlatform.macOS && !isFullScreen)
                   const DragToMoveArea(
                     child: SizedBox(width: 78, height: 34),
                   ),
