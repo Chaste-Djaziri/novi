@@ -14,6 +14,22 @@ class EditorSession {
       tool = note.kind == 'Text document' ? EditorTool.text : EditorTool.pen;
   final TextEditingController text;
   final FocusNode textFocus = FocusNode();
+  final Map<int, TextEditingController> pageControllers = {};
+  final Map<int, FocusNode> pageFocusNodes = {};
+
+  TextEditingController controllerForPage(int index, String initialText) {
+    if (index == 0) return text;
+    return pageControllers.putIfAbsent(
+      index,
+      () => TextEditingController(text: initialText),
+    );
+  }
+
+  FocusNode focusNodeForPage(int index) {
+    if (index == 0) return textFocus;
+    return pageFocusNodes.putIfAbsent(index, () => FocusNode());
+  }
+
   final TransformationController view = TransformationController();
   final List<Notebook> undo = [];
   final List<Notebook> redo = [];
@@ -24,6 +40,12 @@ class EditorSession {
   void dispose() {
     text.dispose();
     textFocus.dispose();
+    for (final c in pageControllers.values) {
+      c.dispose();
+    }
+    for (final f in pageFocusNodes.values) {
+      f.dispose();
+    }
     view.dispose();
   }
 }
