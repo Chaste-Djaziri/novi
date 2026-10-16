@@ -123,7 +123,11 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('24').last);
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Bold text'));
+      await tester.tap(find.byTooltip('Text Style'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('style-bold')));
+      await tester.pumpAndSettle();
+      await tester.tapAt(const Offset(10, 10));
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Zoom in'));
       await tester.pumpAndSettle();

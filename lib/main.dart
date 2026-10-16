@@ -1621,7 +1621,9 @@ class _WorkspaceState extends State<Workspace>
                           child: FloatingToolControls(
                             session: session,
                             note: note,
-                            onSettings: () => setState(() {}),
+                            onSettings: () => setState(() {
+                              save();
+                            }),
                             onFontSize: (v) => formatText(size: v),
                             onBold: () => formatText(bold: !note.boldText),
                             onZoom: zoom,
@@ -1738,6 +1740,8 @@ class _WorkspaceState extends State<Workspace>
                       bold: note.boldText,
                       fontFamily: note.fontFamily,
                       italic: note.italicText,
+                      underline: note.underlineText,
+                      strikethrough: note.strikethroughText,
                       textAlign: note.textAlign == 'center'
                           ? TextAlign.center
                           : note.textAlign == 'right'
@@ -1745,6 +1749,7 @@ class _WorkspaceState extends State<Workspace>
                               : TextAlign.left,
                       lineHeight: note.lineHeight,
                       lineHeightAuto: note.lineHeightAuto,
+                      textColor: note.textColor,
                       textBoxBgColor: note.textBoxBgColor,
                       textBoxBorderColor: note.textBoxBorderColor,
                       textBoxRadius: note.textBoxRadius,

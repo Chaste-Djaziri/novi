@@ -20,9 +20,12 @@ class PaperTextEditor extends StatefulWidget {
     required this.pageHeight,
     this.fontFamily = 'Modern',
     this.italic = false,
+    this.underline = false,
+    this.strikethrough = false,
     this.textAlign = TextAlign.left,
     this.lineHeight,
     this.lineHeightAuto = true,
+    this.textColor,
     this.textBoxBgColor,
     this.textBoxBorderColor,
     this.textBoxRadius = 0.0,
@@ -41,9 +44,12 @@ class PaperTextEditor extends StatefulWidget {
   final double pageHeight;
   final String fontFamily;
   final bool italic;
+  final bool underline;
+  final bool strikethrough;
   final TextAlign textAlign;
   final double? lineHeight;
   final bool lineHeightAuto;
+  final int? textColor;
   final int? textBoxBgColor;
   final int? textBoxBorderColor;
   final double textBoxRadius;
@@ -91,17 +97,34 @@ class _PaperTextEditorState extends State<PaperTextEditor> {
   Widget build(BuildContext context) {
     final resolvedFontFamily = switch (widget.fontFamily) {
       'Classic' => 'Georgia',
-      'Monospace' => 'Courier',
+      'Technical' || 'Monospace' => 'Courier',
       'Handwritten' => 'Caveat',
       _ => 'Inter',
     };
+    final effectiveColor = widget.textColor != null
+        ? Color(widget.textColor!)
+        : widget.foreground;
     var baseStyle = widget.layout.textStyle(
       widget.fontSize,
       widget.bold,
-      widget.foreground,
+      effectiveColor,
     );
     if (widget.italic) {
       baseStyle = baseStyle.copyWith(fontStyle: FontStyle.italic);
+    }
+    TextDecoration? decoration;
+    if (widget.underline && widget.strikethrough) {
+      decoration = TextDecoration.combine([
+        TextDecoration.underline,
+        TextDecoration.lineThrough,
+      ]);
+    } else if (widget.underline) {
+      decoration = TextDecoration.underline;
+    } else if (widget.strikethrough) {
+      decoration = TextDecoration.lineThrough;
+    }
+    if (decoration != null) {
+      baseStyle = baseStyle.copyWith(decoration: decoration);
     }
     if (widget.fontFamily != 'Modern') {
       baseStyle = baseStyle.copyWith(fontFamily: resolvedFontFamily);

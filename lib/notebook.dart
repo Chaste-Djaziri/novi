@@ -73,9 +73,12 @@ class Notebook {
     this.boldText = false,
     this.fontFamily = 'Modern',
     this.italicText = false,
+    this.underlineText = false,
+    this.strikethroughText = false,
     this.textAlign = 'left',
     this.lineHeight,
     this.lineHeightAuto = true,
+    this.textColor,
     this.textBoxBgColor,
     this.textBoxBorderColor,
     this.textBoxRadius = 0.0,
@@ -107,9 +110,12 @@ class Notebook {
   bool boldText;
   String fontFamily;
   bool italicText;
+  bool underlineText;
+  bool strikethroughText;
   String textAlign;
   double? lineHeight;
   bool lineHeightAuto;
+  int? textColor;
   int? textBoxBgColor;
   int? textBoxBorderColor;
   double textBoxRadius;
@@ -166,9 +172,12 @@ class Notebook {
     'boldText': boldText,
     if (fontFamily != 'Modern') 'fontFamily': fontFamily,
     if (italicText) 'italicText': true,
+    if (underlineText) 'underlineText': true,
+    if (strikethroughText) 'strikethroughText': true,
     if (textAlign != 'left') 'textAlign': textAlign,
     if (lineHeight != null) 'lineHeight': lineHeight,
     if (!lineHeightAuto) 'lineHeightAuto': false,
+    if (textColor != null) 'textColor': textColor,
     if (textBoxBgColor != null) 'textBoxBgColor': textBoxBgColor,
     if (textBoxBorderColor != null) 'textBoxBorderColor': textBoxBorderColor,
     if (textBoxRadius > 0) 'textBoxRadius': textBoxRadius,
@@ -221,9 +230,12 @@ class Notebook {
       boldText: json['boldText'] as bool? ?? false,
       fontFamily: json['fontFamily'] as String? ?? 'Modern',
       italicText: json['italicText'] as bool? ?? false,
+      underlineText: json['underlineText'] as bool? ?? false,
+      strikethroughText: json['strikethroughText'] as bool? ?? false,
       textAlign: json['textAlign'] as String? ?? 'left',
       lineHeight: (json['lineHeight'] as num?)?.toDouble(),
       lineHeightAuto: json['lineHeightAuto'] as bool? ?? true,
+      textColor: json['textColor'] as int?,
       textBoxBgColor: json['textBoxBgColor'] as int?,
       textBoxBorderColor: json['textBoxBorderColor'] as int?,
       textBoxRadius: (json['textBoxRadius'] as num?)?.toDouble() ?? 0.0,

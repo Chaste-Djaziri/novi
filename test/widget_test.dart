@@ -2003,36 +2003,76 @@ void main() {
       expect(find.byKey(const Key('text-collapse-button')), findsOneWidget);
       expect(find.byKey(const Key('text-font-size-button')), findsOneWidget);
       expect(find.byKey(const Key('text-font-family-button')), findsOneWidget);
-      expect(find.byKey(const Key('text-bold-button')), findsOneWidget);
-      expect(find.byKey(const Key('text-italic-button')), findsOneWidget);
+      expect(find.byKey(const Key('text-bold-italic-button')), findsOneWidget);
       expect(find.byKey(const Key('text-alignment-button')), findsOneWidget);
       expect(find.byKey(const Key('text-line-height-button')), findsOneWidget);
       expect(find.byKey(const Key('text-box-style-button')), findsOneWidget);
       expect(find.byKey(const Key('favorite-text-style-button')), findsOneWidget);
       expect(find.byKey(const Key('pin-text-tool-button')), findsOneWidget);
 
-      // 1. Font Size popover: change size to 24
+      // 0. Color popover (Screenshot 3)
+      await tester.tap(find.byKey(const Key('text-collapse-button')));
+      await tester.pumpAndSettle();
+      expect(find.byType(TextColorMenuDialog), findsOneWidget);
+      expect(find.text('Text Color'), findsOneWidget);
+      expect(find.text('Presets'), findsOneWidget);
+      expect(find.text('Custom'), findsOneWidget);
+      expect(find.text('History'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('text-color-swatch-4278190080'))); // black
+      await tester.pumpAndSettle();
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+      expect(find.byType(TextColorMenuDialog), findsNothing);
+
+      // 1. Font Size popover (Screenshot 4)
       await tester.tap(find.byKey(const Key('text-font-size-button')));
       await tester.pumpAndSettle();
       expect(find.byType(FontSizeMenuDialog), findsOneWidget);
+      expect(find.byKey(const Key('font-size-slider')), findsOneWidget);
+      expect(find.byKey(const Key('font-size-minus')), findsOneWidget);
+      expect(find.byKey(const Key('font-size-plus')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('font-size-plus')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('font-size-24')));
       await tester.pumpAndSettle();
       expect(find.byType(FontSizeMenuDialog), findsNothing);
 
-      // 2. Font Family popover: select Classic
+      // 2. Font Family popover (Screenshot 2)
       await tester.tap(find.byKey(const Key('text-font-family-button')));
       await tester.pumpAndSettle();
       expect(find.byType(FontFamilyMenuDialog), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(FontFamilyMenuDialog),
+          matching: find.text('Modern'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Classic'), findsOneWidget);
+      expect(find.text('Technical'), findsOneWidget);
+      expect(find.text('More Fonts...'), findsOneWidget);
       await tester.tap(find.byKey(const Key('font-family-Classic')));
       await tester.pumpAndSettle();
       expect(find.byType(FontFamilyMenuDialog), findsNothing);
       expect(find.text('Classic'), findsOneWidget);
 
-      // 3. Bold & Italic toggles
-      await tester.tap(find.byKey(const Key('text-bold-button')));
+      // 3. Text Style popover (Screenshot 1)
+      await tester.tap(find.byKey(const Key('text-bold-italic-button')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('text-italic-button')));
+      expect(find.byType(TextStyleMenuDialog), findsOneWidget);
+      expect(find.byKey(const Key('style-bold')), findsOneWidget);
+      expect(find.byKey(const Key('style-italic')), findsOneWidget);
+      expect(find.byKey(const Key('style-underline')), findsOneWidget);
+      expect(find.byKey(const Key('style-strikethrough')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('style-bold')));
       await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('style-italic')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('style-underline')));
+      await tester.pumpAndSettle();
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+      expect(find.byType(TextStyleMenuDialog), findsNothing);
 
       // 4. Text Alignment popover (Screenshot 2)
       await tester.tap(find.byKey(const Key('text-alignment-button')));

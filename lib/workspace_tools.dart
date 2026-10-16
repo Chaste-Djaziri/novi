@@ -21,8 +21,12 @@ class EditorSession {
   EditorSession(Notebook note)
     : text = TextEditingController(text: note.text),
       tool = note.kind == 'Text document' ? EditorTool.text : EditorTool.select,
+      fontSize = note.fontSize,
       fontFamily = note.fontFamily,
       italicText = note.italicText,
+      underlineText = note.underlineText,
+      strikethroughText = note.strikethroughText,
+      textColor = note.textColor,
       textAlign = note.textAlign == 'center'
           ? TextAlign.center
           : note.textAlign == 'right'
@@ -120,8 +124,12 @@ class EditorSession {
   int selectedEraserSizeIndex = 1;
 
   // Text Tool Settings
+  double fontSize = 16.0;
   String fontFamily = 'Modern';
   bool italicText = false;
+  bool underlineText = false;
+  bool strikethroughText = false;
+  int? textColor;
   TextAlign textAlign = TextAlign.left;
   double lineHeight = 28.0;
   bool lineHeightAuto = true;
@@ -2710,7 +2718,7 @@ Future<void> showFontSizeMenu(
   );
 }
 
-class FontSizeMenuDialog extends StatelessWidget {
+class FontSizeMenuDialog extends StatefulWidget {
   const FontSizeMenuDialog({
     super.key,
     required this.targetRect,
@@ -2726,28 +2734,37 @@ class FontSizeMenuDialog extends StatelessWidget {
   final ValueChanged<double> onFontSize;
   final VoidCallback onUpdate;
 
-  static const sizes = [
-    12.0,
-    14.0,
-    16.0,
-    18.0,
-    20.0,
-    24.0,
-    28.0,
-    32.0,
-    36.0,
-    48.0,
-    64.0,
-  ];
+  @override
+  State<FontSizeMenuDialog> createState() => _FontSizeMenuDialogState();
+}
+
+class _FontSizeMenuDialogState extends State<FontSizeMenuDialog> {
+  late double _size;
+
+  @override
+  void initState() {
+    super.initState();
+    _size = widget.note.fontSize;
+  }
+
+  void _setSize(double val) {
+    final next = val.clamp(8.0, 96.0);
+    setState(() => _size = next);
+    widget.note.fontSize = next;
+    widget.session.fontSize = next;
+    widget.onFontSize(next);
+    widget.onUpdate();
+  }
 
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
-    const cardWidth = 140.0;
+    const cardWidth = 280.0;
     const arrowWidth = 18.0;
     const arrowHeight = 9.0;
 
-    final buttonCenterX = targetRect.left + (targetRect.width / 2);
+    final buttonCenterX =
+        widget.targetRect.left + (widget.targetRect.width / 2);
     final cardLeft = (buttonCenterX - (cardWidth / 2)).clamp(
       12.0,
       screenSize.width - cardWidth - 12.0,
@@ -2756,7 +2773,7 @@ class FontSizeMenuDialog extends StatelessWidget {
       16.0,
       cardWidth - 16.0 - arrowWidth,
     );
-    final cardTop = targetRect.bottom + 6.0;
+    final cardTop = widget.targetRect.bottom + 6.0;
 
     return Stack(
       children: [
@@ -2787,10 +2804,9 @@ class FontSizeMenuDialog extends StatelessWidget {
                 ),
                 Container(
                   width: cardWidth,
-                  constraints: const BoxConstraints(maxHeight: 280),
                   decoration: BoxDecoration(
                     color: const Color(0xff1e1e22),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: Colors.white.withValues(alpha: 0.16),
                       width: 1.0,
@@ -2803,63 +2819,177 @@ class FontSizeMenuDialog extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: ListView.separated(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      shrinkWrap: true,
-                      itemCount: sizes.length,
-                      separatorBuilder: (_, _) => Divider(
-                        height: 1,
-                        thickness: 0.5,
-                        color: Colors.white.withValues(alpha: 0.06),
-                      ),
-                      itemBuilder: (context, index) {
-                        final s = sizes[index];
-                        final isSelected = note.fontSize.round() == s.round();
-                        return InkWell(
-                          key: Key('font-size-${s.round()}'),
-                          onTap: () {
-                            note.fontSize = s;
-                            onFontSize(s);
-                            onUpdate();
-                            Navigator.of(context).pop();
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 7,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              key: const Key('font-size-value-pill'),
+                              width: 44,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: const Color(0xff121214),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '${_size.round()}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
-                            color: isSelected
-                                ? const Color(0xff007aff).withValues(alpha: 0.25)
-                                : Colors.transparent,
-                            child: Row(
-                              children: [
-                                Text(
-                                  '${s.round()}',
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: SliderTheme(
+                                data: SliderTheme.of(context).copyWith(
+                                  trackHeight: 3.5,
+                                  activeTrackColor: const Color(0xff007aff),
+                                  inactiveTrackColor:
+                                      Colors.white.withValues(alpha: 0.18),
+                                  thumbColor: Colors.white,
+                                  thumbShape: const RoundSliderThumbShape(
+                                    enabledThumbRadius: 8.5,
+                                  ),
+                                  overlayShape:
+                                      const RoundSliderOverlayShape(
+                                    overlayRadius: 14,
+                                  ),
+                                ),
+                                child: Slider(
+                                  key: const Key('font-size-slider'),
+                                  value: _size.clamp(10.0, 72.0),
+                                  min: 10.0,
+                                  max: 72.0,
+                                  onChanged: (v) => _setSize(v.roundToDouble()),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: const Color(0xff2c2c2e),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  InkWell(
+                                    key: const Key('font-size-minus'),
+                                    onTap: () => _setSize(_size - 2),
+                                    borderRadius:
+                                        const BorderRadius.horizontal(
+                                      left: Radius.circular(16),
+                                    ),
+                                    child: const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 6,
+                                      ),
+                                      child: Icon(
+                                        CupertinoIcons.minus,
+                                        size: 12,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    width: 0.8,
+                                    height: 14,
+                                    color: Colors.white12,
+                                  ),
+                                  InkWell(
+                                    key: const Key('font-size-plus'),
+                                    onTap: () => _setSize(_size + 2),
+                                    borderRadius:
+                                        const BorderRadius.horizontal(
+                                      right: Radius.circular(16),
+                                    ),
+                                    child: const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 6,
+                                      ),
+                                      child: Icon(
+                                        CupertinoIcons.plus,
+                                        size: 12,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.only(
+                          left: 12,
+                          right: 12,
+                          bottom: 8,
+                        ),
+                        child: Row(
+                          children: [
+                            12,
+                            14,
+                            16,
+                            18,
+                            20,
+                            24,
+                            28,
+                            32,
+                            36,
+                            48,
+                            64,
+                          ].map((s) {
+                            final isSel = _size.round() == s;
+                            return GestureDetector(
+                              key: Key('font-size-$s'),
+                              onTap: () {
+                                _setSize(s.toDouble());
+                                Navigator.of(context).pop();
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.only(right: 6),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isSel
+                                      ? const Color(0xff007aff)
+                                      : const Color(0xff2c2c2e),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '$s',
                                   style: TextStyle(
-                                    color: isSelected
+                                    color: isSel
                                         ? Colors.white
                                         : Colors.white70,
-                                    fontSize: 13,
-                                    fontWeight: isSelected
+                                    fontSize: 11,
+                                    fontWeight: isSel
                                         ? FontWeight.bold
                                         : FontWeight.normal,
                                   ),
                                 ),
-                                const Spacer(),
-                                if (isSelected)
-                                  const Icon(
-                                    CupertinoIcons.checkmark,
-                                    size: 13,
-                                    color: Color(0xff007aff),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -2921,17 +3051,10 @@ class FontFamilyMenuDialog extends StatelessWidget {
   final EditorSession session;
   final VoidCallback onUpdate;
 
-  static const families = [
-    ('Modern', 'Clean sans-serif (Inter)'),
-    ('Classic', 'Elegant serif (Georgia)'),
-    ('Monospace', 'Code & technical (Courier)'),
-    ('Handwritten', 'Casual script (Caveat)'),
-  ];
-
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
-    const cardWidth = 240.0;
+    const cardWidth = 200.0;
     const arrowWidth = 18.0;
     const arrowHeight = 9.0;
 
@@ -2945,6 +3068,12 @@ class FontFamilyMenuDialog extends StatelessWidget {
       cardWidth - 16.0 - arrowWidth,
     );
     final cardTop = targetRect.bottom + 6.0;
+
+    final families = [
+      ('Modern', null),
+      ('Classic', 'Georgia'),
+      ('Technical', 'Courier'),
+    ];
 
     return Stack(
       children: [
@@ -2975,9 +3104,10 @@ class FontFamilyMenuDialog extends StatelessWidget {
                 ),
                 Container(
                   width: cardWidth,
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: const Color(0xff1e1e22),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: Colors.white.withValues(alpha: 0.16),
                       width: 1.0,
@@ -2990,74 +3120,85 @@ class FontFamilyMenuDialog extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: families.map((item) {
-                        final name = item.$1;
-                        final desc = item.$2;
-                        final isSelected = session.fontFamily == name;
-                        return InkWell(
-                          key: Key('font-family-$name'),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (int i = 0; i < families.length; i++) ...[
+                        if (i > 0)
+                          Divider(
+                            height: 1,
+                            thickness: 0.6,
+                            color: Colors.white.withValues(alpha: 0.08),
+                          ),
+                        InkWell(
+                          key: Key('font-family-${families[i].$1}'),
                           onTap: () {
+                            final name = families[i].$1;
                             session.fontFamily = name;
                             note.fontFamily = name;
                             onUpdate();
                             Navigator.of(context).pop();
                           },
+                          borderRadius: BorderRadius.circular(8),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 9,
+                              horizontal: 12,
+                              vertical: 10,
                             ),
-                            color: isSelected
-                                ? const Color(0xff007aff).withValues(alpha: 0.25)
-                                : Colors.transparent,
                             child: Row(
                               children: [
                                 Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        name,
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 13.5,
-                                          fontWeight: isSelected
-                                              ? FontWeight.bold
-                                              : FontWeight.w500,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        desc,
-                                        style: const TextStyle(
-                                          color: Colors.white54,
-                                          fontSize: 10.5,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
+                                  child: Text(
+                                    families[i].$1,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14.5,
+                                      fontWeight: FontWeight.w500,
+                                      fontFamily: families[i].$2,
+                                    ),
                                   ),
                                 ),
-                                if (isSelected) ...[
-                                  const SizedBox(width: 8),
+                                if (session.fontFamily == families[i].$1 ||
+                                    (families[i].$1 == 'Technical' &&
+                                        session.fontFamily == 'Monospace'))
                                   const Icon(
                                     CupertinoIcons.checkmark,
-                                    size: 13,
+                                    size: 15,
                                     color: Color(0xff007aff),
                                   ),
-                                ],
                               ],
                             ),
                           ),
-                        );
-                      }).toList(),
-                    ),
+                        ),
+                      ],
+                      const SizedBox(height: 10),
+                      InkWell(
+                        key: const Key('more-fonts-button'),
+                        onTap: () {
+                          Navigator.of(context).pop();
+                        },
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 11,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xff2c2c2e),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Text(
+                            'More Fonts...',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -3065,6 +3206,634 @@ class FontFamilyMenuDialog extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+Future<void> showTextStyleMenu(
+  BuildContext context, {
+  required Rect targetRect,
+  required Notebook note,
+  required EditorSession session,
+  VoidCallback? onBold,
+  required VoidCallback onUpdate,
+}) {
+  return showGeneralDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'Close Text Style Menu',
+    barrierColor: Colors.transparent,
+    pageBuilder: (dialogContext, animation, secondaryAnimation) {
+      return TextStyleMenuDialog(
+        targetRect: targetRect,
+        note: note,
+        session: session,
+        onBold: onBold,
+        onUpdate: onUpdate,
+      );
+    },
+    transitionDuration: const Duration(milliseconds: 140),
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(
+        opacity: CurvedAnimation(parent: animation, curve: Curves.easeOutQuad),
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.95, end: 1.0).animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+          ),
+          alignment: Alignment.topCenter,
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
+class TextStyleMenuDialog extends StatefulWidget {
+  const TextStyleMenuDialog({
+    super.key,
+    required this.targetRect,
+    required this.note,
+    required this.session,
+    this.onBold,
+    required this.onUpdate,
+  });
+
+  final Rect targetRect;
+  final Notebook note;
+  final EditorSession session;
+  final VoidCallback? onBold;
+  final VoidCallback onUpdate;
+
+  @override
+  State<TextStyleMenuDialog> createState() => _TextStyleMenuDialogState();
+}
+
+class _TextStyleMenuDialogState extends State<TextStyleMenuDialog> {
+  @override
+  Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    const cardWidth = 190.0;
+    const arrowWidth = 18.0;
+    const arrowHeight = 9.0;
+
+    final buttonCenterX =
+        widget.targetRect.left + (widget.targetRect.width / 2);
+    final cardLeft = (buttonCenterX - (cardWidth / 2)).clamp(
+      12.0,
+      screenSize.width - cardWidth - 12.0,
+    );
+    final arrowLeft = (buttonCenterX - cardLeft - (arrowWidth / 2)).clamp(
+      16.0,
+      cardWidth - 16.0 - arrowWidth,
+    );
+    final cardTop = widget.targetRect.bottom + 6.0;
+
+    final note = widget.note;
+    final session = widget.session;
+
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => Navigator.of(context).pop(),
+          ),
+        ),
+        Positioned(
+          left: cardLeft,
+          top: cardTop,
+          child: Material(
+            color: Colors.transparent,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(left: arrowLeft),
+                  child: CustomPaint(
+                    size: const Size(arrowWidth, arrowHeight),
+                    painter: _LassoArrowPainter(
+                      color: const Color(0xff1e1e22),
+                      borderColor: Colors.white.withValues(alpha: 0.16),
+                    ),
+                  ),
+                ),
+                Container(
+                  width: cardWidth,
+                  height: 48,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xff1e1e22),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.16),
+                      width: 1.0,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildStyleItem(
+                        keyName: 'style-bold',
+                        isSelected: note.boldText,
+                        label: 'B',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                        onTap: () {
+                          if (widget.onBold != null) {
+                            widget.onBold!();
+                          } else {
+                            note.boldText = !note.boldText;
+                          }
+                          setState(() {});
+                          widget.onUpdate();
+                        },
+                      ),
+                      _buildStyleItem(
+                        keyName: 'style-italic',
+                        isSelected: session.italicText,
+                        label: 'I',
+                        style: const TextStyle(
+                          fontStyle: FontStyle.italic,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'serif',
+                          fontSize: 16,
+                        ),
+                        onTap: () {
+                          setState(() {
+                            session.italicText = !session.italicText;
+                            note.italicText = session.italicText;
+                          });
+                          widget.onUpdate();
+                        },
+                      ),
+                      _buildStyleItem(
+                        keyName: 'style-underline',
+                        isSelected: session.underlineText,
+                        label: 'U',
+                        style: const TextStyle(
+                          decoration: TextDecoration.underline,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                        onTap: () {
+                          setState(() {
+                            session.underlineText = !session.underlineText;
+                            note.underlineText = session.underlineText;
+                          });
+                          widget.onUpdate();
+                        },
+                      ),
+                      _buildStyleItem(
+                        keyName: 'style-strikethrough',
+                        isSelected: session.strikethroughText,
+                        label: 'S',
+                        style: const TextStyle(
+                          decoration: TextDecoration.lineThrough,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                        onTap: () {
+                          setState(() {
+                            session.strikethroughText =
+                                !session.strikethroughText;
+                            note.strikethroughText = session.strikethroughText;
+                          });
+                          widget.onUpdate();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStyleItem({
+    required String keyName,
+    required bool isSelected,
+    required String label,
+    required TextStyle style,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      key: Key(keyName),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: isSelected ? Colors.white : Colors.transparent,
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: style.copyWith(
+            color: isSelected ? const Color(0xff151515) : Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DottedCirclePainter extends CustomPainter {
+  const _DottedCirclePainter({required this.color});
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    final path = Path()
+      ..addOval(Rect.fromLTWH(1, 1, size.width - 2, size.height - 2));
+    _drawDashedPath(canvas, path, paint, 3.5, 3.0);
+  }
+
+  @override
+  bool shouldRepaint(covariant _DottedCirclePainter oldDelegate) =>
+      oldDelegate.color != color;
+}
+
+Future<void> showTextColorMenu(
+  BuildContext context, {
+  required Rect targetRect,
+  required Notebook note,
+  required EditorSession session,
+  required VoidCallback onUpdate,
+}) {
+  return showGeneralDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'Close Text Color Menu',
+    barrierColor: Colors.transparent,
+    pageBuilder: (dialogContext, animation, secondaryAnimation) {
+      return TextColorMenuDialog(
+        targetRect: targetRect,
+        note: note,
+        session: session,
+        onUpdate: onUpdate,
+      );
+    },
+    transitionDuration: const Duration(milliseconds: 140),
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(
+        opacity: CurvedAnimation(parent: animation, curve: Curves.easeOutQuad),
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.95, end: 1.0).animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+          ),
+          alignment: Alignment.topCenter,
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
+class TextColorMenuDialog extends StatefulWidget {
+  const TextColorMenuDialog({
+    super.key,
+    required this.targetRect,
+    required this.note,
+    required this.session,
+    required this.onUpdate,
+  });
+
+  final Rect targetRect;
+  final Notebook note;
+  final EditorSession session;
+  final VoidCallback onUpdate;
+
+  @override
+  State<TextColorMenuDialog> createState() => _TextColorMenuDialogState();
+}
+
+class _TextColorMenuDialogState extends State<TextColorMenuDialog> {
+  int _tabIndex = 0;
+
+  static const row1 = [
+    0xffff3b30,
+    0xffff9500,
+    0xffffcc00,
+    0xff34c759,
+    0xff32ade6,
+    0xff007aff,
+    0xffaf52de,
+    0xffff2d55,
+  ];
+
+  static const row2 = [
+    0xffa8241d,
+    0xff9e5714,
+    0xff8e7300,
+    0xff207337,
+    0xff1e6a8d,
+    0xff004f9e,
+    0xff6c3189,
+    0xff8b1853,
+  ];
+
+  static const row3 = [
+    0xffffffff,
+    0xffe5e5ea,
+    0xff8e8e93,
+    0xff3a3a3c,
+    0xff000000,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    const cardWidth = 320.0;
+    const arrowWidth = 18.0;
+    const arrowHeight = 9.0;
+
+    final buttonCenterX =
+        widget.targetRect.left + (widget.targetRect.width / 2);
+    final cardLeft = (buttonCenterX - (cardWidth / 2)).clamp(
+      12.0,
+      screenSize.width - cardWidth - 12.0,
+    );
+    final arrowLeft = (buttonCenterX - cardLeft - (arrowWidth / 2)).clamp(
+      16.0,
+      cardWidth - 16.0 - arrowWidth,
+    );
+    final cardTop = widget.targetRect.bottom + 6.0;
+
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => Navigator.of(context).pop(),
+          ),
+        ),
+        Positioned(
+          left: cardLeft,
+          top: cardTop,
+          child: Material(
+            color: Colors.transparent,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(left: arrowLeft),
+                  child: CustomPaint(
+                    size: const Size(arrowWidth, arrowHeight),
+                    painter: _LassoArrowPainter(
+                      color: const Color(0xff1a1c1e),
+                      borderColor: Colors.white.withValues(alpha: 0.16),
+                    ),
+                  ),
+                ),
+                Container(
+                  width: cardWidth,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xff1a1c1e),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.16),
+                      width: 1.0,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: const Color(0xff2c2c2e),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: const Center(
+                              child: Icon(
+                                CupertinoIcons.slider_horizontal_3,
+                                size: 14,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          const Expanded(
+                            child: Center(
+                              child: Text(
+                                'Text Color',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xff2c2c2e),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Text(
+                              'Edit',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: const Color(0xff2c2c2e),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: const EdgeInsets.all(2),
+                        child: Row(
+                          children: [
+                            _buildTab('Presets', 0),
+                            _buildTab('Custom', 1),
+                            _buildTab('History', 2),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          for (final c in row1) _buildColorCircle(c),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          for (final c in row2) _buildColorCircle(c),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          for (final c in row3) ...[
+                            _buildColorCircle(c),
+                            const Spacer(),
+                          ],
+                          const Spacer(),
+                          const Spacer(),
+                          GestureDetector(
+                            key: const Key('text-color-add-custom'),
+                            onTap: () async {
+                              final col = await showDialog<Color>(
+                                context: context,
+                                builder: (ctx) => CustomColorPickerDialog(
+                                  initialColor:
+                                      widget.session.textColor ?? 0xff000000,
+                                ),
+                              );
+                              if (col != null) {
+                                setState(() {
+                                  widget.session.textColor = col.toARGB32();
+                                  widget.note.textColor =
+                                      widget.session.textColor;
+                                });
+                                widget.onUpdate();
+                              }
+                            },
+                            child: CustomPaint(
+                              size: const Size(28, 28),
+                              painter: _DottedCirclePainter(
+                                color: Colors.white.withValues(alpha: 0.35),
+                              ),
+                              child: const Center(
+                                child: Icon(
+                                  CupertinoIcons.plus,
+                                  size: 13,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTab(String label, int index) {
+    final isSelected = _tabIndex == index;
+    return Expanded(
+      child: GestureDetector(
+        key: Key('color-tab-$label'),
+        onTap: () => setState(() => _tabIndex = index),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xff48484a) : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? Colors.white : Colors.white60,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildColorCircle(int argb) {
+    final isSelected = widget.session.textColor == argb ||
+        (widget.session.textColor == null && argb == 0xff000000);
+    return GestureDetector(
+      key: Key('text-color-swatch-$argb'),
+      onTap: () {
+        setState(() {
+          widget.session.textColor = argb;
+          widget.note.textColor = argb;
+        });
+        widget.onUpdate();
+      },
+      child: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          color: Color(argb),
+          shape: BoxShape.circle,
+          border: argb == 0xffffffff
+              ? Border.all(color: Colors.white24, width: 0.8)
+              : null,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: isSelected
+            ? Center(
+                child: Icon(
+                  CupertinoIcons.checkmark,
+                  size: 14,
+                  color: (argb == 0xffffffff ||
+                          argb == 0xffe5e5ea ||
+                          argb == 0xffffcc00)
+                      ? Colors.black
+                      : Colors.white,
+                ),
+              )
+            : null,
+      ),
     );
   }
 }
@@ -4474,8 +5243,10 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
   final GlobalKey _colorDropdownKey = GlobalKey();
   final GlobalKey _eraserTypeKey = GlobalKey();
   final GlobalKey _eraserOptionsKey = GlobalKey();
+  final GlobalKey _textColorKey = GlobalKey();
   final GlobalKey _fontSizeKey = GlobalKey();
   final GlobalKey _fontFamilyKey = GlobalKey();
+  final GlobalKey _textStyleKey = GlobalKey();
   final GlobalKey _textAlignKey = GlobalKey();
   final GlobalKey _lineHeightKey = GlobalKey();
   final GlobalKey _textBoxStyleKey = GlobalKey();
@@ -5122,22 +5893,57 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // 1. Collapse / Options circle button ( ⌄ )
-        Tooltip(
-          message: 'Text options',
-          child: Container(
-            key: const Key('text-collapse-button'),
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: 0.08),
-            ),
-            child: const Center(
-              child: Icon(
-                CupertinoIcons.chevron_down,
-                size: 13,
-                color: Colors.white70,
+        // 1. Color button ( ▾ ) (Screenshot 3)
+        GestureDetector(
+          key: _textColorKey,
+          onTap: () {
+            showTextColorMenu(
+              context,
+              targetRect: _rectForKey(_textColorKey),
+              note: note,
+              session: session,
+              onUpdate: () {
+                setState(() {});
+                widget.onSettings();
+              },
+            );
+          },
+          child: Tooltip(
+            message: 'Color',
+            child: Container(
+              key: const Key('text-collapse-button'),
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xff121214),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.16),
+                  width: 0.8,
+                ),
+              ),
+              child: Center(
+                child: Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: session.textColor != null
+                        ? Color(session.textColor!)
+                        : const Color(0xff000000),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      CupertinoIcons.chevron_down,
+                      size: 8,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -5243,72 +6049,62 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
         ),
         const SizedBox(width: 6),
 
-        // 4. Bold / Italic button [ B I ]
-        Container(
+        // 4. Text Style button [ B I ] (Screenshot 1)
+        GestureDetector(
           key: const Key('text-bold-italic-button'),
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-          decoration: BoxDecoration(
-            color: (note.boldText || session.italicText)
-                ? Colors.white.withValues(alpha: 0.12)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              GestureDetector(
-                key: const Key('text-bold-button'),
-                onTap: widget.onBold,
-                child: Tooltip(
-                  message: 'Bold text',
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 5,
-                      vertical: 3,
-                    ),
-                    child: Text(
-                      'B',
-                      style: TextStyle(
-                        color: note.boldText ? Colors.white : Colors.white60,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 15,
-                      ),
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            showTextStyleMenu(
+              context,
+              targetRect: _rectForKey(_textStyleKey),
+              note: note,
+              session: session,
+              onBold: widget.onBold,
+              onUpdate: () {
+                setState(() {});
+                widget.onSettings();
+              },
+            );
+          },
+          child: Tooltip(
+            message: 'Text Style',
+            child: Container(
+              key: _textStyleKey,
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              decoration: BoxDecoration(
+                color: (note.boldText ||
+                        session.italicText ||
+                        session.underlineText ||
+                        session.strikethroughText)
+                    ? Colors.white.withValues(alpha: 0.12)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'B',
+                    style: TextStyle(
+                      color: note.boldText ? Colors.white : Colors.white60,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 15,
                     ),
                   ),
-                ),
-              ),
-              GestureDetector(
-                key: const Key('text-italic-button'),
-                onTap: () {
-                  setState(() {
-                    session.italicText = !session.italicText;
-                    note.italicText = session.italicText;
-                  });
-                  widget.onSettings();
-                },
-                child: Tooltip(
-                  message: 'Italic',
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 5,
-                      vertical: 3,
-                    ),
-                    child: Text(
-                      'I',
-                      style: TextStyle(
-                        color: session.italicText
-                            ? Colors.white
-                            : Colors.white60,
-                        fontStyle: FontStyle.italic,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                        fontFamily: 'serif',
-                      ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'I',
+                    style: TextStyle(
+                      color: session.italicText ? Colors.white : Colors.white60,
+                      fontStyle: FontStyle.italic,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      fontFamily: 'serif',
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
         const SizedBox(width: 6),
