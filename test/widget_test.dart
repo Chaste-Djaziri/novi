@@ -5,9 +5,11 @@ import 'dart:convert';
 
 import 'package:archive/archive.dart';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
+import 'package:forui/forui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:novi/main.dart';
@@ -951,6 +953,93 @@ void main() {
 
       // Automatically detected stylus: Hand tool is visible!
       expect(handFinder, findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'on top header in full screen mode, home button, back/forward and tabs move to the very left edge',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+      final directory = Directory.systemTemp.createTempSync('novi-fullscreen-test-');
+      final original = PathProviderPlatform.instance;
+      PathProviderPlatform.instance = TestPaths(directory.path);
+      addTearDown(() {
+        PathProviderPlatform.instance = original;
+        directory.deleteSync(recursive: true);
+      });
+
+      Widget buildHeader({required bool isFullScreen}) {
+        return FTheme(
+          data: FTheme.neutral.dark.desktop,
+          child: DesktopTheme(
+            child: Material(
+              child: DesktopWindowHeader(
+                canGoBack: true,
+                canGoForward: true,
+                onBack: () {},
+                onForward: () {},
+                onToggleSidebar: () {},
+                notes: const [],
+                openIds: const ['tab-1'],
+                currentId: 'tab-1',
+                showTabs: true,
+                onSelectTab: (_) {},
+                onCloseTab: (_) {},
+                onCreate: ([_]) {},
+                onOpenDocument: () {},
+                onTransfer: (_) {},
+                isFullScreen: isFullScreen,
+              ),
+            ),
+          ),
+        );
+      }
+
+      // 1. Render DesktopWindowHeader in normal windowed mode (isFullScreen: false)
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: buildHeader(isFullScreen: false),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final homeFinder = find.byKey(const Key('home-button'));
+      expect(homeFinder, findsOneWidget);
+
+      final normalHomeLeft = tester.getTopLeft(homeFinder).dx;
+      // In normal mode on macOS, DragToMoveArea takes 78px for macOS traffic light buttons
+      expect(normalHomeLeft, equals(78.0));
+
+      // 2. Render DesktopWindowHeader in full screen mode (isFullScreen: true)
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: buildHeader(isFullScreen: true),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final fullScreenHomeLeft = tester.getTopLeft(homeFinder).dx;
+      // In full screen mode, the home button starts from the very left edge (0.0)!
+      expect(fullScreenHomeLeft, equals(0.0));
+
+      // Back and forward buttons and tabs follow directly from the left edge
+      final backFinder = find.byTooltip('Back to documents');
+      final forwardFinder = find.byTooltip('Forward');
+      expect(tester.getTopLeft(backFinder).dx, lessThan(normalHomeLeft));
+      expect(tester.getTopLeft(forwardFinder).dx, lessThan(normalHomeLeft));
+
+      debugDefaultTargetPlatformOverride = null;
     },
   );
 }
