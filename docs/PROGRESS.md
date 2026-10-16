@@ -511,6 +511,13 @@ Confirm material feel and pressure with a physical tablet in the normal Mac app.
 - [x] Added focused `test/tool_state_test.dart`; `flutter analyze` is clean and the full suite now passes 38 tests.
 - [ ] Continue extracting toolbar dialogs, tool renderers, pointer controllers, and `EditorSession` from `workspace_tools.dart`.
 
+## Incremental extraction: session and stroke boundaries — 2026-10-16
+- [x] Extracted `EditorSession` into `features/editor/models/editor_session_impl.dart` using a compatibility-preserving part boundary.
+- [x] Added `features/editor/controllers/stroke_controller.dart` for reusable pressure-aware pointer sampling and cancellation.
+- [x] Added `features/editor/tools/common/tool_renderer.dart` as the painter/indicator seam for future tool implementations.
+- [x] Clean-process verification: `flutter analyze` is clean and the full suite passes 40 tests.
+- [ ] Move the large private toolbar dialogs and icon painters from `workspace_tools.dart` into tool-specific modules; hot reload should be replaced by a full restart after Dart library-boundary moves.
+
 
 ## Writing materials and paper footprints — 2026-10-16
 - [x] Added shared nib geometry and distinct fountain, ballpoint, brush, graphite pencil, highlighter and paper tape renderers. New styles store pen subtype/material version; legacy styles retain their renderer.
