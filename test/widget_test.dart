@@ -16,6 +16,7 @@ import 'package:novi/main.dart';
 import 'package:novi/desktop_ui.dart';
 import 'package:novi/notebook.dart';
 import 'package:novi/library_ui.dart';
+import 'package:novi/pages_sidebar.dart';
 
 class TestPaths extends PathProviderPlatform {
   TestPaths(this.path);
@@ -1103,6 +1104,211 @@ void main() {
       expect(tester.getTopLeft(forwardFinder).dx, lessThan(normalHomeLeft));
 
       debugDefaultTargetPlatformOverride = null;
+    },
+  );
+
+  testWidgets(
+    'trackpad two-finger scroll overscroll creates new page smoothly',
+    (tester) async {
+      final dir = await Directory.systemTemp.createTemp('novi_test_trackpad_');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final store = LibraryStore('${dir.path}/test.db');
+      final note = Notebook(
+        id: 'test-trackpad-scroll',
+        title: 'Trackpad Note',
+        kind: 'Notebook',
+      );
+      store.save(note);
+
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(const NoviApp());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Trackpad Note'));
+      await tester.pumpAndSettle();
+
+      final viewerFinder = find.byKey(ValueKey('view-${note.id}'));
+      expect(viewerFinder, findsOneWidget);
+      final center = tester.getCenter(viewerFinder);
+
+      // Scroll to bottom first using mouse or trackpad pan
+      await tester.sendEventToBinding(
+        PointerScrollEvent(
+          position: center,
+          scrollDelta: const Offset(0, 3000),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Send trackpad pan zoom start
+      await tester.sendEventToBinding(
+        PointerPanZoomStartEvent(
+          position: center,
+        ),
+      );
+      await tester.pump();
+
+      // Pan up on trackpad (panDelta.dy = -40 => scroll down 40)
+      await tester.sendEventToBinding(
+        PointerPanZoomUpdateEvent(
+          position: center,
+          panDelta: const Offset(0, -40),
+        ),
+      );
+      await tester.pump();
+
+      // Loader is visible with progress
+      expect(find.byType(CircularProgressIndicator), findsWidgets);
+
+      // Pan further past threshold (panDelta.dy = -80 => scroll down 80, total 120 >= 100)
+      await tester.sendEventToBinding(
+        PointerPanZoomUpdateEvent(
+          position: center,
+          panDelta: const Offset(0, -80),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Reaching threshold creates a new page!
+      final reloaded = store.load().firstWhere((n) => n.id == note.id);
+      expect(reloaded.pages.length, equals(2));
+      expect(find.textContaining('Page 3 created'), findsOneWidget);
+
+      await tester.sendEventToBinding(
+        PointerPanZoomEndEvent(
+          position: center,
+        ),
+      );
+      await tester.pumpAndSettle();
+      store.close();
+    },
+  );
+
+  testWidgets(
+    'canvas scroll indicator appears on right edge and allows dragging to scroll smoothly',
+    (tester) async {
+      final dir = await Directory.systemTemp.createTemp('novi_test_indicator_');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final store = LibraryStore('${dir.path}/test.db');
+      final note = Notebook(
+        id: 'test-scroll-indicator',
+        title: 'Scroll Indicator Note',
+        kind: 'Notebook',
+      );
+      store.save(note);
+
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(const NoviApp());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Scroll Indicator Note'));
+      await tester.pumpAndSettle();
+
+      // The notebook has cover + 1 page = 2 sheets (~2000px height > 800px viewport)
+      // Normal scroll indicator appears on the right edge!
+      final indicatorFinder = find.byKey(const Key('canvas-scroll-indicator'));
+      expect(indicatorFinder, findsOneWidget);
+
+      final indicatorTopRight = tester.getTopRight(indicatorFinder);
+      expect(indicatorTopRight.dx, greaterThan(1170)); // Pinned to the right edge
+
+      // Drag the scroll indicator down
+      await tester.drag(indicatorFinder, const Offset(0, 150));
+      await tester.pumpAndSettle();
+
+      // Verify canvas scrolled down (cover moved up)
+      final coverFinder = find.byKey(ValueKey('cover-page-${note.id}'));
+      expect(tester.getTopLeft(coverFinder).dy, lessThan(0.0));
+
+      store.close();
+    },
+  );
+
+  testWidgets(
+    'content page manager collapses and opens, shows thumbnails, bookmarks, and allows adding pages and jumping',
+    (tester) async {
+      final dir = await Directory.systemTemp.createTemp('novi_test_pages_');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final store = LibraryStore('${dir.path}/test.db');
+      final note = Notebook(
+        id: 'test-pages-sidebar',
+        title: 'Pages Manager Note',
+        kind: 'Notebook',
+      );
+      store.save(note);
+
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(const NoviApp());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Pages Manager Note'));
+      await tester.pumpAndSettle();
+
+      // 1. Pages manager is initially closed
+      expect(find.byType(PagesSidebar), findsNothing);
+
+      // 2. Open page manager using toolbar button
+      final toggleButton = find.byKey(const Key('toolbar-toggle-pages'));
+      expect(toggleButton, findsOneWidget);
+      await tester.tap(toggleButton);
+      await tester.pumpAndSettle();
+
+      // PagesSidebar is now open!
+      expect(find.byType(PagesSidebar), findsOneWidget);
+      expect(find.text('Pages'), findsOneWidget);
+
+      // Page 1 (cover) and Page 2 (paper) thumbnails are visible
+      expect(
+        find.byKey(const ValueKey('sidebar-page-thumbnail-0')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('sidebar-page-thumbnail-1')),
+        findsOneWidget,
+      );
+
+      // 3. Add page using the '+' dashed card in PagesSidebar
+      final addPageButton = find.byKey(const Key('sidebar-add-page-button'));
+      expect(addPageButton, findsOneWidget);
+      await tester.tap(addPageButton);
+      await tester.pumpAndSettle();
+
+      // A new page is created!
+      expect(
+        find.byKey(const ValueKey('sidebar-page-thumbnail-2')),
+        findsOneWidget,
+      );
+      final reloaded = store.load().firstWhere((n) => n.id == note.id);
+      expect(reloaded.pages.length, equals(2)); // Cover + 2 pages = 3 total
+
+      // 4. Tap thumbnail 0 to scroll to Page 1
+      await tester.tap(find.byKey(const ValueKey('sidebar-page-thumbnail-0')));
+      await tester.pumpAndSettle();
+      final coverFinder = find.byKey(ValueKey('cover-page-${note.id}'));
+      expect(tester.getTopLeft(coverFinder).dy, greaterThan(0.0));
+
+      // 5. Close PagesSidebar using the 'X' button
+      final closeButton = find.byKey(const Key('close-pages-sidebar'));
+      expect(closeButton, findsOneWidget);
+      await tester.tap(closeButton);
+      await tester.pumpAndSettle();
+
+      // PagesSidebar is collapsed!
+      expect(find.byType(PagesSidebar), findsNothing);
+
+      // 6. Reopen using the header sidebar toggle button
+      final headerSidebarButton = find.byTooltip('Toggle sidebar');
+      await tester.tap(headerSidebarButton);
+      await tester.pumpAndSettle();
+      expect(find.byType(PagesSidebar), findsOneWidget);
+
+      store.close();
     },
   );
 }
