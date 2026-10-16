@@ -48,6 +48,7 @@ class _PaperTextEditorState extends State<PaperTextEditor> {
       widget.layout.lineHeight(widget.fontSize),
     );
     return Listener(
+      behavior: HitTestBehavior.opaque,
       onPointerDown: (event) => down = event.localPosition,
       onPointerMove: (event) {
         if (down != null && (event.localPosition - down!).distance > 5) {
