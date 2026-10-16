@@ -547,6 +547,8 @@ Confirm material feel and pressure with a physical tablet in the normal Mac app.
 - [x] Targeted dialog and workspace widget tests pass; `flutter analyze` remains clean.
 - [x] Moved `WorkspaceToolbar` and `FloatingToolControls` into focused editor widget modules with compatibility-preserving part wiring.
 - [x] Added editor widget boundary coverage; targeted workspace tests and `flutter analyze` pass.
+- [x] Split floating controls into writing, eraser, text, and zoom modules; each implementation is now below the preferred 500-line soft ceiling.
+- [x] Verified editor boundary, ink workspace, and widget suites: 25 tests pass; `flutter analyze` is clean.
 - [ ] Finish reducing legacy editor files and add broader painter comparison coverage.
 
 
