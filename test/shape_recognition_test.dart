@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:novi/features/editor/tools/shape/shape_recognition.dart';
 
@@ -36,6 +37,17 @@ List<Offset> regular(int count, {double phase = 0}) => [
       120 + 70 * math.sin(phase + 2 * math.pi * i / count),
     ),
 ];
+
+Rect boundsOf(List<List<double>> stroke) => Rect.fromPoints(
+  Offset(
+    stroke.map((point) => point[0]).reduce(math.min),
+    stroke.map((point) => point[1]).reduce(math.min),
+  ),
+  Offset(
+    stroke.map((point) => point[0]).reduce(math.max),
+    stroke.map((point) => point[1]).reduce(math.max),
+  ),
+);
 
 void main() {
   test('rotated polygons keep their number of corners', () {
@@ -100,6 +112,46 @@ void main() {
       expect(result.isClosed, isTrue);
       expect(result.stroke.length, greaterThan(24));
     }
+  });
+
+  test('noisy circles are straightened to a true circle', () {
+    final outline = [
+      for (var i = 0; i < 80; i++)
+        Offset(
+          220 + (75 + 2.5 * math.sin(i * 2.7)) * math.cos(i * 2 * math.pi / 80),
+          160 + (75 + 2.5 * math.cos(i * 1.9)) * math.sin(i * 2 * math.pi / 80),
+        ),
+    ];
+    final result = ShapeRecognition.recognize(
+      samples(outline, perEdge: 1, noise: 1.2),
+    );
+    final bounds = boundsOf(result.stroke);
+    expect(result.isClosed, isTrue);
+    expect(result.stroke.length, 49);
+    expect(bounds.center.dx, closeTo(220, 2));
+    expect(bounds.center.dy, closeTo(160, 2));
+    expect(bounds.width, closeTo(bounds.height, 2));
+    expect(bounds.width, closeTo(150, 5));
+  });
+
+  test('an imperfect oval is straightened while retaining its proportions', () {
+    final outline = [
+      for (var i = 0; i < 72; i++)
+        Offset(
+          180 + (110 + 2 * math.sin(i * 2.1)) * math.cos(i * 2 * math.pi / 72),
+          140 + (55 + 2 * math.cos(i * 1.7)) * math.sin(i * 2 * math.pi / 72),
+        ),
+    ];
+    final result = ShapeRecognition.recognize(
+      samples(outline, perEdge: 1, noise: 0.8),
+    );
+    final bounds = boundsOf(result.stroke);
+    expect(result.isClosed, isTrue);
+    expect(result.stroke.length, 49);
+    expect(bounds.center.dx, closeTo(180, 2));
+    expect(bounds.center.dy, closeTo(140, 2));
+    expect(bounds.width, closeTo(220, 6));
+    expect(bounds.height, closeTo(110, 6));
   });
 
   test('a rotated ellipse fits without becoming a polygon', () {

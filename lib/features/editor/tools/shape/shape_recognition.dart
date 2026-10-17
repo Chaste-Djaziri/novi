@@ -92,6 +92,13 @@ class ShapeRecognition {
       final rotation = 0.5 * math.atan2(2 * xy, xx - yy);
       final cosine = math.cos(rotation);
       final sine = math.sin(rotation);
+      final trace = xx + yy;
+      final spread = math.sqrt((xx - yy) * (xx - yy) + 4 * xy * xy);
+      final majorRadiusSquared = (trace + spread) / ring.length;
+      final minorRadiusSquared = (trace - spread) / ring.length;
+      var rx = math.sqrt(math.max(0, majorRadiusSquared));
+      var ry = math.sqrt(math.max(0, minorRadiusSquared));
+      if (rx == 0 || ry == 0) return RecognizedShape(original, isClosed: true);
       final local = [
         for (final point in ring)
           Offset(
@@ -99,8 +106,15 @@ class ShapeRecognition {
             -(point.dx - center.dx) * sine + (point.dy - center.dy) * cosine,
           ),
       ];
-      final rx = local.map((p) => p.dx.abs()).reduce(math.max);
-      final ry = local.map((p) => p.dy.abs()).reduce(math.max);
+      rx =
+          _quantile(local.map((point) => point.dx.abs()).toList(), 0.9) / 0.988;
+      ry =
+          _quantile(local.map((point) => point.dy.abs()).toList(), 0.9) / 0.988;
+      if (rx / ry < 1.08) {
+        final radius = (rx + ry) / 2;
+        rx = radius;
+        ry = radius;
+      }
       final residual =
           local
               .map((point) {
@@ -282,5 +296,11 @@ class ShapeRecognition {
       count++;
     }
     return count == 0 ? 1.0 : total / count;
+  }
+
+  static double _quantile(List<double> values, double fraction) {
+    values.sort();
+    final index = ((values.length - 1) * fraction).round();
+    return values[index];
   }
 }
