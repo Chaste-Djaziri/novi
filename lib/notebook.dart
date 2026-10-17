@@ -13,19 +13,23 @@ class NotebookPage {
     this.text = '',
     List<List<List<double>>>? strokes,
     List<Map<String, dynamic>>? inkStyles,
+    List<Map<String, dynamic>>? textStyles,
     this.isBookmarked = false,
   }) : strokes = strokes ?? [],
-       inkStyles = inkStyles ?? [];
+       inkStyles = inkStyles ?? [],
+       textStyles = textStyles ?? [];
 
   String text;
   List<List<List<double>>> strokes;
   List<Map<String, dynamic>> inkStyles;
+  List<Map<String, dynamic>> textStyles;
   bool isBookmarked;
 
   Map<String, dynamic> toJson() => {
     'text': text,
     'strokes': strokes,
     'inkStyles': inkStyles,
+    'textStyles': textStyles,
     if (isBookmarked) 'isBookmarked': true,
   };
 
@@ -46,6 +50,9 @@ class NotebookPage {
     return NotebookPage(
       text: json['text'] as String? ?? '',
       inkStyles: (json['inkStyles'] as List? ?? [])
+          .map((s) => Map<String, dynamic>.from(s as Map))
+          .toList(),
+      textStyles: (json['textStyles'] as List? ?? [])
           .map((s) => Map<String, dynamic>.from(s as Map))
           .toList(),
       strokes: strokes,
@@ -253,4 +260,3 @@ class Notebook {
     jsonDecode(jsonEncode(toJson())) as Map<String, dynamic>,
   );
 }
-
