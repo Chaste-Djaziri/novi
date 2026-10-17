@@ -203,6 +203,7 @@ class _WorkspaceState extends State<Workspace>
 
   List<List<double>>? activeStroke;
   int? activePointer;
+  bool _shapePlacementMoved = false;
   bool get drawing => session.tool != EditorTool.text;
   bool inLibrary = true;
   bool showSidebar = true;
@@ -2291,13 +2292,14 @@ class _WorkspaceState extends State<Workspace>
     return inside;
   }
 
-  List<List<double>> _shapePoints(ShapeType type, Offset center) {
-    const width = 120.0;
-    const height = 90.0;
-    final left = center.dx - width / 2;
-    final top = center.dy - height / 2;
-    final right = center.dx + width / 2;
-    final bottom = center.dy + height / 2;
+  List<List<double>> _shapePoints(ShapeType type, Rect bounds) {
+    final width = math.max(bounds.width, 1.0);
+    final height = math.max(bounds.height, 1.0);
+    final center = bounds.center;
+    final left = bounds.left;
+    final top = bounds.top;
+    final right = bounds.right;
+    final bottom = bounds.bottom;
     switch (type) {
       case ShapeType.rectangle:
         return [
@@ -2364,31 +2366,14 @@ class _WorkspaceState extends State<Workspace>
                       5 * math.cos(2 * t) -
                       2 * math.cos(3 * t) -
                       math.cos(4 * t));
-              return [center.dx + x * 4.0, center.dy + y * 4.0, 1.0];
+              return [
+                center.dx + x / 16 * width / 2,
+                center.dy + y / 17 * height / 2,
+                1.0,
+              ];
             }(),
         ];
     }
-  }
-
-  void createPlacedShape(Offset center, {int pageIndex = 0}) {
-    if (current == null || pageIndex >= current!.pages.length) return;
-    final page = current!.pages[pageIndex];
-    snapshot();
-    final stroke = _shapePoints(session.shapeType, center);
-    page.strokes.add(stroke);
-    page.inkStyles.add({
-      'kind': 'placedShape',
-      'shapeType': session.shapeType.name,
-      'materialVersion': 0,
-      'width': session.shapeToolStrokeWidth,
-      'color': session.shapeToolStrokeColor,
-      'fill': session.shapeToolFilled,
-      'fillColor': session.shapeToolFillColor,
-    });
-    session.selection
-      ..clear()
-      ..add(page.strokes.length - 1);
-    setState(save);
   }
 
   void applyShapeToolSettingsToSelection() {
@@ -2455,10 +2440,23 @@ class _WorkspaceState extends State<Workspace>
     lastPoint = e.localPosition;
     editedGesture = false;
     if (session.tool == EditorTool.shapes) {
-      createPlacedShape(e.localPosition, pageIndex: pageIndex);
-      activePointer = null;
-      gestureStart = null;
-      lastPoint = null;
+      snapshot();
+      _shapePlacementMoved = false;
+      activeStyle = {
+        'kind': 'placedShape',
+        'shapeType': session.shapeType.name,
+        'materialVersion': 0,
+        'width': session.shapeToolStrokeWidth,
+        'color': session.shapeToolStrokeColor,
+        'fill': session.shapeToolFilled,
+        'fillColor': session.shapeToolFillColor,
+      };
+      setState(
+        () => activeStroke = _shapePoints(
+          session.shapeType,
+          Rect.fromCenter(center: e.localPosition, width: 1, height: 1),
+        ),
+      );
       return;
     } else if (session.tool == EditorTool.select) {
       final bounds = selectedBounds();
@@ -2515,7 +2513,17 @@ class _WorkspaceState extends State<Workspace>
     if (e.pointer != activePointer) {
       return;
     }
-    if (session.tool == EditorTool.eraser) {
+    if (session.tool == EditorTool.shapes) {
+      final start = gestureStart!;
+      final bounds = Rect.fromPoints(start, e.localPosition);
+      if (bounds.width >= 4 || bounds.height >= 4) {
+        _shapePlacementMoved = true;
+      }
+      setState(() {
+        activeStroke = _shapePoints(session.shapeType, bounds);
+      });
+      lastPoint = e.localPosition;
+    } else if (session.tool == EditorTool.eraser) {
       final start = lastPoint ?? e.localPosition;
       final delta = e.localPosition - start;
       final steps = math.max(
@@ -2930,14 +2938,29 @@ class _WorkspaceState extends State<Workspace>
           }
         }
 
-        if (finalStyle['kind'] == 'shape' ||
+        if (finalStyle['kind'] == 'placedShape' && !_shapePlacementMoved) {
+          // A click alone only starts a placement; the shape is created on drag
+          // release so its final dimensions come from the user's gesture.
+        } else if (finalStyle['kind'] == 'shape' ||
             holdToShape ||
             !identical(finalStroke, activeStroke)) {
-          finalStyle['originalPoints'] = originalPoints;
+          if (finalStyle['kind'] == 'shape' || holdToShape) {
+            finalStyle['originalPoints'] = originalPoints;
+          }
+          page.strokes.add(finalStroke);
+          page.inkStyles.add(finalStyle);
+          session.selection
+            ..clear()
+            ..add(page.strokes.length - 1);
+          save();
+        } else {
+          page.strokes.add(finalStroke);
+          page.inkStyles.add(finalStyle);
+          session.selection
+            ..clear()
+            ..add(page.strokes.length - 1);
+          save();
         }
-        page.strokes.add(finalStroke);
-        page.inkStyles.add(finalStyle);
-        save();
       } else if (session.tool == EditorTool.select &&
           selectionTransformMode == SelectionTransformMode.lasso) {
         for (var i = 0; i < page.strokes.length; i++) {
