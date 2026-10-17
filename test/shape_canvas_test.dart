@@ -53,6 +53,32 @@ void main() {
           210 + 65 * math.sin(0.21 + i * 2 * math.pi / sides),
         ),
     ];
+    List<Offset> star() => [
+      for (var i = 0; i < 10; i++)
+        Offset(
+          220 +
+              (80.0 * (i.isEven ? 1 : 0.44)) *
+                  math.cos(-math.pi / 2 + i * math.pi / 5),
+          210 +
+              (65.0 * (i.isEven ? 1 : 0.44)) *
+                  math.sin(-math.pi / 2 + i * math.pi / 5),
+        ),
+    ];
+    List<Offset> heart() => [
+      for (var i = 0; i < 20; i++) ...[
+        () {
+          final t = i * 2 * math.pi / 20;
+          return Offset(
+            220 + 65 * math.pow(math.sin(t), 3).toDouble(),
+            210 -
+                (55 * math.cos(t) -
+                    21 * math.cos(2 * t) -
+                    10 * math.cos(3 * t) -
+                    5 * math.cos(4 * t)),
+          );
+        }(),
+      ],
+    ];
     final shapes = <(String, List<Offset>, int)>[
       (
         'circle',
@@ -77,6 +103,8 @@ void main() {
         5,
       ),
       ('hexagon', regular(6), 7),
+      ('star', star(), 11),
+      ('heart', heart(), 49),
     ];
 
     for (final mode in [
