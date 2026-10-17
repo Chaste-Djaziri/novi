@@ -32,6 +32,7 @@ Hot-reload compatibility for pages created before rich-text style ranges was add
 - Placed shapes reuse persisted ink geometry and support outline color, fill color, fill toggle, stroke width, move, resize, rotation, and deletion.
 - Shapes are now created by press-drag-release, with a live preview sized to the dragged bounds; an ellipse can therefore become any user-drawn oval.
 - Selected shapes now expose eight resize handles: four corners and four edges. Dragging any handle resizes the selected geometry while preserving the existing move and rotation handles.
+- Ordinary pen, pencil, highlighter, and tape strokes no longer select themselves or show resize/rotation handles. A held pen or pencil shape snap, Draw Shape result, or explicitly selected item still exposes transform controls.
 - Shape palette changes apply to both future shapes and the currently selected placed shape.
 - Switching from Shapes to Select preserves the placed shape selection so transform handles are immediately available.
 - Verified with `flutter analyze` and the full Flutter suite: 61 tests passed.
