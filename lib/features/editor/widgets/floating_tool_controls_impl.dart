@@ -144,6 +144,8 @@ class FloatingToolControlsState extends State<FloatingToolControls> {
                     _buildWritingToolbar(context),
                   ] else if (session.tool == EditorTool.eraser) ...[
                     _buildEraserToolbar(context),
+                  ] else if (session.tool == EditorTool.shapes) ...[
+                    _buildShapesToolbar(),
                   ] else if (session.tool == EditorTool.text) ...[
                     _buildTextToolbar(note),
                   ] else ...[

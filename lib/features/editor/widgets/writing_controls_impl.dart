@@ -4,6 +4,107 @@ part of '../../../../workspace_tools.dart';
 // ignore_for_file: invalid_use_of_protected_member
 
 extension FloatingToolControlsWritingtoolbar on FloatingToolControlsState {
+  Widget _buildShapesToolbar() {
+    final session = widget.session;
+    const colors = [
+      0xffef4444,
+      0xfff59e0b,
+      0xff22c55e,
+      0xff3b82f6,
+      0xffa855f7,
+      0xff111111,
+    ];
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final type in ShapeType.values)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: GestureDetector(
+              key: Key('shape-type-${type.name}'),
+              onTap: () {
+                setState(() => session.shapeType = type);
+                widget.onSettings();
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 120),
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: session.shapeType == type
+                      ? Colors.white
+                      : const Color(0xff2a2a2d),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  switch (type) {
+                    ShapeType.rectangle => CupertinoIcons.square,
+                    ShapeType.ellipse => CupertinoIcons.circle,
+                    ShapeType.triangle => CupertinoIcons.triangle,
+                    ShapeType.diamond => CupertinoIcons.rhombus,
+                    ShapeType.star => CupertinoIcons.star,
+                    ShapeType.heart => CupertinoIcons.heart,
+                    ShapeType.hexagon => CupertinoIcons.hexagon,
+                  },
+                  size: 16,
+                  color: session.shapeType == type
+                      ? Colors.black
+                      : Colors.white70,
+                ),
+              ),
+            ),
+          ),
+        const SizedBox(width: 6),
+        GestureDetector(
+          key: const Key('shape-fill-toggle'),
+          onTap: () {
+            setState(() => session.shapeToolFilled = !session.shapeToolFilled);
+            widget.onSettings();
+          },
+          child: Tooltip(
+            message: session.shapeToolFilled ? 'Filled shape' : 'Outline only',
+            child: Icon(
+              session.shapeToolFilled
+                  ? CupertinoIcons.circle_fill
+                  : CupertinoIcons.circle,
+              size: 18,
+              color: session.shapeToolFilled ? Colors.white : Colors.white70,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        for (final color in colors)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: GestureDetector(
+              key: Key('shape-color-$color'),
+              onTap: () {
+                setState(() {
+                  session.shapeToolStrokeColor = color;
+                  session.shapeToolFillColor = color | 0x55000000;
+                });
+                widget.onSettings();
+              },
+              child: Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: Color(color),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: session.shapeToolStrokeColor == color
+                        ? Colors.white
+                        : Colors.white24,
+                    width: session.shapeToolStrokeColor == color ? 2 : 1,
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _buildWritingToolbar(BuildContext context) {
     final session = widget.session;
     return Row(
