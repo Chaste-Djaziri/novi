@@ -134,6 +134,35 @@ void main() {
       expect(placed.map((point) => point[0]).reduce(math.max), closeTo(420, 1));
       expect(placed.map((point) => point[1]).reduce(math.min), closeTo(300, 1));
       expect(placed.map((point) => point[1]).reduce(math.max), closeTo(380, 1));
+      await tester.tap(find.byKey(const ValueKey('tool-select')));
+      await tester.pumpAndSettle();
+      final widthBeforeResize =
+          placed.map((point) => point[0]).reduce(math.max) -
+          placed.map((point) => point[0]).reduce(math.min);
+      await tester.dragFrom(point(428, 340), const Offset(40, 0));
+      await tester.pumpAndSettle();
+      final resized = ink().strokes.last;
+      final widthAfterEdgeResize =
+          resized.map((point) => point[0]).reduce(math.max) -
+          resized.map((point) => point[0]).reduce(math.min);
+      expect(widthAfterEdgeResize, greaterThan(widthBeforeResize));
+      final heightBeforeCornerResize =
+          resized.map((point) => point[1]).reduce(math.max) -
+          resized.map((point) => point[1]).reduce(math.min);
+      final resizedRight = resized.map((point) => point[0]).reduce(math.max);
+      final resizedBottom = resized.map((point) => point[1]).reduce(math.max);
+      await tester.dragFrom(
+        point(resizedRight + 8, resizedBottom + 8),
+        const Offset(30, 20),
+      );
+      await tester.pumpAndSettle();
+      final cornerResized = ink().strokes.last;
+      final heightAfterCornerResize =
+          cornerResized.map((point) => point[1]).reduce(math.max) -
+          cornerResized.map((point) => point[1]).reduce(math.min);
+      expect(heightAfterCornerResize, greaterThan(heightBeforeCornerResize));
+      await tester.tap(find.byTooltip('Shapes'));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('shape-fill-toggle')));
       await tester.pumpAndSettle();
       expect(ink().styles.last['fill'], isFalse);
