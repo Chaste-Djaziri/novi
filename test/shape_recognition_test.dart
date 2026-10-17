@@ -38,6 +38,30 @@ List<Offset> regular(int count, {double phase = 0}) => [
     ),
 ];
 
+List<Offset> star({double phase = -math.pi / 2}) => [
+  for (var i = 0; i < 10; i++)
+    Offset(
+      180 + (i.isEven ? 95.0 : 42.0) * math.cos(phase + i * math.pi / 5),
+      145 + (i.isEven ? 95.0 : 42.0) * math.sin(phase + i * math.pi / 5),
+    ),
+];
+
+List<Offset> heart() => [
+  for (var i = 0; i < 64; i++) ...[
+    () {
+      final t = i * 2 * math.pi / 64;
+      return Offset(
+        180 + 6.2 * math.pow(math.sin(t), 3),
+        145 -
+            (5.2 * math.cos(t) -
+                2.1 * math.cos(2 * t) -
+                1.0 * math.cos(3 * t) -
+                0.5 * math.cos(4 * t)),
+      );
+    }(),
+  ],
+];
+
 Rect boundsOf(List<List<double>> stroke) => Rect.fromPoints(
   Offset(
     stroke.map((point) => point[0]).reduce(math.min),
@@ -60,6 +84,25 @@ void main() {
         expect(result.stroke.length, sides + 1, reason: '$sides sides, $phase');
       }
     }
+  });
+
+  test('five-point stars keep all ten alternating corners', () {
+    final result = ShapeRecognition.recognize(
+      samples(star(), perEdge: 8, noise: 1.2),
+    );
+    expect(result.isClosed, isTrue);
+    expect(result.stroke.length, 11);
+  });
+
+  test('heart outlines fit to a clean heart instead of an oval', () {
+    final result = ShapeRecognition.recognize(
+      samples(heart(), perEdge: 1, noise: 0.8),
+    );
+    expect(result.isClosed, isTrue);
+    expect(result.stroke.length, 49);
+    final bounds = boundsOf(result.stroke);
+    expect(bounds.center.dx, closeTo(180, 1));
+    expect(bounds.bottom, closeTo(154.5, 2));
   });
 
   test('trapezium retains four unequal corners', () {
