@@ -33,6 +33,9 @@ class PaperTextEditor extends StatefulWidget {
     this.textBoxBorder = 0.0,
     this.textBoxPadding = 10.0,
     this.textBoxShadow = false,
+    this.textBoxOffset = Offset.zero,
+    this.textBoxScale = 1.0,
+    this.textBoxRotation = 0.0,
   });
   final StyledTextController controller;
   final FocusNode focusNode;
@@ -57,6 +60,9 @@ class PaperTextEditor extends StatefulWidget {
   final double textBoxBorder;
   final double textBoxPadding;
   final bool textBoxShadow;
+  final Offset textBoxOffset;
+  final double textBoxScale;
+  final double textBoxRotation;
   @override
   State<PaperTextEditor> createState() => _PaperTextEditorState();
 }
@@ -182,62 +188,75 @@ class _PaperTextEditorState extends State<PaperTextEditor> {
           widget.onChanged(value.text);
         });
       },
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          widget.layout.edge,
-          top,
-          widget.layout.edge,
-          widget.layout.edge,
-        ),
-        child: Align(
+      child: Transform.translate(
+        offset: widget.textBoxOffset,
+        child: Transform.rotate(
+          angle: widget.textBoxRotation,
           alignment: Alignment.topLeft,
-          child: Container(
-            decoration: hasDecoration
-                ? BoxDecoration(
-                    color: widget.textBoxBgColor != null
-                        ? Color(widget.textBoxBgColor!)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(widget.textBoxRadius),
-                    border:
-                        widget.textBoxBorder > 0 &&
-                            widget.textBoxBorderColor != null
-                        ? Border.all(
-                            color: Color(widget.textBoxBorderColor!),
-                            width: widget.textBoxBorder,
-                          )
-                        : null,
-                    boxShadow: widget.textBoxShadow
-                        ? [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.18),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
-                            ),
-                          ]
-                        : null,
-                  )
-                : null,
-            padding: hasDecoration
-                ? EdgeInsets.all(widget.textBoxPadding)
-                : null,
-            child: SizedBox(
-              width: widget.pageWidth - widget.layout.edge * 2,
-              child: DesktopTextField(
-                controller: widget.controller,
-                focusNode: widget.focusNode,
-                maxLines: null,
-                expands: false,
-                textAlign: widget.textAlign,
-                textAlignVertical: TextAlignVertical.top,
-                style: style,
-                cursorColor: widget.foreground,
-                borderless: true,
-                strutStyle: StrutStyle.fromTextStyle(
-                  style,
-                  forceStrutHeight: true,
+          child: Transform.scale(
+            scale: widget.textBoxScale,
+            alignment: Alignment.topLeft,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                widget.layout.edge,
+                top,
+                widget.layout.edge,
+                widget.layout.edge,
+              ),
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: Container(
+                  decoration: hasDecoration
+                      ? BoxDecoration(
+                          color: widget.textBoxBgColor != null
+                              ? Color(widget.textBoxBgColor!)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(
+                            widget.textBoxRadius,
+                          ),
+                          border:
+                              widget.textBoxBorder > 0 &&
+                                  widget.textBoxBorderColor != null
+                              ? Border.all(
+                                  color: Color(widget.textBoxBorderColor!),
+                                  width: widget.textBoxBorder,
+                                )
+                              : null,
+                          boxShadow: widget.textBoxShadow
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.18),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ]
+                              : null,
+                        )
+                      : null,
+                  padding: hasDecoration
+                      ? EdgeInsets.all(widget.textBoxPadding)
+                      : null,
+                  child: SizedBox(
+                    width: widget.pageWidth - widget.layout.edge * 2,
+                    child: DesktopTextField(
+                      controller: widget.controller,
+                      focusNode: widget.focusNode,
+                      maxLines: null,
+                      expands: false,
+                      textAlign: widget.textAlign,
+                      textAlignVertical: TextAlignVertical.top,
+                      style: style,
+                      cursorColor: widget.foreground,
+                      borderless: true,
+                      strutStyle: StrutStyle.fromTextStyle(
+                        style,
+                        forceStrutHeight: true,
+                      ),
+                      scrollPhysics: const NeverScrollableScrollPhysics(),
+                      onChanged: widget.onChanged,
+                    ),
+                  ),
                 ),
-                scrollPhysics: const NeverScrollableScrollPhysics(),
-                onChanged: widget.onChanged,
               ),
             ),
           ),

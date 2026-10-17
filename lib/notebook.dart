@@ -15,6 +15,10 @@ class NotebookPage {
     List<Map<String, dynamic>>? inkStyles,
     List<Map<String, dynamic>>? textStyles,
     this.isBookmarked = false,
+    this.textBoxOffsetX = 0.0,
+    this.textBoxOffsetY = 0.0,
+    this.textBoxScale = 1.0,
+    this.textBoxRotation = 0.0,
   }) : strokes = strokes ?? [],
        inkStyles = inkStyles ?? [],
        // ignore: prefer_initializing_formals
@@ -25,6 +29,10 @@ class NotebookPage {
   List<Map<String, dynamic>> inkStyles;
   List<Map<String, dynamic>>? _textStyles;
   bool isBookmarked;
+  double textBoxOffsetX;
+  double textBoxOffsetY;
+  double textBoxScale;
+  double textBoxRotation;
 
   List<Map<String, dynamic>> get textStyles => _textStyles ??= [];
 
@@ -37,6 +45,10 @@ class NotebookPage {
     'strokes': strokes,
     'inkStyles': inkStyles,
     'textStyles': textStyles,
+    if (textBoxOffsetX != 0.0) 'textBoxOffsetX': textBoxOffsetX,
+    if (textBoxOffsetY != 0.0) 'textBoxOffsetY': textBoxOffsetY,
+    if (textBoxScale != 1.0) 'textBoxScale': textBoxScale,
+    if (textBoxRotation != 0.0) 'textBoxRotation': textBoxRotation,
     if (isBookmarked) 'isBookmarked': true,
   };
 
@@ -64,6 +76,10 @@ class NotebookPage {
           .toList(),
       strokes: strokes,
       isBookmarked: json['isBookmarked'] as bool? ?? false,
+      textBoxOffsetX: (json['textBoxOffsetX'] as num?)?.toDouble() ?? 0.0,
+      textBoxOffsetY: (json['textBoxOffsetY'] as num?)?.toDouble() ?? 0.0,
+      textBoxScale: (json['textBoxScale'] as num?)?.toDouble() ?? 1.0,
+      textBoxRotation: (json['textBoxRotation'] as num?)?.toDouble() ?? 0.0,
     );
   }
 

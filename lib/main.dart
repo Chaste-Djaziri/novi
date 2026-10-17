@@ -128,6 +128,8 @@ class _WorkspaceState extends State<Workspace>
   Offset? _selectionCenter;
   double _selectionStartDistance = 0;
   double _selectionStartAngle = 0;
+  double _selectionStartTextScale = 1.0;
+  double _selectionStartTextRotation = 0.0;
   bool editedGesture = false;
   Offset? _inkHover;
   Offset? _inkGlobalPointer;
@@ -1959,6 +1961,12 @@ class _WorkspaceState extends State<Workspace>
                       textBoxBorder: note.textBoxBorder,
                       textBoxPadding: note.textBoxPadding,
                       textBoxShadow: note.textBoxShadow,
+                      textBoxOffset: Offset(
+                        page.textBoxOffsetX,
+                        page.textBoxOffsetY,
+                      ),
+                      textBoxScale: page.textBoxScale,
+                      textBoxRotation: page.textBoxRotation,
                       foreground: foreground,
                       pageWidth: pageWidth,
                       pageHeight: pageHeight,
@@ -2065,6 +2073,10 @@ class _WorkspaceState extends State<Workspace>
                                       activeStrokePageIndex == pageIndex
                                       ? selectedBounds()
                                       : null,
+                                  hasSelection:
+                                      activeStrokePageIndex == pageIndex &&
+                                      (session.selection.isNotEmpty ||
+                                          session.textBoxSelected),
                                 ),
                                 size: Size.infinite,
                               ),
@@ -2236,7 +2248,14 @@ class _WorkspaceState extends State<Workspace>
     final height = current?.landscape == true ? 760.0 : 980.0;
     final lines = math.max(1, '\n'.allMatches(page.text).length + 1);
     final contentHeight = (lines * 28.0 + 32.0).clamp(48.0, height - 32.0);
-    return Rect.fromLTWH(24, 24, width - 48, contentHeight);
+    final base = Rect.fromLTWH(24, 24, width - 48, contentHeight);
+    final scaled = Rect.fromLTWH(
+      base.left,
+      base.top,
+      base.width * page.textBoxScale,
+      base.height * page.textBoxScale,
+    );
+    return scaled.shift(Offset(page.textBoxOffsetX, page.textBoxOffsetY));
   }
 
   bool _strokeIncluded(Map<String, dynamic> style) {
@@ -2271,6 +2290,8 @@ class _WorkspaceState extends State<Workspace>
 
   void _captureSelectionGeometry() {
     final page = _activePage;
+    _selectionStartTextScale = page.textBoxScale;
+    _selectionStartTextRotation = page.textBoxRotation;
     _selectionOriginalStrokes = {
       for (final index in session.selection)
         if (index < page.strokes.length)
@@ -2386,6 +2407,10 @@ class _WorkspaceState extends State<Workspace>
           }
           final delta = e.localPosition - lastPoint!;
           final page = _activePage;
+          if (session.textBoxSelected) {
+            page.textBoxOffsetX += delta.dx;
+            page.textBoxOffsetY += delta.dy;
+          }
           for (final i in session.selection) {
             if (i < page.strokes.length) {
               for (final p in page.strokes[i]) {
@@ -2420,6 +2445,12 @@ class _WorkspaceState extends State<Workspace>
             final sinAngle = math.sin(angle);
             final cosAngle = math.cos(angle);
             final page = _activePage;
+            if (session.textBoxSelected) {
+              page.textBoxScale = (_selectionStartTextScale * scale).clamp(
+                0.25,
+                4.0,
+              );
+            }
             for (final entry in originals.entries) {
               if (entry.key >= page.strokes.length) continue;
               page.strokes[entry.key] = [
@@ -2436,6 +2467,9 @@ class _WorkspaceState extends State<Workspace>
                     ];
                   }(),
               ];
+            }
+            if (session.textBoxSelected) {
+              page.textBoxRotation = _selectionStartTextRotation + angle;
             }
           }
         } else {
@@ -3041,6 +3075,7 @@ class InkPainter extends CustomPainter {
     this.selectionBox,
     this.selectionPath,
     this.selectedBounds,
+    this.hasSelection = false,
   }) : _fingerprint = Object.hash(
          color,
          selectionBox,
@@ -3058,6 +3093,7 @@ class InkPainter extends CustomPainter {
   final Rect? selectionBox;
   final List<Offset>? selectionPath;
   final Rect? selectedBounds;
+  final bool hasSelection;
   final Color color;
   final List<List<List<double>>> strokes;
   @override
@@ -3160,7 +3196,7 @@ class InkPainter extends CustomPainter {
           ..strokeWidth = 1.2,
       );
     }
-    if (selectedBounds != null && selected.isNotEmpty) {
+    if (selectedBounds != null && hasSelection) {
       final bounds = selectedBounds!;
       final handlePaint = Paint()..color = color;
       canvas.drawRect(
