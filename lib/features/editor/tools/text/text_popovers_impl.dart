@@ -1172,9 +1172,11 @@ class _TextColorMenuDialogState extends State<TextColorMenuDialog> {
                                     .applySelectedTextStyle(widget.note, {
                                       'color': color,
                                     });
-                                if (!selected &&
-                                    widget.session.textFormatScope !=
-                                        TextFormatScope.textBox) {
+                                final textBox = widget.session
+                                    .applyTextBoxStyle(widget.note, {
+                                      'color': color,
+                                    });
+                                if (!selected && !textBox) {
                                   setState(() {
                                     widget.session.textColor = color;
                                     widget.note.textColor = color;
@@ -1245,8 +1247,10 @@ class _TextColorMenuDialogState extends State<TextColorMenuDialog> {
         final selected = widget.session.applySelectedTextStyle(widget.note, {
           'color': argb,
         });
-        if (!selected &&
-            widget.session.textFormatScope != TextFormatScope.textBox) {
+        final textBox = widget.session.applyTextBoxStyle(widget.note, {
+          'color': argb,
+        });
+        if (!selected && !textBox) {
           setState(() {
             widget.session.textColor = argb;
             widget.note.textColor = argb;
