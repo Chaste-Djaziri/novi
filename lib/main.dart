@@ -2580,6 +2580,10 @@ class _WorkspaceState extends State<Workspace>
     } else if (session.tool == EditorTool.eraser) {
       eraseAt(e.localPosition, pageIndex: pageIndex);
     } else {
+      session.selection.clear();
+      session.textBoxSelected = false;
+      selectionBox = null;
+      selectionPath = null;
       snapshot();
       normalizeStyles();
       activeStyle = session.inkStyle();
@@ -3044,6 +3048,10 @@ class _WorkspaceState extends State<Workspace>
         } else if (finalStyle['kind'] == 'shape' ||
             holdToShape ||
             !identical(finalStroke, activeStroke)) {
+          final shouldSelect =
+              finalStyle['kind'] == 'placedShape' ||
+              finalStyle['kind'] == 'shape' ||
+              holdToShape;
           if (finalStyle['kind'] == 'shape' || holdToShape) {
             finalStyle['originalPoints'] = originalPoints;
           } else if (!identical(finalStroke, activeStroke)) {
@@ -3051,16 +3059,20 @@ class _WorkspaceState extends State<Workspace>
           }
           page.strokes.add(finalStroke);
           page.inkStyles.add(finalStyle);
-          session.selection
-            ..clear()
-            ..add(page.strokes.length - 1);
+          if (shouldSelect) {
+            session.selection
+              ..clear()
+              ..add(page.strokes.length - 1);
+          }
           save();
         } else {
           page.strokes.add(finalStroke);
           page.inkStyles.add(finalStyle);
-          session.selection
-            ..clear()
-            ..add(page.strokes.length - 1);
+          if (finalStyle['kind'] == 'placedShape') {
+            session.selection
+              ..clear()
+              ..add(page.strokes.length - 1);
+          }
           save();
         }
       } else if (session.tool == EditorTool.select &&
