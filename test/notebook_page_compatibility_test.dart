@@ -17,4 +17,21 @@ void main() {
     });
     expect(page.textStyles, hasLength(1));
   });
+
+  test('text box transforms survive page serialization', () {
+    final page = NotebookPage(
+      text: 'movable',
+      textBoxOffsetX: 18,
+      textBoxOffsetY: -7,
+      textBoxScale: 1.35,
+      textBoxRotation: 0.42,
+    );
+
+    final restored = NotebookPage.fromJson(page.toJson());
+
+    expect(restored.textBoxOffsetX, 18);
+    expect(restored.textBoxOffsetY, -7);
+    expect(restored.textBoxScale, 1.35);
+    expect(restored.textBoxRotation, 0.42);
+  });
 }
