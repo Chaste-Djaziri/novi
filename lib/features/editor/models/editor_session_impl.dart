@@ -136,10 +136,8 @@ class EditorSession {
   bool favoriteTextStyleSaved = false;
   TextFormatScope textFormatScope = TextFormatScope.selection;
 
-  bool applySelectedTextStyle(
-    Notebook note,
-    Map<String, dynamic> patch,
-  ) {
+  bool applySelectedTextStyle(Notebook note, Map<String, dynamic> patch) {
+    if (textFormatScope != TextFormatScope.selection) return false;
     final pageIndex = activeTextPage.clamp(0, note.pages.length - 1);
     final page = note.pages[pageIndex];
     final controller = controllerForPage(
@@ -149,6 +147,24 @@ class EditorSession {
     );
     if (controller.selection.isCollapsed) return false;
     controller.applyStyle(controller.selection, patch);
+    page.textStyles = controller.serializedRanges;
+    return true;
+  }
+
+  bool applyTextBoxStyle(Notebook note, Map<String, dynamic> patch) {
+    if (textFormatScope != TextFormatScope.textBox) return false;
+    final pageIndex = activeTextPage.clamp(0, note.pages.length - 1);
+    final page = note.pages[pageIndex];
+    final controller = controllerForPage(
+      pageIndex,
+      page.text,
+      serializedRanges: page.textStyles,
+    );
+    if (controller.text.isEmpty) return false;
+    controller.applyStyle(
+      TextSelection(baseOffset: 0, extentOffset: controller.text.length),
+      patch,
+    );
     page.textStyles = controller.serializedRanges;
     return true;
   }
