@@ -400,7 +400,7 @@ class _WorkspaceState extends State<Workspace>
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       session.tool = tool;
-      if (tool != EditorTool.shapes) {
+      if (tool != EditorTool.shapes && tool != EditorTool.select) {
         session.selection.clear();
         session.textBoxSelected = false;
       }
