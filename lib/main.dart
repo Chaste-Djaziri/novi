@@ -2264,7 +2264,9 @@ class _WorkspaceState extends State<Workspace>
   bool _strokeIncluded(Map<String, dynamic> style) {
     final kind = style['kind'] as String?;
     if (kind == 'tape') return session.lassoIncludes['Tape'] ?? true;
-    if (kind == 'shape') return session.lassoIncludes['Shapes'] ?? true;
+    if (kind == 'shape' || kind == 'placedShape') {
+      return session.lassoIncludes['Shapes'] ?? true;
+    }
     if (kind == 'arrow') return session.lassoIncludes['Arrows'] ?? true;
     if (kind == 'image') return session.lassoIncludes['Images'] ?? true;
     return session.lassoIncludes['Handwriting'] ?? true;
@@ -2281,6 +2283,106 @@ class _WorkspaceState extends State<Workspace>
       if (intersects) inside = !inside;
     }
     return inside;
+  }
+
+  List<List<double>> _shapePoints(ShapeType type, Offset center) {
+    const width = 120.0;
+    const height = 90.0;
+    final left = center.dx - width / 2;
+    final top = center.dy - height / 2;
+    final right = center.dx + width / 2;
+    final bottom = center.dy + height / 2;
+    switch (type) {
+      case ShapeType.rectangle:
+        return [
+          [left, top, 1],
+          [right, top, 1],
+          [right, bottom, 1],
+          [left, bottom, 1],
+          [left, top, 1],
+        ];
+      case ShapeType.ellipse:
+        return [
+          for (var i = 0; i <= 48; i++)
+            [
+              center.dx + width / 2 * math.cos(2 * math.pi * i / 48),
+              center.dy + height / 2 * math.sin(2 * math.pi * i / 48),
+              1,
+            ],
+        ];
+      case ShapeType.triangle:
+        return [
+          [center.dx, top, 1],
+          [right, bottom, 1],
+          [left, bottom, 1],
+          [center.dx, top, 1],
+        ];
+      case ShapeType.diamond:
+        return [
+          [center.dx, top, 1],
+          [right, center.dy, 1],
+          [center.dx, bottom, 1],
+          [left, center.dy, 1],
+          [center.dx, top, 1],
+        ];
+      case ShapeType.hexagon:
+        return [
+          for (var i = 0; i <= 6; i++)
+            [
+              center.dx + width / 2 * math.cos(math.pi / 3 * i),
+              center.dy + height / 2 * math.sin(math.pi / 3 * i),
+              1,
+            ],
+        ];
+      case ShapeType.star:
+        return [
+          for (var i = 0; i <= 10; i++)
+            [
+              center.dx +
+                  (i.isEven ? width / 2 : width / 4) *
+                      math.cos(-math.pi / 2 + math.pi * i / 5),
+              center.dy +
+                  (i.isEven ? height / 2 : height / 4) *
+                      math.sin(-math.pi / 2 + math.pi * i / 5),
+              1,
+            ],
+        ];
+      case ShapeType.heart:
+        return [
+          for (var i = 0; i <= 40; i++)
+            () {
+              final t = 2 * math.pi * i / 40;
+              final x = 16 * math.pow(math.sin(t), 3).toDouble();
+              final y =
+                  -(13 * math.cos(t) -
+                      5 * math.cos(2 * t) -
+                      2 * math.cos(3 * t) -
+                      math.cos(4 * t));
+              return [center.dx + x * 4.0, center.dy + y * 4.0, 1.0];
+            }(),
+        ];
+    }
+  }
+
+  void createPlacedShape(Offset center, {int pageIndex = 0}) {
+    if (current == null || pageIndex >= current!.pages.length) return;
+    final page = current!.pages[pageIndex];
+    snapshot();
+    final stroke = _shapePoints(session.shapeType, center);
+    page.strokes.add(stroke);
+    page.inkStyles.add({
+      'kind': 'placedShape',
+      'shapeType': session.shapeType.name,
+      'materialVersion': 0,
+      'width': session.shapeToolStrokeWidth,
+      'color': session.shapeToolStrokeColor,
+      'fill': session.shapeToolFilled,
+      'fillColor': session.shapeToolFillColor,
+    });
+    session.selection
+      ..clear()
+      ..add(page.strokes.length - 1);
+    setState(save);
   }
 
   bool _selectionContains(Offset point) {
@@ -2331,7 +2433,13 @@ class _WorkspaceState extends State<Workspace>
     gestureStart = e.localPosition;
     lastPoint = e.localPosition;
     editedGesture = false;
-    if (session.tool == EditorTool.select) {
+    if (session.tool == EditorTool.shapes) {
+      createPlacedShape(e.localPosition, pageIndex: pageIndex);
+      activePointer = null;
+      gestureStart = null;
+      lastPoint = null;
+      return;
+    } else if (session.tool == EditorTool.select) {
       final bounds = selectedBounds();
       final center = bounds?.center;
       final rotationHandle = center == null
