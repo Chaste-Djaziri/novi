@@ -581,6 +581,8 @@ Confirm material feel and pressure with a physical tablet in the normal Mac app.
 - [x] Added imperfect sampled circle, ellipse, rotated polygon, open-angle, line, and curve coverage plus canvas coverage for circles, triangles, rectangles, and hexagons.
 - [x] Preserved original sampled points and pressure in stroke metadata for recognized and transformed strokes.
 - [x] `flutter analyze`: clean. Full Flutter suite: all 51 tests pass.
+- [x] Improved smooth-loop fitting: noisy near-circles snap to equal-radius circles, while imperfect ovals are fitted with stable center, rotation, and proportions.
+- [x] Added geometry assertions for circle center/radius and oval bounds; analyzer clean and full Flutter suite passes all 53 tests.
 - [ ] Add resize/move interaction for a recognized shape before pointer release.
 - [ ] Finish reducing legacy editor files and add broader painter comparison coverage.
 
