@@ -134,6 +134,24 @@ class EditorSession {
   bool textBoxShadow = false;
   bool pinTextTool = false;
   bool favoriteTextStyleSaved = false;
+  TextFormatScope textFormatScope = TextFormatScope.selection;
+
+  bool applySelectedTextStyle(
+    Notebook note,
+    Map<String, dynamic> patch,
+  ) {
+    final pageIndex = activeTextPage.clamp(0, note.pages.length - 1);
+    final page = note.pages[pageIndex];
+    final controller = controllerForPage(
+      pageIndex,
+      page.text,
+      serializedRanges: page.textStyles,
+    );
+    if (controller.selection.isCollapsed) return false;
+    controller.applyStyle(controller.selection, patch);
+    page.textStyles = controller.serializedRanges;
+    return true;
+  }
 
   String get inkKind => tool == EditorTool.highlighter
       ? 'highlighter'

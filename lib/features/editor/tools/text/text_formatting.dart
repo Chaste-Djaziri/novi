@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+enum TextFormatScope { selection, textBox, document }
+
 class TextStyleRange {
   TextStyleRange({
     required this.start,
