@@ -2946,6 +2946,8 @@ class _WorkspaceState extends State<Workspace>
             !identical(finalStroke, activeStroke)) {
           if (finalStyle['kind'] == 'shape' || holdToShape) {
             finalStyle['originalPoints'] = originalPoints;
+          } else if (!identical(finalStroke, activeStroke)) {
+            finalStyle['originalPoints'] = originalPoints;
           }
           page.strokes.add(finalStroke);
           page.inkStyles.add(finalStyle);
