@@ -8,4 +8,6 @@ enum PenType { fountain, ballpoint, brush }
 
 enum EraserType { precision, standard, stroke }
 
-enum EditorTool { select, pen, highlighter, eraser, text, hand }
+enum ShapeType { rectangle, ellipse, triangle, diamond, star, heart, hexagon }
+
+enum EditorTool { select, pen, highlighter, eraser, shapes, text, hand }

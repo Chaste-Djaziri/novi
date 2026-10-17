@@ -89,6 +89,11 @@ class EditorSession {
   };
 
   WritingMode writingMode = WritingMode.pen;
+  ShapeType shapeType = ShapeType.rectangle;
+  bool shapeToolFilled = true;
+  int shapeToolFillColor = 0x553b82f6;
+  int shapeToolStrokeColor = 0xff3b82f6;
+  double shapeToolStrokeWidth = 3.0;
   PenType penType = PenType.fountain;
   bool penHoldForLine = true;
   bool penReduceLatency = true;

@@ -156,6 +156,7 @@ class _WorkspaceToolbarState extends State<WorkspaceToolbar> {
                             EditorTool.pen => 'Writing (W)',
                             EditorTool.highlighter => 'Highlight',
                             EditorTool.eraser => 'Erase',
+                            EditorTool.shapes => 'Shapes',
                             EditorTool.text => 'Type',
                             EditorTool.hand => 'Hand',
                           },
@@ -197,6 +198,13 @@ class _WorkspaceToolbarState extends State<WorkspaceToolbar> {
                                           ? Colors.black
                                           : Colors.white70,
                                     ),
+                                  ),
+                                  EditorTool.shapes => Icon(
+                                    CupertinoIcons.square_on_circle,
+                                    size: 17,
+                                    color: isSelected
+                                        ? Colors.black
+                                        : Colors.white70,
                                   ),
                                   EditorTool.text => Icon(
                                     CupertinoIcons.textbox,
