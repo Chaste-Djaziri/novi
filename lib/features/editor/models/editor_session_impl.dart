@@ -153,6 +153,17 @@ class EditorSession {
     return true;
   }
 
+  bool hasActiveTextSelection(Notebook note) {
+    final pageIndex = activeTextPage.clamp(0, note.pages.length - 1);
+    final page = note.pages[pageIndex];
+    final controller = controllerForPage(
+      pageIndex,
+      page.text,
+      serializedRanges: page.textStyles,
+    );
+    return !controller.selection.isCollapsed;
+  }
+
   String get inkKind => tool == EditorTool.highlighter
       ? 'highlighter'
       : switch (writingMode) {
