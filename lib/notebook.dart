@@ -17,13 +17,20 @@ class NotebookPage {
     this.isBookmarked = false,
   }) : strokes = strokes ?? [],
        inkStyles = inkStyles ?? [],
-       textStyles = textStyles ?? [];
+       // ignore: prefer_initializing_formals
+       _textStyles = textStyles;
 
   String text;
   List<List<List<double>>> strokes;
   List<Map<String, dynamic>> inkStyles;
-  List<Map<String, dynamic>> textStyles;
+  List<Map<String, dynamic>>? _textStyles;
   bool isBookmarked;
+
+  List<Map<String, dynamic>> get textStyles => _textStyles ??= [];
+
+  set textStyles(List<Map<String, dynamic>> value) {
+    _textStyles = value;
+  }
 
   Map<String, dynamic> toJson() => {
     'text': text,
@@ -97,13 +104,15 @@ class Notebook {
     this.coverBookmarked = false,
     List<List<List<double>>>? strokes,
     List<NotebookPage>? pages,
-  }) : _pages = pages ?? [
-         NotebookPage(
-           text: text,
-           strokes: strokes ?? [],
-           inkStyles: inkStyles ?? [],
-         ),
-       ];
+  }) : _pages =
+           pages ??
+           [
+             NotebookPage(
+               text: text,
+               strokes: strokes ?? [],
+               inkStyles: inkStyles ?? [],
+             ),
+           ];
 
   String id;
   String title;
@@ -218,8 +227,8 @@ class Notebook {
     final pagesJson = json['pages'] as List?;
     final pages = pagesJson != null && pagesJson.isNotEmpty
         ? pagesJson
-            .map((p) => NotebookPage.fromJson(p as Map<String, dynamic>))
-            .toList()
+              .map((p) => NotebookPage.fromJson(p as Map<String, dynamic>))
+              .toList()
         : [NotebookPage(text: text, strokes: strokes, inkStyles: inkStyles)];
 
     return Notebook(
