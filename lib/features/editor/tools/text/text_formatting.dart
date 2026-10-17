@@ -46,38 +46,40 @@ class StyledTextController extends TextEditingController {
     final start = selection.start.clamp(0, text.length);
     final end = selection.end.clamp(0, text.length);
     if (start == end) return;
-    final next = <TextStyleRange>[];
+    final boundaries = <int>{start, end};
     for (final range in ranges) {
-      if (range.end <= start || range.start >= end) {
-        next.add(range);
-        continue;
-      }
-      if (range.start < start) {
-        next.add(
+      boundaries
+        ..add(range.start.clamp(0, text.length))
+        ..add(range.end.clamp(0, text.length));
+    }
+    final sorted = boundaries.toList()..sort();
+    final next = <TextStyleRange>[
+      for (final range in ranges)
+        if (range.end <= start || range.start >= end)
           TextStyleRange(
             start: range.start,
-            end: start,
-            style: Map<String, dynamic>.from(range.style),
-          ),
-        );
-      }
-      if (range.end > end) {
-        next.add(
-          TextStyleRange(
-            start: end,
             end: range.end,
             style: Map<String, dynamic>.from(range.style),
           ),
+    ];
+    for (var i = 0; i < sorted.length - 1; i++) {
+      final segmentStart = sorted[i];
+      final segmentEnd = sorted[i + 1];
+      final merged = <String, dynamic>{};
+      for (final range in ranges) {
+        if (range.start <= segmentStart && range.end >= segmentEnd) {
+          merged.addAll(range.style);
+        }
+      }
+      if (segmentStart < end && segmentEnd > start) {
+        merged.addAll(patch);
+      }
+      if (merged.isNotEmpty) {
+        next.add(
+          TextStyleRange(start: segmentStart, end: segmentEnd, style: merged),
         );
       }
     }
-    next.add(
-      TextStyleRange(
-        start: start,
-        end: end,
-        style: Map<String, dynamic>.from(patch),
-      ),
-    );
     ranges
       ..clear()
       ..addAll(_mergeRanges(next));
