@@ -15,7 +15,15 @@
 - [ ] Step 11: Complete hands-on desktop acceptance checks listed below.
 
 ## Current
-Writing materials and paper indicators are implemented. All 35 automated tests pass and `flutter analyze` reports no issues. The final native macOS run passed all 30 tests, including stationary-pointer scrolling and touch/filter refinements. Physical stylus and Windows/Linux verification remain pending.
+Writing materials and paper indicators are implemented. Rich text formatting now supports selected-text, current-text-box, and document scopes with persistent per-page style ranges. The full Flutter suite passes 59 tests and `flutter analyze` reports no issues. Physical stylus and Windows/Linux verification remain pending.
+
+## Rich text scope formatting — verified
+- Added a formatting scope selector for selected text, the current text box, and the whole document.
+- Routed font size, font family, bold, italic, underline, strikethrough, text color, and text-box background actions through scope-aware formatting.
+- Kept text-box background decoration content-sized instead of painting the whole page.
+- Preserved combined styles when applying multiple formats to overlapping selections.
+- Added focused tests for combined styles, partial selection boundaries, and persisted range adjustment.
+- Verified with `flutter analyze` and the full Flutter suite: 59 tests passed.
 
 ## Previous completed work — Text Tool
 Implemented Text Tool options and popovers matching the user's design reference screenshots:
