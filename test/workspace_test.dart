@@ -1,6 +1,7 @@
 import 'desktop_test_support.dart';
 
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -122,12 +123,17 @@ void main() {
       );
       await tester.tap(find.byKey(const Key('shape-type-ellipse')));
       await tester.pumpAndSettle();
-      await tester.tapAt(point(300, 300));
+      await tester.dragFrom(point(300, 300), const Offset(120, 80));
       await tester.pumpAndSettle();
       expect(ink().strokes, hasLength(3));
       expect(ink().styles.last['kind'], 'placedShape');
       expect(ink().styles.last['shapeType'], 'ellipse');
       expect(ink().styles.last['fill'], isTrue);
+      final placed = ink().strokes.last;
+      expect(placed.map((point) => point[0]).reduce(math.min), closeTo(300, 1));
+      expect(placed.map((point) => point[0]).reduce(math.max), closeTo(420, 1));
+      expect(placed.map((point) => point[1]).reduce(math.min), closeTo(300, 1));
+      expect(placed.map((point) => point[1]).reduce(math.max), closeTo(380, 1));
       await tester.tap(find.byKey(const Key('shape-fill-toggle')));
       await tester.pumpAndSettle();
       expect(ink().styles.last['fill'], isFalse);
