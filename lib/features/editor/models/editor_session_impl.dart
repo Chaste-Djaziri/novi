@@ -36,7 +36,7 @@ class EditorSession {
   final StyledTextController text;
   final FocusNode textFocus = FocusNode();
   int activeTextPage = 0;
-  final Map<int, TextEditingController> pageControllers = {};
+  final Map<int, StyledTextController> pageControllers = {};
   final Map<int, FocusNode> pageFocusNodes = {};
 
   StyledTextController controllerForPage(

@@ -11,18 +11,13 @@ class TextStyleRange {
   int end;
   final Map<String, dynamic> style;
 
-  Map<String, dynamic> toJson() => {
-    'start': start,
-    'end': end,
-    'style': style,
-  };
+  Map<String, dynamic> toJson() => {'start': start, 'end': end, 'style': style};
 
-  factory TextStyleRange.fromJson(Map<String, dynamic> json) =>
-      TextStyleRange(
-        start: (json['start'] as num?)?.toInt() ?? 0,
-        end: (json['end'] as num?)?.toInt() ?? 0,
-        style: Map<String, dynamic>.from(json['style'] as Map? ?? const {}),
-      );
+  factory TextStyleRange.fromJson(Map<String, dynamic> json) => TextStyleRange(
+    start: (json['start'] as num?)?.toInt() ?? 0,
+    end: (json['end'] as num?)?.toInt() ?? 0,
+    style: Map<String, dynamic>.from(json['style'] as Map? ?? const {}),
+  );
 }
 
 class StyledTextController extends TextEditingController {
@@ -40,16 +35,12 @@ class StyledTextController extends TextEditingController {
   final List<TextStyleRange> ranges;
   TextStyle? baseStyle;
   String _previousText = '';
-  bool _adjusting = false;
 
   List<Map<String, dynamic>> get serializedRanges => [
     for (final range in ranges) range.toJson(),
   ];
 
-  void applyStyle(
-    TextSelection selection,
-    Map<String, dynamic> patch,
-  ) {
+  void applyStyle(TextSelection selection, Map<String, dynamic> patch) {
     final start = selection.start.clamp(0, text.length);
     final end = selection.end.clamp(0, text.length);
     if (start == end) return;
@@ -151,7 +142,6 @@ class StyledTextController extends TextEditingController {
   }
 
   void _adjustRangesAfterTextChange() {
-    if (_adjusting) return;
     final current = text;
     if (current == _previousText) return;
     var prefix = 0;
@@ -184,9 +174,11 @@ class StyledTextController extends TextEditingController {
 
   List<TextStyleRange> _mergeRanges(List<TextStyleRange> source) {
     final sorted = [...source]
-      ..sort((a, b) => a.start == b.start
-          ? a.end.compareTo(b.end)
-          : a.start.compareTo(b.start));
+      ..sort(
+        (a, b) => a.start == b.start
+            ? a.end.compareTo(b.end)
+            : a.start.compareTo(b.start),
+      );
     final merged = <TextStyleRange>[];
     for (final range in sorted) {
       if (range.start >= range.end) continue;

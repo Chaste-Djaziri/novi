@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'desktop_ui.dart';
 import 'paper_layout.dart';
+import 'features/editor/tools/text/text_formatting.dart';
 
 /// One page-wide editor. Blank rows are real text; no movable text boxes.
 class PaperTextEditor extends StatefulWidget {
@@ -33,7 +34,7 @@ class PaperTextEditor extends StatefulWidget {
     this.textBoxPadding = 10.0,
     this.textBoxShadow = false,
   });
-  final TextEditingController controller;
+  final StyledTextController controller;
   final FocusNode focusNode;
   final PaperLayout layout;
   final double fontSize;
@@ -137,6 +138,7 @@ class _PaperTextEditorState extends State<PaperTextEditor> {
       );
     }
     final style = DefaultTextStyle.of(context).style.merge(baseStyle);
+    widget.controller.baseStyle = style;
     final scaler = MediaQuery.textScalerOf(context);
     final sample = widget.layout.painter('M', widget.pageWidth, style, scaler);
     final baseline = sample.computeLineMetrics().first.baseline;
@@ -145,7 +147,8 @@ class _PaperTextEditorState extends State<PaperTextEditor> {
       0.0,
       widget.layout.lineHeight(widget.fontSize),
     );
-    final hasDecoration = widget.textBoxBgColor != null ||
+    final hasDecoration =
+        widget.textBoxBgColor != null ||
         (widget.textBoxBorder > 0 && widget.textBoxBorderColor != null) ||
         widget.textBoxShadow;
 
@@ -186,45 +189,57 @@ class _PaperTextEditorState extends State<PaperTextEditor> {
           widget.layout.edge,
           widget.layout.edge,
         ),
-        child: Container(
-          decoration: hasDecoration
-              ? BoxDecoration(
-                  color: widget.textBoxBgColor != null
-                      ? Color(widget.textBoxBgColor!)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(widget.textBoxRadius),
-                  border: widget.textBoxBorder > 0 &&
-                          widget.textBoxBorderColor != null
-                      ? Border.all(
-                          color: Color(widget.textBoxBorderColor!),
-                          width: widget.textBoxBorder,
-                        )
-                      : null,
-                  boxShadow: widget.textBoxShadow
-                      ? [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.18),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ]
-                      : null,
-                )
-              : null,
-          padding: hasDecoration ? EdgeInsets.all(widget.textBoxPadding) : null,
-          child: DesktopTextField(
-            controller: widget.controller,
-            focusNode: widget.focusNode,
-            maxLines: null,
-            expands: true,
-            textAlign: widget.textAlign,
-            textAlignVertical: TextAlignVertical.top,
-            style: style,
-            cursorColor: widget.foreground,
-            borderless: true,
-            strutStyle: StrutStyle.fromTextStyle(style, forceStrutHeight: true),
-            scrollPhysics: const NeverScrollableScrollPhysics(),
-            onChanged: widget.onChanged,
+        child: Align(
+          alignment: Alignment.topLeft,
+          child: Container(
+            decoration: hasDecoration
+                ? BoxDecoration(
+                    color: widget.textBoxBgColor != null
+                        ? Color(widget.textBoxBgColor!)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(widget.textBoxRadius),
+                    border:
+                        widget.textBoxBorder > 0 &&
+                            widget.textBoxBorderColor != null
+                        ? Border.all(
+                            color: Color(widget.textBoxBorderColor!),
+                            width: widget.textBoxBorder,
+                          )
+                        : null,
+                    boxShadow: widget.textBoxShadow
+                        ? [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.18),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ]
+                        : null,
+                  )
+                : null,
+            padding: hasDecoration
+                ? EdgeInsets.all(widget.textBoxPadding)
+                : null,
+            child: SizedBox(
+              width: widget.pageWidth - widget.layout.edge * 2,
+              child: DesktopTextField(
+                controller: widget.controller,
+                focusNode: widget.focusNode,
+                maxLines: null,
+                expands: false,
+                textAlign: widget.textAlign,
+                textAlignVertical: TextAlignVertical.top,
+                style: style,
+                cursorColor: widget.foreground,
+                borderless: true,
+                strutStyle: StrutStyle.fromTextStyle(
+                  style,
+                  forceStrutHeight: true,
+                ),
+                scrollPhysics: const NeverScrollableScrollPhysics(),
+                onChanged: widget.onChanged,
+              ),
+            ),
           ),
         ),
       ),
