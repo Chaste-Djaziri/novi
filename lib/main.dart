@@ -29,6 +29,8 @@ import 'pages_sidebar.dart';
 
 import 'package:flutter/services.dart';
 
+enum SelectionTransformMode { none, move, resize, rotate, lasso }
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (!kIsWeb &&
@@ -119,7 +121,13 @@ class _WorkspaceState extends State<Workspace>
   Offset? gestureStart;
   Offset? lastPoint;
   Rect? selectionBox;
+  List<Offset>? selectionPath;
   bool movingSelection = false;
+  SelectionTransformMode selectionTransformMode = SelectionTransformMode.none;
+  Map<int, List<List<double>>>? _selectionOriginalStrokes;
+  Offset? _selectionCenter;
+  double _selectionStartDistance = 0;
+  double _selectionStartAngle = 0;
   bool editedGesture = false;
   Offset? _inkHover;
   Offset? _inkGlobalPointer;
@@ -365,6 +373,8 @@ class _WorkspaceState extends State<Workspace>
       activePointer = null;
       gestureStart = null;
       selectionBox = null;
+      selectionPath = null;
+      session.textBoxSelected = false;
     });
     store?.saveOpenTabs(openIds);
     if (pushHistory) {
@@ -389,7 +399,9 @@ class _WorkspaceState extends State<Workspace>
     setState(() {
       session.tool = tool;
       session.selection.clear();
+      session.textBoxSelected = false;
       selectionBox = null;
+      selectionPath = null;
     });
     if (tool == EditorTool.text) {
       session
@@ -2045,6 +2057,14 @@ class _WorkspaceState extends State<Workspace>
                                       activeStrokePageIndex == pageIndex
                                       ? selectionBox
                                       : null,
+                                  selectionPath:
+                                      activeStrokePageIndex == pageIndex
+                                      ? selectionPath
+                                      : null,
+                                  selectedBounds:
+                                      activeStrokePageIndex == pageIndex
+                                      ? selectedBounds()
+                                      : null,
                                 ),
                                 size: Size.infinite,
                               ),
@@ -2194,15 +2214,72 @@ class _WorkspaceState extends State<Workspace>
         .where((i) => i < page.strokes.length)
         .expand((i) => page.strokes[i])
         .toList();
-    if (points.isEmpty) {
+    if (points.isEmpty && !session.textBoxSelected) {
       return null;
     }
-    return Rect.fromLTRB(
-      points.map((p) => p[0]).reduce(math.min),
-      points.map((p) => p[1]).reduce(math.min),
-      points.map((p) => p[0]).reduce(math.max),
-      points.map((p) => p[1]).reduce(math.max),
-    ).inflate(8);
+    final strokeBounds = points.isEmpty
+        ? null
+        : Rect.fromLTRB(
+            points.map((p) => p[0]).reduce(math.min),
+            points.map((p) => p[1]).reduce(math.min),
+            points.map((p) => p[0]).reduce(math.max),
+            points.map((p) => p[1]).reduce(math.max),
+          );
+    final textBounds = session.textBoxSelected ? _textBoxBounds(page) : null;
+    if (strokeBounds == null) return textBounds!.inflate(8);
+    if (textBounds == null) return strokeBounds.inflate(8);
+    return strokeBounds.expandToInclude(textBounds).inflate(8);
+  }
+
+  Rect _textBoxBounds(NotebookPage page) {
+    final width = current?.landscape == true ? 980.0 : 760.0;
+    final height = current?.landscape == true ? 760.0 : 980.0;
+    final lines = math.max(1, '\n'.allMatches(page.text).length + 1);
+    final contentHeight = (lines * 28.0 + 32.0).clamp(48.0, height - 32.0);
+    return Rect.fromLTWH(24, 24, width - 48, contentHeight);
+  }
+
+  bool _strokeIncluded(Map<String, dynamic> style) {
+    final kind = style['kind'] as String?;
+    if (kind == 'tape') return session.lassoIncludes['Tape'] ?? true;
+    if (kind == 'shape') return session.lassoIncludes['Shapes'] ?? true;
+    if (kind == 'arrow') return session.lassoIncludes['Arrows'] ?? true;
+    if (kind == 'image') return session.lassoIncludes['Images'] ?? true;
+    return session.lassoIncludes['Handwriting'] ?? true;
+  }
+
+  bool _pointInPolygon(Offset point, List<Offset> polygon) {
+    var inside = false;
+    for (var i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      final a = polygon[i];
+      final b = polygon[j];
+      final intersects =
+          ((a.dy > point.dy) != (b.dy > point.dy)) &&
+          point.dx < (b.dx - a.dx) * (point.dy - a.dy) / (b.dy - a.dy) + a.dx;
+      if (intersects) inside = !inside;
+    }
+    return inside;
+  }
+
+  bool _selectionContains(Offset point) {
+    if (session.lassoType == LassoType.freehand) {
+      final path = selectionPath;
+      return path != null && path.length >= 3 && _pointInPolygon(point, path);
+    }
+    return selectionBox?.contains(point) ?? false;
+  }
+
+  void _captureSelectionGeometry() {
+    final page = _activePage;
+    _selectionOriginalStrokes = {
+      for (final index in session.selection)
+        if (index < page.strokes.length)
+          index: [
+            for (final point in page.strokes[index]) List<double>.from(point),
+          ],
+    };
+    final bounds = selectedBounds();
+    _selectionCenter = bounds?.center;
   }
 
   void pointerDown(PointerDownEvent e, {int pageIndex = 0}) {
@@ -2231,9 +2308,40 @@ class _WorkspaceState extends State<Workspace>
     lastPoint = e.localPosition;
     editedGesture = false;
     if (session.tool == EditorTool.select) {
-      movingSelection = selectedBounds()?.contains(e.localPosition) ?? false;
-      if (!movingSelection) {
+      final bounds = selectedBounds();
+      final center = bounds?.center;
+      final rotationHandle = center == null
+          ? null
+          : Offset(center.dx, bounds!.top - 24);
+      final resizeHandle = bounds?.bottomRight;
+      if (rotationHandle != null &&
+          (e.localPosition - rotationHandle).distance <= 14) {
+        final selectionCenter = center!;
+        selectionTransformMode = SelectionTransformMode.rotate;
+        _selectionCenter = selectionCenter;
+        _selectionStartAngle = math.atan2(
+          e.localPosition.dy - selectionCenter.dy,
+          e.localPosition.dx - selectionCenter.dx,
+        );
+        _captureSelectionGeometry();
+      } else if (resizeHandle != null &&
+          (e.localPosition - resizeHandle).distance <= 14) {
+        final selectionCenter = center!;
+        selectionTransformMode = SelectionTransformMode.resize;
+        _selectionCenter = selectionCenter;
+        _selectionStartDistance = (e.localPosition - selectionCenter).distance;
+        _captureSelectionGeometry();
+      } else if (bounds?.contains(e.localPosition) == true) {
+        movingSelection = true;
+        selectionTransformMode = SelectionTransformMode.move;
+        _captureSelectionGeometry();
+      } else {
+        selectionTransformMode = SelectionTransformMode.lasso;
         setState(() => session.selection.clear());
+        session.textBoxSelected = false;
+        if (session.lassoType == LassoType.freehand) {
+          selectionPath = [e.localPosition];
+        }
       }
     } else if (session.tool == EditorTool.eraser) {
       eraseAt(e.localPosition, pageIndex: pageIndex);
@@ -2271,7 +2379,7 @@ class _WorkspaceState extends State<Workspace>
       if (editedGesture) save();
     } else if (session.tool == EditorTool.select) {
       setState(() {
-        if (movingSelection) {
+        if (selectionTransformMode == SelectionTransformMode.move) {
           if (!editedGesture) {
             snapshot();
             editedGesture = true;
@@ -2286,8 +2394,57 @@ class _WorkspaceState extends State<Workspace>
               }
             }
           }
+        } else if (selectionTransformMode == SelectionTransformMode.resize ||
+            selectionTransformMode == SelectionTransformMode.rotate) {
+          if (!editedGesture) {
+            snapshot();
+            editedGesture = true;
+          }
+          final center = _selectionCenter;
+          final originals = _selectionOriginalStrokes;
+          if (center != null && originals != null) {
+            var scale = 1.0;
+            var angle = 0.0;
+            if (selectionTransformMode == SelectionTransformMode.resize) {
+              scale =
+                  ((e.localPosition - center).distance /
+                          math.max(1, _selectionStartDistance))
+                      .clamp(0.1, 10.0);
+            } else {
+              final currentAngle = math.atan2(
+                e.localPosition.dy - center.dy,
+                e.localPosition.dx - center.dx,
+              );
+              angle = currentAngle - _selectionStartAngle;
+            }
+            final sinAngle = math.sin(angle);
+            final cosAngle = math.cos(angle);
+            final page = _activePage;
+            for (final entry in originals.entries) {
+              if (entry.key >= page.strokes.length) continue;
+              page.strokes[entry.key] = [
+                for (final point in entry.value)
+                  () {
+                    final dx = point[0] - center.dx;
+                    final dy = point[1] - center.dy;
+                    final sx = dx * scale;
+                    final sy = dy * scale;
+                    return [
+                      center.dx + sx * cosAngle - sy * sinAngle,
+                      center.dy + sx * sinAngle + sy * cosAngle,
+                      point[2],
+                    ];
+                  }(),
+              ];
+            }
+          }
         } else {
-          selectionBox = Rect.fromPoints(gestureStart!, e.localPosition);
+          if (session.lassoType == LassoType.freehand) {
+            selectionPath ??= [];
+            selectionPath!.add(e.localPosition);
+          } else {
+            selectionBox = Rect.fromPoints(gestureStart!, e.localPosition);
+          }
         }
       });
     } else if (activeStroke != null) {
@@ -2517,7 +2674,7 @@ class _WorkspaceState extends State<Workspace>
   }
 
   void deleteSelection() {
-    if (session.selection.isEmpty) {
+    if (session.selection.isEmpty && !session.textBoxSelected) {
       return;
     }
     final page = _activePage;
@@ -2531,7 +2688,19 @@ class _WorkspaceState extends State<Workspace>
           page.inkStyles.removeAt(i);
         }
       }
+      if (session.textBoxSelected) {
+        page.text = '';
+        page.textStyles.clear();
+        session
+            .controllerForPage(
+              activeStrokePageIndex,
+              page.text,
+              serializedRanges: page.textStyles,
+            )
+            .clear();
+      }
       session.selection.clear();
+      session.textBoxSelected = false;
       save();
     });
   }
@@ -2604,14 +2773,32 @@ class _WorkspaceState extends State<Workspace>
         page.inkStyles.add(finalStyle);
         save();
       } else if (session.tool == EditorTool.select &&
-          !movingSelection &&
-          selectionBox != null) {
+          selectionTransformMode == SelectionTransformMode.lasso) {
         for (var i = 0; i < page.strokes.length; i++) {
-          if (page.strokes[i].any(
-            (p) => selectionBox!.contains(Offset(p[0], p[1])),
-          )) {
+          final style = i < page.inkStyles.length
+              ? page.inkStyles[i]
+              : const <String, dynamic>{};
+          if (_strokeIncluded(style) &&
+              page.strokes[i].any(
+                (p) => _selectionContains(Offset(p[0], p[1])),
+              )) {
             session.selection.add(i);
           }
+        }
+        if ((session.lassoIncludes['Text Boxes'] ?? true) &&
+            page.text.isNotEmpty) {
+          final textBounds = _textBoxBounds(page);
+          final selected = selectionPath != null
+              ? selectionPath!.any(
+                  (point) => _pointInPolygon(point, [
+                    textBounds.topLeft,
+                    textBounds.topRight,
+                    textBounds.bottomRight,
+                    textBounds.bottomLeft,
+                  ]),
+                )
+              : selectionBox?.overlaps(textBounds) == true;
+          if (selected) session.textBoxSelected = true;
         }
       } else if (session.tool == EditorTool.eraser &&
           session.eraserAutoDeselect) {
@@ -2623,7 +2810,12 @@ class _WorkspaceState extends State<Workspace>
       activeStyle = null;
       activePointer = null;
       selectionBox = null;
+      selectionPath = null;
       gestureStart = null;
+      movingSelection = false;
+      selectionTransformMode = SelectionTransformMode.none;
+      _selectionOriginalStrokes = null;
+      _selectionCenter = null;
     });
   }
 }
@@ -2847,10 +3039,14 @@ class InkPainter extends CustomPainter {
     this.styles = const [],
     this.selected = const {},
     this.selectionBox,
+    this.selectionPath,
+    this.selectedBounds,
   }) : _fingerprint = Object.hash(
          color,
          selectionBox,
+         selectedBounds,
          Object.hashAll(selected),
+         selectionPath == null ? null : Object.hashAll(selectionPath),
          Object.hashAll(
            strokes.map((stroke) => Object.hashAll(stroke.expand((p) => p))),
          ),
@@ -2860,6 +3056,8 @@ class InkPainter extends CustomPainter {
   final List<Map<String, dynamic>> styles;
   final Set<int> selected;
   final Rect? selectionBox;
+  final List<Offset>? selectionPath;
+  final Rect? selectedBounds;
   final Color color;
   final List<List<List<double>>> strokes;
   @override
@@ -2947,6 +3145,51 @@ class InkPainter extends CustomPainter {
           ..color = color
           ..style = PaintingStyle.stroke,
       );
+    }
+    if (selectionPath != null && selectionPath!.length > 1) {
+      final path = Path()
+        ..moveTo(selectionPath!.first.dx, selectionPath!.first.dy);
+      for (final point in selectionPath!.skip(1)) {
+        path.lineTo(point.dx, point.dy);
+      }
+      canvas.drawPath(
+        path,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2,
+      );
+    }
+    if (selectedBounds != null && selected.isNotEmpty) {
+      final bounds = selectedBounds!;
+      final handlePaint = Paint()..color = color;
+      canvas.drawRect(
+        bounds,
+        Paint()
+          ..color = color.withValues(alpha: 0.75)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2,
+      );
+      canvas.drawLine(
+        Offset(bounds.center.dx, bounds.top),
+        Offset(bounds.center.dx, bounds.top - 24),
+        Paint()
+          ..color = color.withValues(alpha: 0.75)
+          ..strokeWidth = 1,
+      );
+      canvas.drawCircle(
+        Offset(bounds.center.dx, bounds.top - 24),
+        5,
+        handlePaint,
+      );
+      for (final point in [
+        bounds.topLeft,
+        bounds.topRight,
+        bounds.bottomLeft,
+        bounds.bottomRight,
+      ]) {
+        canvas.drawCircle(point, 5, handlePaint);
+      }
     }
   }
 

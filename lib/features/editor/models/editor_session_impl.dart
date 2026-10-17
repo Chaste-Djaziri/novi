@@ -69,6 +69,7 @@ class EditorSession {
   final List<Notebook> undo = [];
   final List<Notebook> redo = [];
   final Set<int> selection = {};
+  bool textBoxSelected = false;
   final Set<int> composingPages = {};
   EditorTool tool;
   EditorTool previousTool = EditorTool.select;
