@@ -154,6 +154,20 @@ void main() {
     expect(bounds.height, closeTo(110, 6));
   });
 
+  test('sparsely sampled hand-drawn ovals are still fitted', () {
+    final outline = [
+      for (var i = 0; i < 18; i++)
+        Offset(
+          180 + (100 + 4 * math.sin(i * 1.7)) * math.cos(i * 2 * math.pi / 18),
+          140 + (50 + 3 * math.cos(i * 1.3)) * math.sin(i * 2 * math.pi / 18),
+        ),
+    ];
+    final result = ShapeRecognition.recognize(
+      samples(outline, perEdge: 1, noise: 2.5),
+    );
+    expect(result.stroke.length, 49);
+  });
+
   test('a rotated ellipse fits without becoming a polygon', () {
     const angle = 0.64;
     final outline = [
