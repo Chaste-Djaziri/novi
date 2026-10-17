@@ -78,7 +78,10 @@ class ShapeRecognition {
     }
 
     // An ellipse needs both a smooth contour and a close geometric fit.
-    if (corners.length < 3) {
+    final strongestCorner = corners.isEmpty
+        ? 0.0
+        : corners.map((index) => turns[index]).reduce(math.max);
+    if (corners.length < 3 || strongestCorner < 0.75) {
       final center = ring.reduce((a, b) => a + b) / ring.length.toDouble();
       var xx = 0.0;
       var yy = 0.0;
