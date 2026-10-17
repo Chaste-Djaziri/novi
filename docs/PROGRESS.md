@@ -19,6 +19,13 @@ Writing materials and paper indicators are implemented. Rich text formatting now
 
 Hot-reload compatibility for pages created before rich-text style ranges was added is fixed. Legacy pages now lazily initialize missing `textStyles` instead of crashing during layout. The full Flutter suite passes 60 tests and `flutter analyze` reports no issues.
 
+## Select controls and transforms — verified
+- Added rectangular and freehand lasso selection.
+- Selection filters now honor the configured categories, including handwriting, shapes, tape, arrows, images, and text boxes.
+- Selected ink can be moved, resized from corner handles, rotated from the rotation handle, and deleted.
+- Text boxes can be selected, moved, resized, rotated, and deleted; their transform state persists with each page.
+- Verified with `flutter analyze` and the full Flutter suite: 61 tests passed.
+
 ## Rich text scope formatting — verified
 - Added a formatting scope selector for selected text, the current text box, and the whole document.
 - Routed font size, font family, bold, italic, underline, strikethrough, text color, and text-box background actions through scope-aware formatting.
