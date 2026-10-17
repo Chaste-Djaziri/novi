@@ -9,6 +9,45 @@ extension FloatingToolControlsTexttoolbar on FloatingToolControlsState {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        PopupMenuButton<TextFormatScope>(
+          key: const Key('text-format-scope-button'),
+          tooltip: 'Formatting scope',
+          initialValue: session.textFormatScope,
+          onSelected: (scope) {
+            setState(() => session.textFormatScope = scope);
+            widget.onSettings();
+          },
+          itemBuilder: (context) => const [
+            PopupMenuItem(
+              value: TextFormatScope.selection,
+              child: Text('Selected text'),
+            ),
+            PopupMenuItem(
+              value: TextFormatScope.textBox,
+              child: Text('Current text box'),
+            ),
+            PopupMenuItem(
+              value: TextFormatScope.document,
+              child: Text('Whole document'),
+            ),
+          ],
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+            child: Text(
+              switch (session.textFormatScope) {
+                TextFormatScope.selection => 'Sel',
+                TextFormatScope.textBox => 'Box',
+                TextFormatScope.document => 'Doc',
+              },
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 4),
         // 1. Color button ( ▾ ) (Screenshot 3)
         GestureDetector(
           key: _textColorKey,
