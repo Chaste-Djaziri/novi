@@ -584,6 +584,8 @@ Confirm material feel and pressure with a physical tablet in the normal Mac app.
 - [x] Improved smooth-loop fitting: noisy near-circles snap to equal-radius circles, while imperfect ovals are fitted with stable center, rotation, and proportions.
 - [x] Added geometry assertions for circle center/radius and oval bounds; analyzer clean and full Flutter suite passes all 53 tests.
 - [x] Smooth oval gestures with sparse sampling now prefer ellipse fitting over weak polygon corner candidates; focused and full suites pass all 54 tests.
+- [x] Added five-point star recognition with ten alternating vertices and heart fitting with clean canonical curves; canvas coverage passes for Draw Shape, held pen, and held pencil.
+- [x] `flutter analyze`: clean. Full Flutter suite: all 56 tests pass.
 - [ ] Add resize/move interaction for a recognized shape before pointer release.
 - [ ] Finish reducing legacy editor files and add broader painter comparison coverage.
 
