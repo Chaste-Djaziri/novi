@@ -1423,7 +1423,8 @@ class _WorkspaceState extends State<Workspace>
                       onSettings: () => setState(() {}),
                       onUndo: undo.isEmpty ? null : () => history(true),
                       onRedo: redo.isEmpty ? null : () => history(false),
-                      onDelete: session.selection.isEmpty
+                      onDelete:
+                          session.selection.isEmpty && !session.textBoxSelected
                           ? null
                           : deleteSelection,
                       onZoom: zoom,
@@ -1820,7 +1821,9 @@ class _WorkspaceState extends State<Workspace>
                                     onBold: () =>
                                         formatText(bold: !note.boldText),
                                     onZoom: zoom,
-                                    onDelete: session.selection.isEmpty
+                                    onDelete:
+                                        session.selection.isEmpty &&
+                                            !session.textBoxSelected
                                         ? null
                                         : deleteSelection,
                                     onClearPage: clearActivePageInk,
