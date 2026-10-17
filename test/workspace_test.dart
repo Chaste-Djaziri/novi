@@ -73,6 +73,7 @@ void main() {
       await tester.dragFrom(point(100, 100), const Offset(100, 30));
       await tester.pumpAndSettle();
       expect(ink().strokes, hasLength(1));
+      expect(ink().selected, isEmpty);
       await tester.tap(find.byTooltip('Highlighter'));
       await tester.pumpAndSettle();
       await tester.dragFrom(point(100, 200), const Offset(100, 0));

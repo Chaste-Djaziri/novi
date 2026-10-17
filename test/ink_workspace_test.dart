@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,179 +9,264 @@ import 'package:novi/ink_material.dart';
 import 'package:novi/main.dart';
 import 'package:novi/notebook.dart';
 import 'package:novi/workspace_tools.dart';
+
 import 'desktop_test_support.dart';
 import 'widget_test.dart' show TestPaths;
 
 void main() {
   initializeDesktopWidgetTests();
-  testWidgets('material controls, captured options, holds, filters and zoomed paper footprints', (tester) async {
-    tester.view.physicalSize = const Size(1200, 800);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    final directory = Directory.systemTemp.createTempSync('novi-ink-workspace');
-    final original = PathProviderPlatform.instance;
-    PathProviderPlatform.instance = TestPaths(directory.path);
-    addTearDown(() {
-      PathProviderPlatform.instance = original;
-      directory.deleteSync(recursive: true);
-    });
-    final seed = LibraryStore('${directory.path}/novi.sqlite');
-    seed.save(Notebook(id: 'a', title: 'Materials', pages: [NotebookPage(), NotebookPage()]));
-    seed.close();
-    await tester.pumpWidget(const NoviApp());
-    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 150)));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Materials').first);
-    await tester.pumpAndSettle();
-    final dynamic workspace = tester.state(find.byType(Workspace));
-    final session = tester.widget<WorkspaceToolbar>(find.byType(WorkspaceToolbar)).session;
-    workspace.chooseTool(EditorTool.pen);
-    final note = workspace.current as Notebook;
+  testWidgets(
+    'material controls, captured options, holds, filters and zoomed paper footprints',
+    (tester) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final directory = Directory.systemTemp.createTempSync(
+        'novi-ink-workspace',
+      );
+      final original = PathProviderPlatform.instance;
+      PathProviderPlatform.instance = TestPaths(directory.path);
+      addTearDown(() {
+        PathProviderPlatform.instance = original;
+        directory.deleteSync(recursive: true);
+      });
+      final seed = LibraryStore('${directory.path}/novi.sqlite');
+      seed.save(
+        Notebook(
+          id: 'a',
+          title: 'Materials',
+          pages: [NotebookPage(), NotebookPage()],
+        ),
+      );
+      seed.close();
+      await tester.pumpWidget(const NoviApp());
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Materials').first);
+      await tester.pumpAndSettle();
+      final dynamic workspace = tester.state(find.byType(Workspace));
+      final session = tester
+          .widget<WorkspaceToolbar>(find.byType(WorkspaceToolbar))
+          .session;
+      workspace.chooseTool(EditorTool.pen);
+      final note = workspace.current as Notebook;
 
-    void start({int page = 0}) => workspace.pointerDown(const PointerDownEvent(pointer: 9, position: Offset(100, 100), buttons: 1, pressure: 0.4), pageIndex: page);
-    void move(double x, double y) => workspace.pointerMove(PointerMoveEvent(pointer: 9, position: Offset(x, y), buttons: 1, pressure: 1));
-    for (final mode in WritingMode.values) {
-      session.writingMode = mode;
-      start();
-      move(180, 110);
-      workspace.finishStroke();
-    }
-    expect(note.pages.first.inkStyles.map((s) => s['kind']), ['pen', 'pencil', 'highlighter', 'tape', 'shape']);
-    expect(note.pages.first.inkStyles[3]['width'], 22);
-    session.writingMode = WritingMode.tape;
-    session.width = 7;
-    session.tapeStraight = true;
-    start(page: 1);
-    move(140, 125);
-    move(190, 100);
-    session.writingMode = WritingMode.pencil;
-    session.tapeStraight = false;
-    workspace.finishStroke();
-    expect(note.pages[1].strokes.single, hasLength(2));
-    expect(note.pages[1].inkStyles.single['originalPoints'], hasLength(3));
-    expect(note.pages[1].inkStyles.single['width'], closeTo(7 * 22 / 3, 0.001));
-    session.writingMode = WritingMode.pen;
-    session.penType = PenType.brush;
-    start();
-    move(140, 115);
-    move(200, 100);
-    await tester.pump(const Duration(milliseconds: 510));
-    workspace.finishStroke();
-    expect(note.pages.first.strokes.last, hasLength(2));
-    expect(note.pages.first.inkStyles.last['penType'], 'brush');
-    session.writingMode = WritingMode.drawShape;
-    session.shapeRequireHoldToSnap = true;
-    start(); move(140, 103); move(200, 100);
-    workspace.finishStroke();
-    expect(note.pages.first.strokes.last, hasLength(3));
-    start(); move(140, 103); move(200, 100);
-    await tester.pump(const Duration(milliseconds: 510));
-    workspace.finishStroke();
-    expect(note.pages.first.strokes.last, hasLength(2));
-    // Filtered pencil is preserved independently from highlighter opacity.
-    workspace.chooseTool(EditorTool.eraser);
-    session.eraserType = EraserType.stroke;
-    session.eraserFilters.updateAll((key, value) => key == 'Highlighter');
-    note.pages.first.inkStyles.firstWhere((s) => s['kind'] == 'pencil')['opacity'] = 0.6;
-    final before = note.pages.first.strokes.length;
-    workspace.eraseAt(const Offset(130, 104), pageIndex: 0);
-    expect(note.pages.first.strokes.length, before - 1);
-    expect(note.pages.first.inkStyles.any((s) => s['kind'] == 'pencil'), isTrue);
-    // A single fast horizontal eraser event must cut a vertical stroke between its endpoints.
-    workspace.chooseTool(EditorTool.pen);
-    session.writingMode = WritingMode.pen;
-    workspace.pointerDown(const PointerDownEvent(pointer: 9, position: Offset(300, 200), buttons: 1), pageIndex: 0);
-    move(300, 400);
-    workspace.finishStroke();
-    final uncutCount = note.pages.first.strokes.length;
-    workspace.chooseTool(EditorTool.eraser);
-    session.eraserType = EraserType.precision;
-    session.eraserFilters.updateAll((key, value) => true);
-    session.eraserRadius = 6;
-    workspace.pointerDown(const PointerDownEvent(pointer: 9, position: Offset(200, 300), buttons: 1), pageIndex: 0);
-    move(400, 300);
-    workspace.finishStroke();
-    expect(note.pages.first.strokes.length, uncutCount + 1);
-    expect(note.pages.first.strokes.last.first[1], greaterThan(300));
-    workspace.history(true);
-    expect((workspace.current as Notebook).pages.first.strokes.length, uncutCount);
-    workspace.history(false);
-    expect((workspace.current as Notebook).pages.first.strokes.length, uncutCount + 1);
-    session.eraserRadius = 26;
-    final writingWidth = session.width;
-    workspace.chooseTool(EditorTool.pen);
-    expect(session.width, writingWidth);
-    session.writingMode = WritingMode.tape;
-    await tester.pumpAndSettle();
-    // Move each content page into view using the real page transform.
-    final papers = find.byWidgetPredicate((w) => w is CustomPaint && w.painter is InkPainter);
-    CustomPaint overlay(int page) => tester.widget<CustomPaint>(find.ancestor(of: papers.at(page), matching: find.byType(CustomPaint)).first);
-    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
-    await mouse.addPointer(location: Offset.zero);
-    for (final scale in [0.5, 1.0, 1.5]) {
-      for (var page = 0; page < 2; page++) {
-        final box = tester.renderObject<RenderBox>(papers.at(page));
-        final matrix = session.view.value.clone();
-        matrix.setEntry(0, 0, scale);
-        matrix.setEntry(1, 1, scale);
-        session.view.value = matrix;
-        await tester.pump();
-        final target = box.localToGlobal(const Offset(200, 200));
-        final translation = session.view.value.clone();
-        translation.storage[12] += 500 - target.dx;
-        translation.storage[13] += 400 - target.dy;
-        session.view.value = translation;
-        await tester.pump();
-        await mouse.moveTo(const Offset(490, 390));
-        await mouse.moveTo(const Offset(500, 400));
-        await tester.pump();
-        final painter = overlay(page).foregroundPainter! as InkFootprintPainter;
-        final expected = box.globalToLocal(const Offset(500, 400));
-        expect(painter.position.dx, closeTo(expected.dx, 0.1));
-        expect(painter.position.dy, closeTo(expected.dy, 0.1));
-        expect(painter.material.width, closeTo(7 * 22 / 3, 0.001));
-        workspace.chooseTool(EditorTool.eraser);
-        await tester.pump();
-        expect((overlay(page).foregroundPainter! as InkFootprintPainter).eraserRadius, 26);
-        workspace.chooseTool(EditorTool.pen);
-        await tester.pump();
+      void start({int page = 0}) => workspace.pointerDown(
+        const PointerDownEvent(
+          pointer: 9,
+          position: Offset(100, 100),
+          buttons: 1,
+          pressure: 0.4,
+        ),
+        pageIndex: page,
+      );
+      void move(double x, double y) => workspace.pointerMove(
+        PointerMoveEvent(
+          pointer: 9,
+          position: Offset(x, y),
+          buttons: 1,
+          pressure: 1,
+        ),
+      );
+      for (final mode in WritingMode.values) {
+        session.writingMode = mode;
+        start();
+        move(180, 110);
+        workspace.finishStroke();
       }
-    }
-    // Scrolling under a stationary pointer must not drag the indicator with the ink.
-    final stationary = session.view.value.clone();
-    stationary.storage[13] -= 40;
-    session.view.value = stationary;
-    await tester.pump();
-    final shiftedBox = tester.renderObject<RenderBox>(papers.at(1));
-    final shiftedPosition = (overlay(1).foregroundPainter! as InkFootprintPainter).position;
-    expect(shiftedPosition.dy, closeTo(shiftedBox.globalToLocal(const Offset(500, 400)).dy, 0.1));
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.space);
-    await tester.pump();
-    expect(overlay(1).foregroundPainter, isNull);
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.space);
-    await tester.pump();
-    expect(overlay(1).foregroundPainter, isA<InkFootprintPainter>());
-    await tester.tap(find.byTooltip('Medium stroke (4px)'));
-    await tester.pumpAndSettle();
-    expect(session.width, 4);
-    workspace.chooseTool(EditorTool.eraser);
-    await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Small eraser'));
-    await tester.pumpAndSettle();
-    expect(session.eraserRadius, 6);
-    expect(session.width, 4);
-    await mouse.moveTo(const Offset(10, 10));
-    await tester.pump();
-    expect(overlay(0).foregroundPainter, isNull);
-    await mouse.removePointer();
-    await tester.tapAt(const Offset(500, 400));
-    await tester.pump();
-    expect(overlay(1).foregroundPainter, isNull);
-    await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
-    await tester.pumpAndSettle();
-    expect(overlay(0).foregroundPainter, isNull);
-    await tester.pumpWidget(const SizedBox.shrink());
-    await tester.pumpAndSettle();
-  });
+      expect(note.pages.first.inkStyles.map((s) => s['kind']), [
+        'pen',
+        'pencil',
+        'highlighter',
+        'tape',
+        'shape',
+      ]);
+      expect(note.pages.first.inkStyles[3]['width'], 22);
+      session.writingMode = WritingMode.tape;
+      session.width = 7;
+      session.tapeStraight = true;
+      start(page: 1);
+      move(140, 125);
+      move(190, 100);
+      session.writingMode = WritingMode.pencil;
+      session.tapeStraight = false;
+      workspace.finishStroke();
+      expect(note.pages[1].strokes.single, hasLength(2));
+      expect(note.pages[1].inkStyles.single['originalPoints'], hasLength(3));
+      expect(
+        note.pages[1].inkStyles.single['width'],
+        closeTo(7 * 22 / 3, 0.001),
+      );
+      session.writingMode = WritingMode.pen;
+      session.penType = PenType.brush;
+      start();
+      move(140, 115);
+      move(200, 100);
+      await tester.pump(const Duration(milliseconds: 510));
+      workspace.finishStroke();
+      expect(note.pages.first.strokes.last, hasLength(2));
+      expect(note.pages.first.inkStyles.last['penType'], 'brush');
+      expect(session.selection, {note.pages.first.strokes.length - 1});
+      session.writingMode = WritingMode.drawShape;
+      session.shapeRequireHoldToSnap = true;
+      start();
+      move(140, 103);
+      move(200, 100);
+      workspace.finishStroke();
+      expect(note.pages.first.strokes.last, hasLength(3));
+      start();
+      move(140, 103);
+      move(200, 100);
+      await tester.pump(const Duration(milliseconds: 510));
+      workspace.finishStroke();
+      expect(note.pages.first.strokes.last, hasLength(2));
+      // Filtered pencil is preserved independently from highlighter opacity.
+      workspace.chooseTool(EditorTool.eraser);
+      session.eraserType = EraserType.stroke;
+      session.eraserFilters.updateAll((key, value) => key == 'Highlighter');
+      note.pages.first.inkStyles.firstWhere(
+        (s) => s['kind'] == 'pencil',
+      )['opacity'] = 0.6;
+      final before = note.pages.first.strokes.length;
+      workspace.eraseAt(const Offset(130, 104), pageIndex: 0);
+      expect(note.pages.first.strokes.length, before - 1);
+      expect(
+        note.pages.first.inkStyles.any((s) => s['kind'] == 'pencil'),
+        isTrue,
+      );
+      // A single fast horizontal eraser event must cut a vertical stroke between its endpoints.
+      workspace.chooseTool(EditorTool.pen);
+      session.writingMode = WritingMode.pen;
+      workspace.pointerDown(
+        const PointerDownEvent(
+          pointer: 9,
+          position: Offset(300, 200),
+          buttons: 1,
+        ),
+        pageIndex: 0,
+      );
+      move(300, 400);
+      workspace.finishStroke();
+      final uncutCount = note.pages.first.strokes.length;
+      workspace.chooseTool(EditorTool.eraser);
+      session.eraserType = EraserType.precision;
+      session.eraserFilters.updateAll((key, value) => true);
+      session.eraserRadius = 6;
+      workspace.pointerDown(
+        const PointerDownEvent(
+          pointer: 9,
+          position: Offset(200, 300),
+          buttons: 1,
+        ),
+        pageIndex: 0,
+      );
+      move(400, 300);
+      workspace.finishStroke();
+      expect(note.pages.first.strokes.length, uncutCount + 1);
+      expect(note.pages.first.strokes.last.first[1], greaterThan(300));
+      workspace.history(true);
+      expect(
+        (workspace.current as Notebook).pages.first.strokes.length,
+        uncutCount,
+      );
+      workspace.history(false);
+      expect(
+        (workspace.current as Notebook).pages.first.strokes.length,
+        uncutCount + 1,
+      );
+      session.eraserRadius = 26;
+      final writingWidth = session.width;
+      workspace.chooseTool(EditorTool.pen);
+      expect(session.width, writingWidth);
+      session.writingMode = WritingMode.tape;
+      await tester.pumpAndSettle();
+      // Move each content page into view using the real page transform.
+      final papers = find.byWidgetPredicate(
+        (w) => w is CustomPaint && w.painter is InkPainter,
+      );
+      CustomPaint overlay(int page) => tester.widget<CustomPaint>(
+        find
+            .ancestor(of: papers.at(page), matching: find.byType(CustomPaint))
+            .first,
+      );
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await mouse.addPointer(location: Offset.zero);
+      for (final scale in [0.5, 1.0, 1.5]) {
+        for (var page = 0; page < 2; page++) {
+          final box = tester.renderObject<RenderBox>(papers.at(page));
+          final matrix = session.view.value.clone();
+          matrix.setEntry(0, 0, scale);
+          matrix.setEntry(1, 1, scale);
+          session.view.value = matrix;
+          await tester.pump();
+          final target = box.localToGlobal(const Offset(200, 200));
+          final translation = session.view.value.clone();
+          translation.storage[12] += 500 - target.dx;
+          translation.storage[13] += 400 - target.dy;
+          session.view.value = translation;
+          await tester.pump();
+          await mouse.moveTo(const Offset(490, 390));
+          await mouse.moveTo(const Offset(500, 400));
+          await tester.pump();
+          final painter =
+              overlay(page).foregroundPainter! as InkFootprintPainter;
+          final expected = box.globalToLocal(const Offset(500, 400));
+          expect(painter.position.dx, closeTo(expected.dx, 0.1));
+          expect(painter.position.dy, closeTo(expected.dy, 0.1));
+          expect(painter.material.width, closeTo(7 * 22 / 3, 0.001));
+          workspace.chooseTool(EditorTool.eraser);
+          await tester.pump();
+          expect(
+            (overlay(page).foregroundPainter! as InkFootprintPainter)
+                .eraserRadius,
+            26,
+          );
+          workspace.chooseTool(EditorTool.pen);
+          await tester.pump();
+        }
+      }
+      // Scrolling under a stationary pointer must not drag the indicator with the ink.
+      final stationary = session.view.value.clone();
+      stationary.storage[13] -= 40;
+      session.view.value = stationary;
+      await tester.pump();
+      final shiftedBox = tester.renderObject<RenderBox>(papers.at(1));
+      final shiftedPosition =
+          (overlay(1).foregroundPainter! as InkFootprintPainter).position;
+      expect(
+        shiftedPosition.dy,
+        closeTo(shiftedBox.globalToLocal(const Offset(500, 400)).dy, 0.1),
+      );
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.space);
+      await tester.pump();
+      expect(overlay(1).foregroundPainter, isNull);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.space);
+      await tester.pump();
+      expect(overlay(1).foregroundPainter, isA<InkFootprintPainter>());
+      await tester.tap(find.byTooltip('Medium stroke (4px)'));
+      await tester.pumpAndSettle();
+      expect(session.width, 4);
+      workspace.chooseTool(EditorTool.eraser);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Small eraser'));
+      await tester.pumpAndSettle();
+      expect(session.eraserRadius, 6);
+      expect(session.width, 4);
+      await mouse.moveTo(const Offset(10, 10));
+      await tester.pump();
+      expect(overlay(0).foregroundPainter, isNull);
+      await mouse.removePointer();
+      await tester.tapAt(const Offset(500, 400));
+      await tester.pump();
+      expect(overlay(1).foregroundPainter, isNull);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
+      await tester.pumpAndSettle();
+      expect(overlay(0).foregroundPainter, isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    },
+  );
 }
