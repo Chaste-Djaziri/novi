@@ -66,6 +66,10 @@ class ShapeRecognition {
       }
     }
     corners.sort();
+    final heart = _fitHeart(ring, bounds, _meanPressure(original));
+    if (heart != null) return heart;
+    final star = _fitStar(ring, _meanPressure(original));
+    if (star != null) return star;
     if (corners.length >= 3 && corners.length <= 8) {
       final vertices = [for (final index in corners) ring[index]];
       final error = _meanEdgeError(ring, vertices, closed: true);
@@ -147,6 +151,103 @@ class ShapeRecognition {
       }
     }
     return RecognizedShape(original, isClosed: true);
+  }
+
+  static RecognizedShape? _fitStar(List<Offset> ring, double pressure) {
+    final center = ring.reduce((a, b) => a + b) / ring.length.toDouble();
+    final radii = [for (final point in ring) (point - center).distance];
+    final maxima = <int>[];
+    for (var i = 0; i < ring.length; i++) {
+      final previous = radii[(i - 1 + ring.length) % ring.length];
+      final next = radii[(i + 1) % ring.length];
+      if (radii[i] > previous && radii[i] >= next) maxima.add(i);
+    }
+    if (maxima.length != 5) return null;
+    final outer = maxima.map((index) => radii[index]).toList();
+    final inner = <double>[];
+    final vertices = <Offset>[];
+    for (var i = 0; i < maxima.length; i++) {
+      final outerIndex = maxima[i];
+      final nextOuter = maxima[(i + 1) % maxima.length];
+      var trough = (outerIndex + 1) % ring.length;
+      while (trough != nextOuter) {
+        if (radii[trough] < radii[(trough - 1 + ring.length) % ring.length] &&
+            radii[trough] <= radii[(trough + 1) % ring.length]) {
+          break;
+        }
+        trough = (trough + 1) % ring.length;
+      }
+      vertices
+        ..add(ring[outerIndex])
+        ..add(ring[trough]);
+      inner.add(radii[trough]);
+    }
+    final outerMean = outer.reduce((a, b) => a + b) / outer.length;
+    final innerMean = inner.reduce((a, b) => a + b) / inner.length;
+    if (outerMean / innerMean < 1.35) return null;
+    return RecognizedShape(
+      _samples(vertices, pressure, closed: true),
+      isClosed: true,
+    );
+  }
+
+  static RecognizedShape? _fitHeart(
+    List<Offset> ring,
+    Rect bounds,
+    double pressure,
+  ) {
+    final centerX = bounds.center.dx;
+    final top = bounds.top;
+    final height = bounds.height;
+    final leftLobe = ring
+        .where((point) => point.dx < centerX - bounds.width * 0.12)
+        .map((point) => point.dy)
+        .reduce(math.min);
+    final rightLobe = ring
+        .where((point) => point.dx > centerX + bounds.width * 0.12)
+        .map((point) => point.dy)
+        .reduce(math.min);
+    final notch = ring
+        .where((point) => (point.dx - centerX).abs() < bounds.width * 0.08)
+        .map((point) => point.dy)
+        .reduce(math.min);
+    final bottom = ring.reduce((a, b) => a.dy > b.dy ? a : b);
+    if ((leftLobe - top).abs() > height * 0.16 ||
+        (rightLobe - top).abs() > height * 0.16 ||
+        notch < math.max(leftLobe, rightLobe) + height * 0.06 ||
+        (bottom.dx - centerX).abs() > bounds.width * 0.2) {
+      return null;
+    }
+    const samples = 48;
+    final source = <Offset>[];
+    for (var i = 0; i < samples; i++) {
+      final t = i * 2 * math.pi / samples;
+      final x = 16 * math.pow(math.sin(t), 3);
+      final y =
+          13 * math.cos(t) -
+          5 * math.cos(2 * t) -
+          2 * math.cos(3 * t) -
+          math.cos(4 * t);
+      source.add(Offset(x.toDouble(), y));
+    }
+    final sourceBounds = _bounds(source);
+    final fitted = [
+      for (final point in source)
+        Offset(
+          bounds.left +
+              (point.dx - sourceBounds.left) /
+                  sourceBounds.width *
+                  bounds.width,
+          bounds.bottom -
+              (point.dy - sourceBounds.top) /
+                  sourceBounds.height *
+                  bounds.height,
+        ),
+    ];
+    return RecognizedShape(
+      _samples(fitted, pressure, closed: true),
+      isClosed: true,
+    );
   }
 
   static RecognizedShape _open(
