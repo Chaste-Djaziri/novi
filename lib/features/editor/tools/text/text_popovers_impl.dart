@@ -70,9 +70,14 @@ class _FontSizeMenuDialogState extends State<FontSizeMenuDialog> {
   void _setSize(double val) {
     final next = val.clamp(8.0, 96.0);
     setState(() => _size = next);
-    widget.note.fontSize = next;
-    widget.session.fontSize = next;
+    final scoped =
+        widget.session.hasActiveTextSelection(widget.note) ||
+        widget.session.textFormatScope == TextFormatScope.textBox;
     widget.onFontSize(next);
+    if (!scoped) {
+      widget.note.fontSize = next;
+      widget.session.fontSize = next;
+    }
     widget.onUpdate();
   }
 
@@ -442,8 +447,38 @@ class FontFamilyMenuDialog extends StatelessWidget {
                           key: Key('font-family-${families[i].$1}'),
                           onTap: () {
                             final name = families[i].$1;
-                            session.fontFamily = name;
-                            note.fontFamily = name;
+                            final selected = session.applySelectedTextStyle(
+                              note,
+                              {'fontFamily': name},
+                            );
+                            final textBox =
+                                session.textFormatScope ==
+                                TextFormatScope.textBox;
+                            if (!selected && !textBox) {
+                              session.fontFamily = name;
+                              note.fontFamily = name;
+                            } else if (!selected) {
+                              final pageIndex = session.activeTextPage.clamp(
+                                0,
+                                note.pages.length - 1,
+                              );
+                              final page = note.pages[pageIndex];
+                              final controller = session.controllerForPage(
+                                pageIndex,
+                                page.text,
+                                serializedRanges: page.textStyles,
+                              );
+                              if (controller.text.isNotEmpty) {
+                                controller.applyStyle(
+                                  TextSelection(
+                                    baseOffset: 0,
+                                    extentOffset: controller.text.length,
+                                  ),
+                                  {'fontFamily': name},
+                                );
+                                page.textStyles = controller.serializedRanges;
+                              }
+                            }
                             onUpdate();
                             Navigator.of(context).pop();
                           },
@@ -660,7 +695,13 @@ class _TextStyleMenuDialogState extends State<TextStyleMenuDialog> {
                           fontSize: 16,
                         ),
                         onTap: () {
-                          if (widget.onBold != null) {
+                          final scoped =
+                              widget.session.hasActiveTextSelection(
+                                widget.note,
+                              ) ||
+                              widget.session.textFormatScope ==
+                                  TextFormatScope.textBox;
+                          if (widget.onBold != null && scoped) {
                             widget.onBold!();
                           } else {
                             note.boldText = !note.boldText;
@@ -680,10 +721,40 @@ class _TextStyleMenuDialogState extends State<TextStyleMenuDialog> {
                           fontSize: 16,
                         ),
                         onTap: () {
-                          setState(() {
-                            session.italicText = !session.italicText;
-                            note.italicText = session.italicText;
-                          });
+                          final next = !session.italicText;
+                          final selected = session.applySelectedTextStyle(
+                            note,
+                            {'italic': next},
+                          );
+                          if (!selected &&
+                              session.textFormatScope !=
+                                  TextFormatScope.textBox) {
+                            setState(() {
+                              session.italicText = next;
+                              note.italicText = next;
+                            });
+                          } else if (!selected) {
+                            final pageIndex = session.activeTextPage.clamp(
+                              0,
+                              note.pages.length - 1,
+                            );
+                            final page = note.pages[pageIndex];
+                            final controller = session.controllerForPage(
+                              pageIndex,
+                              page.text,
+                              serializedRanges: page.textStyles,
+                            );
+                            if (controller.text.isNotEmpty) {
+                              controller.applyStyle(
+                                TextSelection(
+                                  baseOffset: 0,
+                                  extentOffset: controller.text.length,
+                                ),
+                                {'italic': next},
+                              );
+                              page.textStyles = controller.serializedRanges;
+                            }
+                          }
                           widget.onUpdate();
                         },
                       ),
@@ -697,10 +768,40 @@ class _TextStyleMenuDialogState extends State<TextStyleMenuDialog> {
                           fontSize: 16,
                         ),
                         onTap: () {
-                          setState(() {
-                            session.underlineText = !session.underlineText;
-                            note.underlineText = session.underlineText;
-                          });
+                          final next = !session.underlineText;
+                          final selected = session.applySelectedTextStyle(
+                            note,
+                            {'underline': next},
+                          );
+                          if (!selected &&
+                              session.textFormatScope !=
+                                  TextFormatScope.textBox) {
+                            setState(() {
+                              session.underlineText = next;
+                              note.underlineText = next;
+                            });
+                          } else if (!selected) {
+                            final pageIndex = session.activeTextPage.clamp(
+                              0,
+                              note.pages.length - 1,
+                            );
+                            final page = note.pages[pageIndex];
+                            final controller = session.controllerForPage(
+                              pageIndex,
+                              page.text,
+                              serializedRanges: page.textStyles,
+                            );
+                            if (controller.text.isNotEmpty) {
+                              controller.applyStyle(
+                                TextSelection(
+                                  baseOffset: 0,
+                                  extentOffset: controller.text.length,
+                                ),
+                                {'underline': next},
+                              );
+                              page.textStyles = controller.serializedRanges;
+                            }
+                          }
                           widget.onUpdate();
                         },
                       ),
@@ -714,11 +815,40 @@ class _TextStyleMenuDialogState extends State<TextStyleMenuDialog> {
                           fontSize: 16,
                         ),
                         onTap: () {
-                          setState(() {
-                            session.strikethroughText =
-                                !session.strikethroughText;
-                            note.strikethroughText = session.strikethroughText;
-                          });
+                          final next = !session.strikethroughText;
+                          final selected = session.applySelectedTextStyle(
+                            note,
+                            {'strikethrough': next},
+                          );
+                          if (!selected &&
+                              session.textFormatScope !=
+                                  TextFormatScope.textBox) {
+                            setState(() {
+                              session.strikethroughText = next;
+                              note.strikethroughText = next;
+                            });
+                          } else if (!selected) {
+                            final pageIndex = session.activeTextPage.clamp(
+                              0,
+                              note.pages.length - 1,
+                            );
+                            final page = note.pages[pageIndex];
+                            final controller = session.controllerForPage(
+                              pageIndex,
+                              page.text,
+                              serializedRanges: page.textStyles,
+                            );
+                            if (controller.text.isNotEmpty) {
+                              controller.applyStyle(
+                                TextSelection(
+                                  baseOffset: 0,
+                                  extentOffset: controller.text.length,
+                                ),
+                                {'strikethrough': next},
+                              );
+                              page.textStyles = controller.serializedRanges;
+                            }
+                          }
                           widget.onUpdate();
                         },
                       ),
@@ -1037,11 +1167,19 @@ class _TextColorMenuDialogState extends State<TextColorMenuDialog> {
                                 ),
                               );
                               if (col != null) {
-                                setState(() {
-                                  widget.session.textColor = col.toARGB32();
-                                  widget.note.textColor =
-                                      widget.session.textColor;
-                                });
+                                final color = col.toARGB32();
+                                final selected = widget.session
+                                    .applySelectedTextStyle(widget.note, {
+                                      'color': color,
+                                    });
+                                if (!selected &&
+                                    widget.session.textFormatScope !=
+                                        TextFormatScope.textBox) {
+                                  setState(() {
+                                    widget.session.textColor = color;
+                                    widget.note.textColor = color;
+                                  });
+                                }
                                 widget.onUpdate();
                               }
                             },
@@ -1104,10 +1242,16 @@ class _TextColorMenuDialogState extends State<TextColorMenuDialog> {
     return GestureDetector(
       key: Key('text-color-swatch-$argb'),
       onTap: () {
-        setState(() {
-          widget.session.textColor = argb;
-          widget.note.textColor = argb;
+        final selected = widget.session.applySelectedTextStyle(widget.note, {
+          'color': argb,
         });
+        if (!selected &&
+            widget.session.textFormatScope != TextFormatScope.textBox) {
+          setState(() {
+            widget.session.textColor = argb;
+            widget.note.textColor = argb;
+          });
+        }
         widget.onUpdate();
       },
       child: Container(
@@ -1897,15 +2041,22 @@ class _TextBoxStyleMenuDialogState extends State<TextBoxStyleMenuDialog> {
     return GestureDetector(
       key: Key('preset-swatch-$index'),
       onTap: () {
-        setState(() {
-          widget.session.textBoxPreset = index;
-          widget.session.textBoxBgColor = bgColor;
-          widget.session.textBoxBorderColor = borderColor;
-          widget.session.textBoxBorder = borderW;
-          widget.note.textBoxBgColor = bgColor;
-          widget.note.textBoxBorderColor = borderColor;
-          widget.note.textBoxBorder = borderW;
-        });
+        final selected =
+            bgColor != null &&
+            widget.session.applySelectedTextStyle(widget.note, {
+              'backgroundColor': bgColor,
+            });
+        if (!selected) {
+          setState(() {
+            widget.session.textBoxPreset = index;
+            widget.session.textBoxBgColor = bgColor;
+            widget.session.textBoxBorderColor = borderColor;
+            widget.session.textBoxBorder = borderW;
+            widget.note.textBoxBgColor = bgColor;
+            widget.note.textBoxBorderColor = borderColor;
+            widget.note.textBoxBorder = borderW;
+          });
+        }
         widget.onUpdate();
       },
       child: AnimatedContainer(
@@ -1957,10 +2108,16 @@ class _TextBoxStyleMenuDialogState extends State<TextBoxStyleMenuDialog> {
               ),
             );
             if (col != null) {
-              setState(() {
-                session.textBoxBgColor = col.toARGB32();
-                widget.note.textBoxBgColor = session.textBoxBgColor;
+              final color = col.toARGB32();
+              final selected = session.applySelectedTextStyle(widget.note, {
+                'backgroundColor': color,
               });
+              if (!selected) {
+                setState(() {
+                  session.textBoxBgColor = color;
+                  widget.note.textBoxBgColor = color;
+                });
+              }
               widget.onUpdate();
             }
           },

@@ -943,6 +943,42 @@ class _WorkspaceState extends State<Workspace>
 
   void formatText({double? size, bool? bold}) {
     snapshot();
+    final pageIndex = session.activeTextPage.clamp(
+      0,
+      current!.pages.length - 1,
+    );
+    final page = current!.pages[pageIndex];
+    final controller = session.controllerForPage(
+      pageIndex,
+      page.text,
+      serializedRanges: page.textStyles,
+    );
+    final patch = <String, dynamic>{};
+    if (size != null) {
+      patch['fontSize'] = size;
+    }
+    if (bold != null) {
+      patch['bold'] = bold;
+    }
+    if (patch.isNotEmpty &&
+        session.textFormatScope == TextFormatScope.selection &&
+        !controller.selection.isCollapsed) {
+      controller.applyStyle(controller.selection, patch);
+      page.textStyles = controller.serializedRanges;
+      setState(save);
+      return;
+    }
+    if (patch.isNotEmpty &&
+        session.textFormatScope == TextFormatScope.textBox &&
+        controller.text.isNotEmpty) {
+      controller.applyStyle(
+        TextSelection(baseOffset: 0, extentOffset: controller.text.length),
+        patch,
+      );
+      page.textStyles = controller.serializedRanges;
+      setState(save);
+      return;
+    }
     setState(() {
       current!.fontSize = size ?? current!.fontSize;
       current!.boldText = bold ?? current!.boldText;
@@ -1851,7 +1887,11 @@ class _WorkspaceState extends State<Workspace>
     EditorTool tool,
   ) {
     final page = note.pages[pageIndex];
-    final pageController = session.controllerForPage(pageIndex, page.text);
+    final pageController = session.controllerForPage(
+      pageIndex,
+      page.text,
+      serializedRanges: page.textStyles,
+    );
     final pageFocus = session.focusNodeForPage(pageIndex);
 
     return SizedBox(
@@ -1915,6 +1955,7 @@ class _WorkspaceState extends State<Workspace>
                         value,
                         pageWidth,
                         pageHeight,
+                        textStyles: pageController.serializedRanges,
                       ),
                     ),
                   ),
@@ -2029,6 +2070,7 @@ class _WorkspaceState extends State<Workspace>
     double height, {
     bool recordUndo = true,
     int? caretSource,
+    List<Map<String, dynamic>>? textStyles,
   }) {
     final note = current!;
     var caretPage = caretSource ?? pageIndex;
@@ -2053,6 +2095,9 @@ class _WorkspaceState extends State<Workspace>
     }
     setState(() {
       note.pages[pageIndex].text = value;
+      if (textStyles != null) {
+        note.pages[pageIndex].textStyles = textStyles;
+      }
       // Preserve in-progress IME composition. Reflow when it commits.
       if (!controller.value.composing.isValid ||
           controller.value.composing.isCollapsed) {
@@ -2079,7 +2124,11 @@ class _WorkspaceState extends State<Workspace>
             caretPage++;
             caretOffset -= split;
           }
-          final first = session.controllerForPage(i, note.pages[i].text);
+          final first = session.controllerForPage(
+            i,
+            note.pages[i].text,
+            serializedRanges: note.pages[i].textStyles,
+          );
           first.value = TextEditingValue(
             text: note.pages[i].text,
             selection: TextSelection.collapsed(
@@ -2089,7 +2138,11 @@ class _WorkspaceState extends State<Workspace>
               ),
             ),
           );
-          final next = session.controllerForPage(i + 1, note.pages[i + 1].text);
+          final next = session.controllerForPage(
+            i + 1,
+            note.pages[i + 1].text,
+            serializedRanges: note.pages[i + 1].textStyles,
+          );
           next.value = TextEditingValue(
             text: note.pages[i + 1].text,
             selection: TextSelection.collapsed(

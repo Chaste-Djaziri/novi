@@ -16,6 +16,7 @@ import 'features/editor/tools/text/text_formatting.dart';
 
 // Temporary compatibility export for callers migrating from this legacy file.
 export 'features/editor/tools/common/tool_types.dart';
+export 'features/editor/tools/text/text_formatting.dart';
 
 part 'features/editor/models/editor_session_impl.dart';
 part 'features/editor/tools/pen/pen_menu_impl.dart';
