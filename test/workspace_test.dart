@@ -86,9 +86,10 @@ void main() {
       );
       await tester.pumpAndSettle();
       tester
-          .widget<WorkspaceToolbar>(find.byType(WorkspaceToolbar))
-          .session
-          .eraserType = EraserType.stroke;
+              .widget<WorkspaceToolbar>(find.byType(WorkspaceToolbar))
+              .session
+              .eraserType =
+          EraserType.stroke;
       await tester.tapAt(point(150, 115));
       await tester.pumpAndSettle();
       expect(ink().strokes, hasLength(1));
@@ -110,6 +111,23 @@ void main() {
       await tester.tap(find.byTooltip('Undo'));
       await tester.pumpAndSettle();
       expect(ink().strokes, hasLength(2));
+      await tester.tap(find.byTooltip('Shapes'));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<WorkspaceToolbar>(find.byType(WorkspaceToolbar))
+            .session
+            .tool,
+        EditorTool.shapes,
+      );
+      await tester.tap(find.byKey(const Key('shape-type-ellipse')));
+      await tester.pumpAndSettle();
+      await tester.tapAt(point(300, 300));
+      await tester.pumpAndSettle();
+      expect(ink().strokes, hasLength(3));
+      expect(ink().styles.last['kind'], 'placedShape');
+      expect(ink().styles.last['shapeType'], 'ellipse');
+      expect(ink().styles.last['fill'], isTrue);
       await tester.tap(
         find.ancestor(
           of: find.byTooltip('Type'),
@@ -196,8 +214,8 @@ void main() {
       expect(alpha.text, 'Alpha text');
       expect(alpha.boldText, isTrue);
       expect(alpha.fontSize, 24);
-      expect(alpha.strokes, hasLength(2));
-      expect(alpha.inkStyles, hasLength(2));
+      expect(alpha.strokes, hasLength(3));
+      expect(alpha.inkStyles, hasLength(3));
       expect(beta.text, isEmpty);
       expect(beta.strokes, isEmpty);
       reopened.close();
