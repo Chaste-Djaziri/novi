@@ -4,7 +4,10 @@ part of '../../../workspace_tools.dart';
 /// persistence remains owned by the workspace controller.
 class EditorSession {
   EditorSession(Notebook note)
-    : text = TextEditingController(text: note.text),
+    : text = StyledTextController(
+        text: note.text,
+        serializedRanges: note.pages.first.textStyles,
+      ),
       tool = note.kind == 'Text document' ? EditorTool.text : EditorTool.select,
       fontSize = note.fontSize,
       fontFamily = note.fontFamily,
@@ -30,17 +33,24 @@ class EditorSession {
     });
   }
 
-  final TextEditingController text;
+  final StyledTextController text;
   final FocusNode textFocus = FocusNode();
   int activeTextPage = 0;
   final Map<int, TextEditingController> pageControllers = {};
   final Map<int, FocusNode> pageFocusNodes = {};
 
-  TextEditingController controllerForPage(int index, String initialText) {
+  StyledTextController controllerForPage(
+    int index,
+    String initialText, {
+    List<Map<String, dynamic>>? serializedRanges,
+  }) {
     if (index == 0) return text;
     return pageControllers.putIfAbsent(
       index,
-      () => TextEditingController(text: initialText),
+      () => StyledTextController(
+        text: initialText,
+        serializedRanges: serializedRanges,
+      ),
     );
   }
 
