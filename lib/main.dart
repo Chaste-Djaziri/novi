@@ -400,8 +400,10 @@ class _WorkspaceState extends State<Workspace>
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       session.tool = tool;
-      session.selection.clear();
-      session.textBoxSelected = false;
+      if (tool != EditorTool.shapes) {
+        session.selection.clear();
+        session.textBoxSelected = false;
+      }
       selectionBox = null;
       selectionPath = null;
     });
@@ -1420,7 +1422,10 @@ class _WorkspaceState extends State<Workspace>
                       session: session,
                       note: note,
                       onTool: chooseTool,
-                      onSettings: () => setState(() {}),
+                      onSettings: () => setState(() {
+                        applyShapeToolSettingsToSelection();
+                        save();
+                      }),
                       onUndo: undo.isEmpty ? null : () => history(true),
                       onRedo: redo.isEmpty ? null : () => history(false),
                       onDelete:
@@ -1815,6 +1820,7 @@ class _WorkspaceState extends State<Workspace>
                                     session: session,
                                     note: note,
                                     onSettings: () => setState(() {
+                                      applyShapeToolSettingsToSelection();
                                       save();
                                     }),
                                     onFontSize: (v) => formatText(size: v),
@@ -2383,6 +2389,21 @@ class _WorkspaceState extends State<Workspace>
       ..clear()
       ..add(page.strokes.length - 1);
     setState(save);
+  }
+
+  void applyShapeToolSettingsToSelection() {
+    if (session.tool != EditorTool.shapes) return;
+    final page = _activePage;
+    for (final index in session.selection) {
+      if (index >= page.inkStyles.length) continue;
+      final style = page.inkStyles[index];
+      if (style['kind'] != 'placedShape') continue;
+      style
+        ..['color'] = session.shapeToolStrokeColor
+        ..['fillColor'] = session.shapeToolFillColor
+        ..['fill'] = session.shapeToolFilled
+        ..['width'] = session.shapeToolStrokeWidth;
+    }
   }
 
   bool _selectionContains(Offset point) {

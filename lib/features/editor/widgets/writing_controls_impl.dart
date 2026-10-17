@@ -81,7 +81,6 @@ extension FloatingToolControlsWritingtoolbar on FloatingToolControlsState {
               onTap: () {
                 setState(() {
                   session.shapeToolStrokeColor = color;
-                  session.shapeToolFillColor = color | 0x55000000;
                 });
                 widget.onSettings();
               },
@@ -101,6 +100,34 @@ extension FloatingToolControlsWritingtoolbar on FloatingToolControlsState {
               ),
             ),
           ),
+        const SizedBox(width: 5),
+        GestureDetector(
+          key: const Key('shape-fill-color'),
+          onTap: () {
+            final current = session.shapeToolFillColor & 0x00ffffff;
+            final index = colors.indexWhere((color) => color == current);
+            final next = colors[(index + 1) % colors.length];
+            setState(() => session.shapeToolFillColor = next | 0x55000000);
+            widget.onSettings();
+          },
+          child: Tooltip(
+            message: 'Fill color',
+            child: Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                color: Color(session.shapeToolFillColor),
+                borderRadius: BorderRadius.circular(5),
+                border: Border.all(color: Colors.white70, width: 1),
+              ),
+              child: const Icon(
+                CupertinoIcons.paintbrush_fill,
+                size: 11,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }

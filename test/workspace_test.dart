@@ -128,6 +128,14 @@ void main() {
       expect(ink().styles.last['kind'], 'placedShape');
       expect(ink().styles.last['shapeType'], 'ellipse');
       expect(ink().styles.last['fill'], isTrue);
+      await tester.tap(find.byKey(const Key('shape-fill-toggle')));
+      await tester.pumpAndSettle();
+      expect(ink().styles.last['fill'], isFalse);
+      await tester.tap(find.byKey(const Key('shape-color-4293870660')));
+      await tester.pumpAndSettle();
+      expect(ink().styles.last['color'], 4293870660);
+      await tester.tap(find.byKey(const Key('shape-fill-color')));
+      await tester.pumpAndSettle();
       await tester.tap(
         find.ancestor(
           of: find.byTooltip('Type'),
