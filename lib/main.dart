@@ -31,6 +31,17 @@ import 'package:flutter/services.dart';
 
 enum SelectionTransformMode { none, move, resize, rotate, lasso }
 
+enum ResizeHandle {
+  topLeft,
+  top,
+  topRight,
+  right,
+  bottomRight,
+  bottom,
+  bottomLeft,
+  left,
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (!kIsWeb &&
@@ -124,9 +135,10 @@ class _WorkspaceState extends State<Workspace>
   List<Offset>? selectionPath;
   bool movingSelection = false;
   SelectionTransformMode selectionTransformMode = SelectionTransformMode.none;
+  ResizeHandle? _resizeHandle;
   Map<int, List<List<double>>>? _selectionOriginalStrokes;
   Offset? _selectionCenter;
-  double _selectionStartDistance = 0;
+  Rect? _selectionStartBounds;
   double _selectionStartAngle = 0;
   double _selectionStartTextScale = 1.0;
   double _selectionStartTextRotation = 0.0;
@@ -2411,7 +2423,77 @@ class _WorkspaceState extends State<Workspace>
           ],
     };
     final bounds = selectedBounds();
+    _selectionStartBounds = bounds;
     _selectionCenter = bounds?.center;
+  }
+
+  ResizeHandle? _resizeHandleAt(Offset point, Rect bounds) {
+    const hitRadius = 14.0;
+    final handles = <ResizeHandle, Offset>{
+      ResizeHandle.topLeft: bounds.topLeft,
+      ResizeHandle.top: Offset(bounds.center.dx, bounds.top),
+      ResizeHandle.topRight: bounds.topRight,
+      ResizeHandle.right: Offset(bounds.right, bounds.center.dy),
+      ResizeHandle.bottomRight: bounds.bottomRight,
+      ResizeHandle.bottom: Offset(bounds.center.dx, bounds.bottom),
+      ResizeHandle.bottomLeft: bounds.bottomLeft,
+      ResizeHandle.left: Offset(bounds.left, bounds.center.dy),
+    };
+    for (final entry in handles.entries) {
+      if ((point - entry.value).distance <= hitRadius) {
+        return entry.key;
+      }
+    }
+    return null;
+  }
+
+  Rect _resizedBounds(Rect start, Offset point, ResizeHandle handle) {
+    var left = start.left;
+    var top = start.top;
+    var right = start.right;
+    var bottom = start.bottom;
+    switch (handle) {
+      case ResizeHandle.topLeft:
+        left = point.dx;
+        top = point.dy;
+      case ResizeHandle.top:
+        top = point.dy;
+      case ResizeHandle.topRight:
+        right = point.dx;
+        top = point.dy;
+      case ResizeHandle.right:
+        right = point.dx;
+      case ResizeHandle.bottomRight:
+        right = point.dx;
+        bottom = point.dy;
+      case ResizeHandle.bottom:
+        bottom = point.dy;
+      case ResizeHandle.bottomLeft:
+        left = point.dx;
+        bottom = point.dy;
+      case ResizeHandle.left:
+        left = point.dx;
+    }
+    const minimumSize = 8.0;
+    if (right - left < minimumSize) {
+      if (handle == ResizeHandle.left ||
+          handle == ResizeHandle.topLeft ||
+          handle == ResizeHandle.bottomLeft) {
+        left = right - minimumSize;
+      } else {
+        right = left + minimumSize;
+      }
+    }
+    if (bottom - top < minimumSize) {
+      if (handle == ResizeHandle.top ||
+          handle == ResizeHandle.topLeft ||
+          handle == ResizeHandle.topRight) {
+        top = bottom - minimumSize;
+      } else {
+        bottom = top + minimumSize;
+      }
+    }
+    return Rect.fromLTRB(left, top, right, bottom);
   }
 
   void pointerDown(PointerDownEvent e, {int pageIndex = 0}) {
@@ -2464,7 +2546,9 @@ class _WorkspaceState extends State<Workspace>
       final rotationHandle = center == null
           ? null
           : Offset(center.dx, bounds!.top - 24);
-      final resizeHandle = bounds?.bottomRight;
+      final resizeHandle = bounds == null
+          ? null
+          : _resizeHandleAt(e.localPosition, bounds);
       if (rotationHandle != null &&
           (e.localPosition - rotationHandle).distance <= 14) {
         final selectionCenter = center!;
@@ -2475,12 +2559,11 @@ class _WorkspaceState extends State<Workspace>
           e.localPosition.dx - selectionCenter.dx,
         );
         _captureSelectionGeometry();
-      } else if (resizeHandle != null &&
-          (e.localPosition - resizeHandle).distance <= 14) {
+      } else if (resizeHandle != null) {
         final selectionCenter = center!;
         selectionTransformMode = SelectionTransformMode.resize;
+        _resizeHandle = resizeHandle;
         _selectionCenter = selectionCenter;
-        _selectionStartDistance = (e.localPosition - selectionCenter).distance;
         _captureSelectionGeometry();
       } else if (bounds?.contains(e.localPosition) == true) {
         movingSelection = true;
@@ -2567,14 +2650,25 @@ class _WorkspaceState extends State<Workspace>
           }
           final center = _selectionCenter;
           final originals = _selectionOriginalStrokes;
+          final startBounds = _selectionStartBounds;
           if (center != null && originals != null) {
             var scale = 1.0;
             var angle = 0.0;
+            var scaleX = 1.0;
+            var scaleY = 1.0;
+            var targetBounds = startBounds;
             if (selectionTransformMode == SelectionTransformMode.resize) {
-              scale =
-                  ((e.localPosition - center).distance /
-                          math.max(1, _selectionStartDistance))
-                      .clamp(0.1, 10.0);
+              final handle = _resizeHandle;
+              if (handle != null && startBounds != null) {
+                targetBounds = _resizedBounds(
+                  startBounds,
+                  e.localPosition,
+                  handle,
+                );
+                scaleX = targetBounds.width / math.max(1, startBounds.width);
+                scaleY = targetBounds.height / math.max(1, startBounds.height);
+                scale = (scaleX + scaleY) / 2;
+              }
             } else {
               final currentAngle = math.atan2(
                 e.localPosition.dy - center.dy,
@@ -2598,8 +2692,14 @@ class _WorkspaceState extends State<Workspace>
                   () {
                     final dx = point[0] - center.dx;
                     final dy = point[1] - center.dy;
-                    final sx = dx * scale;
-                    final sy = dy * scale;
+                    final sx =
+                        selectionTransformMode == SelectionTransformMode.resize
+                        ? dx * scaleX
+                        : dx * scale;
+                    final sy =
+                        selectionTransformMode == SelectionTransformMode.resize
+                        ? dy * scaleY
+                        : dy * scale;
                     return [
                       center.dx + sx * cosAngle - sy * sinAngle,
                       center.dy + sx * sinAngle + sy * cosAngle,
@@ -3005,8 +3105,10 @@ class _WorkspaceState extends State<Workspace>
       gestureStart = null;
       movingSelection = false;
       selectionTransformMode = SelectionTransformMode.none;
+      _resizeHandle = null;
       _selectionOriginalStrokes = null;
       _selectionCenter = null;
+      _selectionStartBounds = null;
     });
   }
 }
@@ -3377,9 +3479,13 @@ class InkPainter extends CustomPainter {
       );
       for (final point in [
         bounds.topLeft,
+        Offset(bounds.center.dx, bounds.top),
         bounds.topRight,
+        Offset(bounds.right, bounds.center.dy),
         bounds.bottomLeft,
+        Offset(bounds.center.dx, bounds.bottom),
         bounds.bottomRight,
+        Offset(bounds.left, bounds.center.dy),
       ]) {
         canvas.drawCircle(point, 5, handlePaint);
       }
